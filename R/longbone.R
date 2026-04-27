@@ -6,7 +6,7 @@
 #' @param section_loc Numeric vector of section percentages.
 #' @param individual_id Specimen identifier.
 #' @param camera_distance_mm Approximate camera distance in Avizo units/mm.
-#' @return A `mandori_orientation` object.
+#' @return A `orientcsg_orientation` object.
 #' @export
 orient_longbone <- function(mode,
                             longitudinal_matrix_str,
@@ -143,7 +143,7 @@ orient_longbone <- function(mode,
     manual_orientation = manual_orientation,
     camera_distance_mm = camera_distance_mm
   )
-  class(res) <- c("mandori_longbone", "mandori_orientation")
+  class(res) <- c("orientcsg_longbone", "orientcsg_orientation")
   res$avizo_tcl <- avizo_tcl_longbone(res)
   res
 }

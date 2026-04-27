@@ -27,7 +27,7 @@ orient_longbone(
 \item{camera_distance_mm}{Approximate camera distance in Avizo units/mm.}
 }
 \value{
-A `mandori_orientation` object.
+A \code{orientcsg_orientation} object.
 }
 \description{
 Orient long bone cross-sections

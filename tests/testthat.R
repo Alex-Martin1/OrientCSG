@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(MandOri)
+library(OrientCSG)
 
-test_check("MandOri")
+test_check("OrientCSG")

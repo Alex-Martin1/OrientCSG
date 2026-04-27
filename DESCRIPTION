@@ -1,14 +1,14 @@
-Package: MandOri
+Package: OrientCSG
 Type: Package
-Title: Proposal for a Methodological Systematization for Capturing Cross-Sectional Images in Mandibles from Archaeological Specimens
+Title: Orientation Tools for Bone Cross-Sectional Geometry
 Version: 1.0.0
-Author: Alejandro Martín-Sánchez
-Maintainer: Alejandro Martín-Sánchez <almartan@ucm.es>
-Description: The MandOri (Mandible Orientation) is an R package designed to accelerate and automate part of a systematic protocol designed for virtual orientation of human mandibles. This fits into the workflow carried for applying a technique known as Cross-Sectional Geometry, which allows the analysis of localized mechanical properties of the bone structure under study. Thus, the functions included in the MandOri package are based on simple trigonometric operations that, while they can be performed without writing code, automating their calculation saves a significant amount of time for the researcher in charge and reduces the potential for human error that may result from manual non-automatized procedures.
+Authors@R: person(given = "Alejandro", family = "Martin-Sanchez", email = "almartan@ucm.es", role = c("aut", "cre"))
+Description: Provides geometric tools for the reproducible orientation of mandibular and long-bone cross-sections in cross-sectional geometry workflows. The package computes anatomical reference systems, section locations, orientation vectors, camera positions, and software-specific command blocks to support systematic virtual image-capture protocols. These functions automate geometric operations that could otherwise be performed manually, reducing processing time and limiting potential transcription, orientation, and procedural errors.
 License: GPL-3
 Encoding: UTF-8
-LazyData: true
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Suggests: 
+Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+

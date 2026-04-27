@@ -1,4 +1,4 @@
-library(MandOri)
+library(OrientCSG)
 
 longitudinal_matrix_str <- ""
 landmarks_str <- ""

@@ -1,4 +1,4 @@
-library(MandOri)
+library(OrientCSG)
 
 # Paste 11 landmarks x 3 coordinates here, in order LM1...LM11.
 landmarks_str <- ""

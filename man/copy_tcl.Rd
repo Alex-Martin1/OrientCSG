@@ -7,12 +7,12 @@
 copy_tcl(res, section = NULL)
 }
 \arguments{
-\item{res}{Result from `orient_mandible()` or `orient_longbone()`.}
+\item{res}{Result from \code{orient_mandible()} or \code{orient_longbone()}.}
 
-\item{section}{Section name. If `NULL`, copies all blocks.}
+\item{section}{Section name. If \code{NULL}, copies all blocks.}
 }
 \value{
-Invisibly returns `TRUE` if copy was attempted successfully.
+Invisibly returns \code{TRUE} if copy was attempted successfully.
 }
 \description{
 Copy an Avizo TCL block to the clipboard

@@ -2,16 +2,25 @@
 % Please edit documentation in R/utils-vector.R
 \name{dist3}
 \alias{dist3}
-\title{Euclidean distance between two 3D points}
+\title{Compute the Euclidean distance between two 3D points}
 \usage{
-dist3(a, b)
+dist3(point_a, point_b)
 }
 \arguments{
-\item{a, b}{Numeric vectors.}
+\item{point_a}{Numeric vector of length 3 with the coordinates of the first point.}
+
+\item{point_b}{Numeric vector of length 3 with the coordinates of the second point.}
 }
 \value{
-Numeric scalar.
+A single numeric value giving the Euclidean distance between \code{point_a} and \code{point_b}.
 }
 \description{
-Euclidean distance between two 3D points
+\code{dist3()} computes the Euclidean distance between two points in
+three-dimensional space. The returned value is expressed in the same
+linear unit as the input coordinates. For example, if the coordinates
+are given in millimetres, the returned distance is also in millimetres.
+}
+\examples{
+dist3(c(1, 2, 3), c(5, 5, 3))
+
 }

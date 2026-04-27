@@ -64,13 +64,13 @@ copy_to_clipboard <- function(txt) {
   invisible(FALSE)
 }
 
-#' Print a MandOri orientation object
+#' Print a OrientCSG orientation object
 #'
-#' @param x A `mandori_orientation` object.
+#' @param x A `orientcsg_orientation` object.
 #' @param ... Additional arguments, ignored.
 #' @export
-print.mandori_orientation <- function(x, ...) {
-  cat("MandOri orientation result\n")
+print.orientcsg_orientation <- function(x, ...) {
+  cat("OrientCSG orientation result\n")
   cat("Type:", x$type, "\n")
   cat("Individual:", x$individual_id, "\n")
   if (!is.null(x$avizo_tcl)) cat("TCL blocks:", paste(names(x$avizo_tcl), collapse = ", "), "\n")

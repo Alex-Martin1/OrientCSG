@@ -21,7 +21,7 @@ orient_mandible(
 \item{cs3_camera_side}{Camera side for CS3: "RIGHT" or "LEFT".}
 }
 \value{
-A `mandori_orientation` object.
+A \code{orientcsg_orientation} object.
 }
 \description{
 Orient mandibular cross-sections

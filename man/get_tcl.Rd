@@ -7,7 +7,7 @@
 get_tcl(res, section = NULL)
 }
 \arguments{
-\item{res}{Result from `orient_mandible()` or `orient_longbone()`.}
+\item{res}{Result from \code{orient_mandible()} or \code{orient_longbone()}.}
 
 \item{section}{Section name, e.g. "CS1", "CS2", "CS3", or "SECTION_35".}
 }

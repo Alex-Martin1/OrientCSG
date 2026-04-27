@@ -7,14 +7,14 @@
 write_tcl(res, file, section = NULL)
 }
 \arguments{
-\item{res}{Result from `orient_mandible()` or `orient_longbone()`.}
+\item{res}{Result from \code{orient_mandible()} or \code{orient_longbone()}.}
 
 \item{file}{Output path.}
 
-\item{section}{Section name. If `NULL`, writes all blocks.}
+\item{section}{Section name. If \code{NULL}, writes all blocks.}
 }
 \value{
-Invisibly returns `file`.
+Invisibly returns \code{file}.
 }
 \description{
 Write an Avizo TCL block to a file

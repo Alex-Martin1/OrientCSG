@@ -4,7 +4,7 @@
 #' @param individual_id Specimen identifier.
 #' @param camera_distance_mm Approximate camera distance in Avizo units/mm.
 #' @param cs3_camera_side Camera side for CS3: "RIGHT" or "LEFT".
-#' @return A `mandori_orientation` object.
+#' @return A `orientcsg_orientation` object.
 #' @export
 orient_mandible <- function(landmarks_str,
                             individual_id = "MANDIBLE_001",
@@ -90,7 +90,7 @@ orient_mandible <- function(landmarks_str,
     camera_distance_mm = camera_distance_mm,
     cs3_camera_side = cs3_camera_side
   )
-  class(res) <- c("mandori_mandible", "mandori_orientation")
+  class(res) <- c("orientcsg_mandible", "orientcsg_orientation")
   res$avizo_tcl <- avizo_tcl_mandible(res)
   res
 }
