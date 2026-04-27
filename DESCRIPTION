@@ -5,6 +5,10 @@ Version: 1.0.0
 Author: Alejandro Martín-Sánchez
 Maintainer: Alejandro Martín-Sánchez <almartan@ucm.es>
 Description: The MandOri (Mandible Orientation) is an R package designed to accelerate and automate part of a systematic protocol designed for virtual orientation of human mandibles. This fits into the workflow carried for applying a technique known as Cross-Sectional Geometry, which allows the analysis of localized mechanical properties of the bone structure under study. Thus, the functions included in the MandOri package are based on simple trigonometric operations that, while they can be performed without writing code, automating their calculation saves a significant amount of time for the researcher in charge and reduces the potential for human error that may result from manual non-automatized procedures.
-License: GPL-3.0
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

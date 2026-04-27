@@ -284,12 +284,23 @@ distR <- function(input_text) {
 
 
 #Extra - Calculate the euclidean distance in mm between two points
+#' Calculate the distance between two 3D points
+#'
+#' @param point_A Numeric vector with three coordinates.
+#' @param point_B Numeric vector with three coordinates.
+#' @return Euclidean distance between the two points.
+#' @export
 PointDistancemm <- function(point_A, point_B) {
   distance <- sqrt(sum((point_A - point_B)^2))
   cat("The distance between point A and point B is:", distance, "\n")
 }
 
 # Extra - Transform text input into R vector function
+#' Convert coordinate text to a numeric vector
+#'
+#' @param input_text Character string containing numeric values.
+#' @return A numeric vector.
+#' @export
 text2vector <- function(input_text) {
   lines <- strsplit(input_text, "\n", fixed = TRUE)[[1]]
   values <- numeric(0)
@@ -302,6 +313,12 @@ text2vector <- function(input_text) {
 }
 
 #Extra - Calculate the cross-product of two vector function
+#' Compute the cross product between two vectors
+#'
+#' @param u_vector Numeric vector of length 3.
+#' @param v_vector Numeric vector of length 3.
+#' @return Numeric vector of length 3 with the cross product.
+#' @export
 cross_product <- function(u_vector, v_vector) {
   return(c(u[2]*v[3] - u[3]*v[2], u[3]*v[1] - u[1]*v[3], u[1]*v[2] - u[2]*v[1]))
 }
