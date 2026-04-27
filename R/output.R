@@ -5,12 +5,12 @@
 #' @return Character scalar.
 #' @export
 get_tcl <- function(res, section = NULL) {
-  if (is.null(res$avizo_tcl)) stop("El objeto no contiene bloques avizo_tcl.", call. = FALSE)
+  if (is.null(res$avizo_tcl)) stop("The object does not contain `avizo_tcl` blocks.", call. = FALSE)
   if (is.null(section)) {
     return(paste(unlist(res$avizo_tcl, use.names = FALSE), collapse = "\n\n# ------------------------------------------------------------\n\n"))
   }
   if (!section %in% names(res$avizo_tcl)) {
-    stop(sprintf("No existe la sección '%s'. Secciones disponibles: %s", section, paste(names(res$avizo_tcl), collapse = ", ")), call. = FALSE)
+    stop(sprintf("Section '%s' does not exist. Available sections: %s", section, paste(names(res$avizo_tcl), collapse = ", ")), call. = FALSE)
   }
   res$avizo_tcl[[section]]
 }
@@ -60,7 +60,7 @@ copy_to_clipboard <- function(txt) {
     writeLines(txt, con)
     return(invisible(TRUE))
   }
-  warning("No se ha podido copiar el bloque al portapapeles automáticamente.", call. = FALSE)
+  warning("The block could not be copied to the clipboard automatically.", call. = FALSE)
   invisible(FALSE)
 }
 

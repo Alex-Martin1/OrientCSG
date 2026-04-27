@@ -22,19 +22,19 @@ orient_mandible <- function(landmarks_str,
   LM9_Line <- reflect_point_across_plane(LM9, LM2, LM3, LM4)
 
   Vec_1_1Line <- LM1_Line - LM1
-  if (sqrt(sum(Vec_1_1Line^2)) < 1e-12) stop("LM1 y LM1_Line coinciden; no puedo definir Vec_1_1Line.", call. = FALSE)
+  if (sqrt(sum(Vec_1_1Line^2)) < 1e-12) stop("LM1 and LM1_Line coincide; Vec_1_1Line cannot be defined.", call. = FALSE)
 
   LM0 <- project_point_to_line(LM2, LM1, LM1_Line)
   Vec_0_2 <- LM2 - LM0
-  if (sqrt(sum(Vec_0_2^2)) < 1e-12) stop("LM2 proyecta casi sobre sí mismo en la línea LM1--LM1_Line; no puedo definir Vec_0_2.", call. = FALSE)
+  if (sqrt(sum(Vec_0_2^2)) < 1e-12) stop("LM2 projects almost onto itself on the LM1--LM1_Line axis; Vec_0_2 cannot be defined.", call. = FALSE)
 
   Vec_Penp <- nrm(cross3(Vec_0_2, Vec_1_1Line))
   CS1B <- LM5
   CS2B <- LM7
   Vec_CS1 <- LM6 - LM5
   Vec_CS2 <- LM8 - LM7
-  if (sqrt(sum(Vec_CS1^2)) < 1e-12) stop("LM5 y LM6 coinciden; no puedo definir Vec_CS1.", call. = FALSE)
-  if (sqrt(sum(Vec_CS2^2)) < 1e-12) stop("LM7 y LM8 coinciden; no puedo definir Vec_CS2.", call. = FALSE)
+  if (sqrt(sum(Vec_CS1^2)) < 1e-12) stop("LM5 and LM6 coincide; Vec_CS1 cannot be defined.", call. = FALSE)
+  if (sqrt(sum(Vec_CS2^2)) < 1e-12) stop("LM7 and LM8 coincide; Vec_CS2 cannot be defined.", call. = FALSE)
 
   Anterior_ref <- nrm(Vec_0_2)
 
@@ -111,7 +111,7 @@ avizo_tcl_mandible <- function(res) {
 
   cs12_block <- function(section_label, Psec, Vec_CS) {
     X_screen <- project_vector_to_plane(Vec_CS, Vec_Penp)
-    if (sqrt(sum(X_screen^2)) < 1e-12) stop(sprintf("%s: Vec_CS es colineal con Vec_Penp.", section_label), call. = FALSE)
+    if (sqrt(sum(X_screen^2)) < 1e-12) stop(sprintf("%s: Vec_CS is collinear with Vec_Penp.", section_label), call. = FALSE)
     X_screen <- nrm(X_screen)
     Z_camera <- nrm(cross3(X_screen, Vec_Penp))
     if (dot3(Z_camera, Anterior_ref) < 0) Z_camera <- -Z_camera

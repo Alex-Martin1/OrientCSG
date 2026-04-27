@@ -16,11 +16,11 @@ orient_longbone <- function(mode,
                             camera_distance_mm = 300) {
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
-    stop('mode debe ser "TIBIA", "HUMERUS" o "HUMERUS_TABLE".', call. = FALSE)
+    stop('`mode` must be one of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".', call. = FALSE)
   }
   section_loc <- as.numeric(section_loc)
   if (any(!is.finite(section_loc)) || any(section_loc < 0 | section_loc > 100)) {
-    stop("section_loc debe contener porcentajes numéricos entre 0 y 100.", call. = FALSE)
+    stop("`section_loc` must contain numeric percentages between 0 and 100.", call. = FALSE)
   }
 
   M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
@@ -39,25 +39,25 @@ orient_longbone <- function(mode,
 
   if (mode == "HUMERUS") {
     long_ref <- P4 - P3
-    if (sqrt(sum(long_ref^2)) < 1e-12) stop("LM3 y LM4 coinciden; no puedo definir el sentido longitudinal en húmero.", call. = FALSE)
+    if (sqrt(sum(long_ref^2)) < 1e-12) stop("LM3 and LM4 coincide; the humeral longitudinal direction cannot be defined.", call. = FALSE)
     if (dot3(long_ref, Lh) < 0) Lh <- -Lh
   } else if (mode == "HUMERUS_TABLE") {
     long_ref <- P2 - P1
-    if (sqrt(sum(long_ref^2)) < 1e-12) stop("Los landmarks distal y proximal coinciden; no puedo definir longitud.", call. = FALSE)
+    if (sqrt(sum(long_ref^2)) < 1e-12) stop("The distal and proximal landmarks coincide; projected length cannot be defined.", call. = FALSE)
     if (dot3(long_ref, Lh) < 0) Lh <- -Lh
   }
 
   if (mode == "HUMERUS_TABLE") {
     X_ref <- c(1, 0, 0)
     ML_proj <- X_ref - dot3(X_ref, Lh) * Lh
-    if (sqrt(sum(ML_proj^2)) < 1e-12) stop("El vector longitudinal es colineal con X=(1,0,0); no puedo definir ML de forma única.", call. = FALSE)
+    if (sqrt(sum(ML_proj^2)) < 1e-12) stop("The longitudinal vector is collinear with X = (1, 0, 0); ML cannot be defined uniquely.", call. = FALSE)
     MLh <- nrm(ML_proj)
     APh <- nrm(cross3(Lh, MLh))
     MLh <- nrm(cross3(APh, Lh))
   } else {
     cdir <- P2 - P1
     cperp <- cdir - dot3(cdir, Lh) * Lh
-    if (sqrt(sum(cperp * cperp)) < 1e-12) stop("P2 - P1 es colineal con L; no se puede definir bien ML.", call. = FALSE)
+    if (sqrt(sum(cperp * cperp)) < 1e-12) stop("P2 - P1 is collinear with L; ML cannot be defined reliably.", call. = FALSE)
     MLh <- nrm(cperp)
     APh <- nrm(cross3(Lh, MLh))
     MLh <- nrm(cross3(APh, Lh))
@@ -85,7 +85,7 @@ orient_longbone <- function(mode,
     point_at_pct <- function(pct) P1 + (pct / 100) * Bio_length * Lh
   }
 
-  if (Bio_length < 1e-12) stop("La longitud biomecánica proyectada es ~0.", call. = FALSE)
+  if (Bio_length < 1e-12) stop("The projected biomechanical length is near zero.", call. = FALSE)
   section_points <- lapply(section_loc, point_at_pct)
   names(section_points) <- paste0("SECTION_", section_loc)
 
@@ -153,7 +153,7 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camDist = 300) {
   Lref <- nrm(c(0, 0, -1))
   if (dot3(Lc, Lref) < 0) Lc <- -Lc
   MLc <- ML - dot3(ML, Lc) * Lc
-  if (sqrt(sum(MLc^2)) < 1e-12) stop("ML inválido tras proyectar respecto a L.", call. = FALSE)
+  if (sqrt(sum(MLc^2)) < 1e-12) stop("ML is invalid after projection relative to L.", call. = FALSE)
   MLc <- nrm(MLc)
   APc <- nrm(cross3(Lc, MLc))
   MLc <- nrm(cross3(APc, Lc))

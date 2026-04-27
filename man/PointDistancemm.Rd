@@ -12,7 +12,7 @@ PointDistancemm(point_A, point_B)
 \item{point_B}{Numeric vector with three coordinates.}
 }
 \value{
-Euclidean distance between the two points.
+Euclidean distance between the two points. The value is also printed.
 }
 \description{
 Calculate the distance between two 3D points

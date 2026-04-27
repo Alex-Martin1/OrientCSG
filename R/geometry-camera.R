@@ -4,7 +4,7 @@ make_camera_basis <- function(Z_axis, X_axis, Y_preferred = NULL) {
 
   if (sqrt(sum(Xcam^2)) < 1e-12) {
     if (is.null(Y_preferred)) {
-      stop("X_axis es colineal con Z_axis y no se ha dado Y_preferred.", call. = FALSE)
+      stop("`X_axis` is collinear with `Z_axis`, and `Y_preferred` was not provided.", call. = FALSE)
     }
     Xcam <- cross3(Y_preferred, Zcam)
   }
@@ -22,14 +22,14 @@ make_camera_basis <- function(Z_axis, X_axis, Y_preferred = NULL) {
   }
 
   if (dot3(cross3(Xcam, Ycam), Zcam) < 0.999999) {
-    stop("La base de cámara no quedó ortonormal/diestra como se esperaba.", call. = FALSE)
+    stop("The camera basis is not orthonormal and right-handed as expected.", call. = FALSE)
   }
 
   list(Xcam = Xcam, Ycam = Ycam, Zcam = Zcam)
 }
 
 rotmat_to_axis_angle <- function(R) {
-  if (!all(dim(R) == c(3, 3))) stop("R debe ser 3x3", call. = FALSE)
+  if (!all(dim(R) == c(3, 3))) stop("`R` must be a 3 x 3 matrix.", call. = FALSE)
 
   tr <- R[1, 1] + R[2, 2] + R[3, 3]
   cos_theta <- (tr - 1) / 2

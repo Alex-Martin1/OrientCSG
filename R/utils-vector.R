@@ -5,7 +5,7 @@
 #' @export
 nrm <- function(v) {
   nv <- sqrt(sum(v * v))
-  if (nv < 1e-15) stop("Norma ~0: no se puede normalizar el vector.", call. = FALSE)
+  if (nv < 1e-15) stop("The vector has near-zero norm and cannot be normalized.", call. = FALSE)
   v / nv
 }
 

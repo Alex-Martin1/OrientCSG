@@ -10,7 +10,7 @@ text2vector(input_text)
 \item{input_text}{Character string containing numeric values.}
 }
 \value{
-A numeric vector.
+Numeric vector.
 }
 \description{
 Convert coordinate text to a numeric vector
