@@ -2,7 +2,7 @@
 % Please edit documentation in R/mandible.R
 \name{orient_mandible}
 \alias{orient_mandible}
-\title{Orient mandibular cross-sections}
+\title{Orient mandibular cross-sections for image capture}
 \usage{
 orient_mandible(
   landmarks_str,
@@ -12,17 +12,109 @@ orient_mandible(
 )
 }
 \arguments{
-\item{landmarks_str}{Character string containing 11 mandibular landmarks in order LM1...LM11.}
+\item{landmarks_str}{Character string containing the coordinates of the 11
+mandibular landmarks in the fixed protocol order. Values may be separated by
+spaces, tabs, commas, semicolons, or vertical bars.}
 
-\item{individual_id}{Specimen identifier.}
+\item{individual_id}{Character identifier for the specimen. This value is
+copied into the output tables.}
 
-\item{camera_distance_mm}{Approximate camera distance in Avizo units/mm.}
+\item{camera_distance_mm}{Numeric value giving the approximate camera distance
+used in the generated Avizo TCL commands. The default is \code{300}, which is a
+practical value for the current image-capture workflow.}
 
-\item{cs3_camera_side}{Camera side for CS3: "RIGHT" or "LEFT".}
+\item{cs3_camera_side}{Character value indicating the side from which CS3
+should be viewed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}.}
 }
 \value{
-A \code{orientcsg_orientation} object.
+An object of class \code{orientcsg_mandible} and
+\code{orientcsg_orientation}. The object is a list with the following
+components:
+\itemize{
+\item \code{type}: Protocol type, here \code{"MANDIBLE"}.
+\item \code{individual_id}: Specimen identifier.
+\item \code{landmarks}: Landmark coordinate matrix.
+\item \code{points}: Computed points, including \code{LM1_Line}, \code{LM9_Line}, \code{LM0},
+\code{CS1B}, and \code{CS2B}.
+\item \code{vectors}: Computed orientation vectors.
+\item \code{summary}: Summary table for landmarks, computed points, and vectors.
+\item \code{measurements}: Linear mandibular measurements useful for size-related
+checks or standardization.
+\item \code{manual_orientation}: Table arranged for manual verification of section
+orientation in Avizo/Amira.
+\item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3}.
+}
 }
 \description{
-Orient mandibular cross-sections
+\code{orient_mandible()} implements the mandibular orientation workflow used by
+OrientCSG. It receives the coordinates of the 11 landmarks defined in the
+mandibular protocol, reconstructs the geometric reference system, computes the
+three planned cross-sections, and returns both tabular results and Avizo TCL
+command blocks for automatic orientation of the relevant objects in Avizo or
+Amira.
+}
+\section{Landmark order}{
+
+The function expects exactly 11 landmarks, pasted as a single coordinate
+string. The coordinates must be supplied in the fixed order used by the
+mandibular protocol: \code{LM1}, \code{LM2}, ..., \code{LM11}. Each landmark must contain
+three coordinates (\code{x}, \code{y}, \code{z}). The function does not infer landmark
+identity from anatomical position; it assumes that the order of the input
+string is correct.
+}
+
+\section{Geometric procedure}{
+
+The workflow first estimates \code{LM1_Line} by reflecting \code{LM1} across the plane
+defined by \code{LM2}, \code{LM3}, and \code{LM4}. The alveolar reference plane (ARP) is then
+defined from \code{LM1}, \code{LM2}, and \code{LM1_Line}. This plane provides the reference
+system used to orient all mandibular cross-sections.
+
+Cross-section 1 (\code{CS1}) is defined from the direction \code{LM5 -> LM6} and is made
+perpendicular to the ARP. Cross-section 2 (\code{CS2}) follows the same logic, using
+the direction \code{LM7 -> LM8}. Cross-section 3 (\code{CS3}) is defined by a point and a
+normal: it passes through \code{LM2} and uses the \code{LM1 -> LM1_Line} direction as its
+normal. The function also computes auxiliary points and vectors, including
+\code{LM0}, \code{Vec_0_2}, \code{Vec_1_1Line}, and \code{Vec_Penp}, because these elements are
+needed for manual verification, image orientation, and size-related
+measurements.
+}
+
+\section{Avizo/Amira requirements}{
+
+The generated TCL code assumes that the Avizo/Amira project contains objects
+with specific names. For mandibular workflows, the relevant objects are
+typically \code{ARP} and \code{Slice}. An optional object named \code{OrthogonalView} can be
+used as a visual check plane, but the TCL code is written so that it will still
+run if this object does not exist.
+}
+
+\examples{
+\dontrun{
+landmarks_str <- "
+-30.80 -7.69 -143.70
+ -1.58  7.37 -105.56
+ -0.33 -22.72 -93.42
+ -0.53 -16.99 -108.47
+-28.76 -5.05 -132.70
+-21.38 -4.79 -134.53
+-25.12 -0.85 -121.62
+-19.50 -0.58 -123.95
+-46.74 -35.26 -164.05
+-18.11  2.74 -110.29
+-47.78 12.43 -201.18
+"
+
+res <- orient_mandible(
+  landmarks_str = landmarks_str,
+  individual_id = "MANDIBLE_001",
+  camera_distance_mm = 300,
+  cs3_camera_side = "RIGHT"
+)
+
+View(res$summary)
+View(res$measurements)
+cat(res$avizo_tcl$CS1)
+}
+
 }

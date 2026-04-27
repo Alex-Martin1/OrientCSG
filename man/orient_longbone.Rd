@@ -2,7 +2,7 @@
 % Please edit documentation in R/longbone.R
 \name{orient_longbone}
 \alias{orient_longbone}
-\title{Orient long bone cross-sections}
+\title{Orient long-bone cross-sections for image capture}
 \usage{
 orient_longbone(
   mode,
@@ -14,21 +14,116 @@ orient_longbone(
 )
 }
 \arguments{
-\item{mode}{One of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".}
+\item{mode}{Character value indicating the orientation mode. Must be one of
+\code{"TIBIA"}, \code{"HUMERUS"}, or \code{"HUMERUS_TABLE"}.}
 
-\item{longitudinal_matrix_str}{BoneJ eigenvector matrix string.}
+\item{longitudinal_matrix_str}{Character string containing the 3 x 3 BoneJ
+eigenvector matrix. The first column is interpreted as the longitudinal
+vector.}
 
-\item{landmarks_str}{Landmark coordinates string.}
+\item{landmarks_str}{Character string containing landmark coordinates. The
+expected number and interpretation of landmarks depend on \code{mode}.}
 
-\item{section_loc}{Numeric vector of section percentages.}
+\item{section_loc}{Numeric vector of section locations expressed as
+percentages of biomechanical length.}
 
-\item{individual_id}{Specimen identifier.}
+\item{individual_id}{Character identifier for the specimen. This value is
+copied into the output tables.}
 
-\item{camera_distance_mm}{Approximate camera distance in Avizo units/mm.}
+\item{camera_distance_mm}{Numeric value giving the approximate camera distance
+used in the generated Avizo TCL commands.}
 }
 \value{
-A \code{orientcsg_orientation} object.
+An object of class \code{orientcsg_longbone} and
+\code{orientcsg_orientation}. The object is a list with the following
+components:
+\itemize{
+\item \code{type}: Orientation mode.
+\item \code{individual_id}: Specimen identifier.
+\item \code{landmarks}: Landmark coordinate matrix.
+\item \code{vectors}: Longitudinal, mediolateral, and anteroposterior unit vectors.
+\item \code{section_loc}: Requested section percentages.
+\item \code{section_points}: Three-dimensional coordinates of each section origin.
+\item \code{summary}: Summary table with vectors, landmarks, section points, and
+biomechanical length.
+\item \code{manual_orientation}: Table arranged for manual verification of
+anatomical planes and transverse section orientation in Avizo/Amira.
+\item \code{avizo_tcl}: Named list of Avizo TCL command blocks.
+}
 }
 \description{
-Orient long bone cross-sections
+\code{orient_longbone()} implements the long-bone orientation workflow used by
+OrientCSG. It combines a longitudinal axis derived from BoneJ Moments of
+Inertia with a small set of anatomical landmarks to compute cross-sectional
+locations, anatomical orientation vectors, and Avizo TCL command blocks for
+automatic section capture.
+}
+\section{Orientation modes}{
+
+The \code{mode} argument determines how landmarks are interpreted and how the
+mediolateral axis is constructed.
+\itemize{
+\item \code{"TIBIA"} uses three landmarks: two plateau landmarks and one tibio-talar
+landmark. The midpoint between the plateau landmarks defines the proximal
+endpoint of biomechanical length.
+\item \code{"HUMERUS"} uses four landmarks: two distal landmarks defining the
+mediolateral reference direction, one distal landmark for biomechanical
+length, and one proximal landmark on the humeral head.
+\item \code{"HUMERUS_TABLE"} uses two landmarks defining humeral biomechanical length.
+The mediolateral direction is derived from the scanner X axis. This mode is
+intended for humeri scanned in a standardized table position.
+}
+}
+
+\section{Longitudinal axis}{
+
+The function expects the 3 x 3 eigenvector matrix returned by BoneJ. Following
+the long-bone protocol, the first column is treated as the longitudinal axis.
+A coordinate-system correction is then applied to transfer this direction to
+the Avizo/Amira convention used by the TCL commands. The sign of the
+longitudinal vector is adjusted when anatomical landmarks provide a distal to
+proximal reference.
+}
+
+\section{Section locations}{
+
+\code{section_loc} gives the desired section position or positions as percentages
+of biomechanical length. For example, \code{section_loc = c(35, 50)} generates TCL
+blocks named \code{"SECTION_35"} and \code{"SECTION_50"}.
+}
+
+\section{Avizo/Amira requirements}{
+
+The generated TCL code assumes that the Avizo/Amira project contains one Slice
+object named \code{Slice} and two Clipping Plane objects named \code{ML} and \code{AP}. The
+Slice object is used for the transverse section, whereas the \code{ML} and \code{AP}
+planes provide visual anatomical references.
+}
+
+\examples{
+\dontrun{
+longitudinal_matrix_str <- "
+||0.008|-0.758|-0.653||
+||0.017|-0.652|0.758||
+||1.000|0.017|-0.008||
+"
+
+tibia_landmarks_str <- "
+130.94606 -12.514749 -392.244507
+164.351898 -17.573267 -395.017944
+146.258621 -15.388991 -61.599937
+"
+
+res <- orient_longbone(
+  mode = "TIBIA",
+  longitudinal_matrix_str = longitudinal_matrix_str,
+  landmarks_str = tibia_landmarks_str,
+  section_loc = 50,
+  individual_id = "TIBIA_001"
+)
+
+View(res$summary)
+cat(res$avizo_tcl$SECTION_50)
+}
+
 }

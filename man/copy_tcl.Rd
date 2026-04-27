@@ -2,18 +2,31 @@
 % Please edit documentation in R/output.R
 \name{copy_tcl}
 \alias{copy_tcl}
-\title{Copy an Avizo TCL block to the clipboard}
+\title{Copy Avizo TCL commands to the system clipboard}
 \usage{
 copy_tcl(res, section = NULL)
 }
 \arguments{
-\item{res}{Result from \code{orient_mandible()} or \code{orient_longbone()}.}
+\item{res}{An orientation result returned by \code{\link[=orient_mandible]{orient_mandible()}} or
+\code{\link[=orient_longbone]{orient_longbone()}}.}
 
-\item{section}{Section name. If \code{NULL}, copies all blocks.}
+\item{section}{Optional section name. If \code{NULL}, all available command blocks
+are copied.}
 }
 \value{
-Invisibly returns \code{TRUE} if copy was attempted successfully.
+Invisibly returns \code{TRUE} if the copy operation was attempted
+successfully. If no supported clipboard mechanism is available, the function
+issues a warning and invisibly returns \code{FALSE}.
 }
 \description{
-Copy an Avizo TCL block to the clipboard
+\code{copy_tcl()} copies one or more Avizo TCL command blocks from an orientation
+result to the system clipboard. This is the most direct way to transfer the
+generated commands from R to the Avizo/Amira console during an interactive
+image-capture session.
+}
+\examples{
+\dontrun{
+copy_tcl(res, section = "SECTION_50")
+}
+
 }

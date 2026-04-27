@@ -2,15 +2,22 @@
 % Please edit documentation in R/output.R
 \name{print.orientcsg_orientation}
 \alias{print.orientcsg_orientation}
-\title{Print a OrientCSG orientation object}
+\title{Print an OrientCSG orientation object}
 \usage{
 \method{print}{orientcsg_orientation}(x, ...)
 }
 \arguments{
-\item{x}{A \code{orientcsg_orientation} object.}
+\item{x}{An \code{orientcsg_orientation} object returned by \code{\link[=orient_mandible]{orient_mandible()}} or
+\code{\link[=orient_longbone]{orient_longbone()}}.}
 
-\item{...}{Additional arguments, ignored.}
+\item{...}{Additional arguments, currently ignored.}
+}
+\value{
+Invisibly returns \code{x}.
 }
 \description{
-Print a OrientCSG orientation object
+The print method provides a compact summary of an orientation result without
+displaying the full tables or TCL command blocks. It reports the protocol
+type, the specimen identifier, and the names of the available Avizo TCL
+blocks.
 }

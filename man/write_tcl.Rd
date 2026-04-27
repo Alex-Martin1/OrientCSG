@@ -2,20 +2,30 @@
 % Please edit documentation in R/output.R
 \name{write_tcl}
 \alias{write_tcl}
-\title{Write an Avizo TCL block to a file}
+\title{Write Avizo TCL commands to a text file}
 \usage{
 write_tcl(res, file, section = NULL)
 }
 \arguments{
-\item{res}{Result from \code{orient_mandible()} or \code{orient_longbone()}.}
+\item{res}{An orientation result returned by \code{\link[=orient_mandible]{orient_mandible()}} or
+\code{\link[=orient_longbone]{orient_longbone()}}.}
 
-\item{file}{Output path.}
+\item{file}{Output file path.}
 
-\item{section}{Section name. If \code{NULL}, writes all blocks.}
+\item{section}{Optional section name. If \code{NULL}, all available command blocks
+are written.}
 }
 \value{
 Invisibly returns \code{file}.
 }
 \description{
-Write an Avizo TCL block to a file
+\code{write_tcl()} writes one or more generated Avizo TCL command blocks to disk.
+This is useful when command blocks need to be archived with the specimen
+record, shared with collaborators, or executed later in Avizo/Amira.
+}
+\examples{
+\dontrun{
+write_tcl(res, file = "specimen_001_section_50.tcl", section = "SECTION_50")
+}
+
 }
