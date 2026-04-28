@@ -163,9 +163,10 @@ emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
 # Internal Avizo TCL helper --------------------------------------------------
 #
 # Emit optional commands for an object named OrthogonalView. When this object is
-# present in the Avizo/Amira project, it can be used as a visual check of the
-# camera direction. The commands are wrapped in `catch`, so the generated TCL
-# block still works when OrthogonalView has not been created.
+# present in the Avizo project, it is used as a visual check plane perpendicular
+# to the screen. The caller supplies the plane normal, usually the section
+# direction shown horizontally on screen. The commands are wrapped in `catch`,
+# so the generated TCL block still works when OrthogonalView has not been created.
 emit_optional_orthogonal_view <- function(P, N, label, digits = 6) {
   c(
     sprintf('# Optional visual check plane for %s; ignored if object "OrthogonalView" does not exist.', label),

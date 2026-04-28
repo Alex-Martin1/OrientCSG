@@ -534,7 +534,7 @@ avizo_tcl_mandible <- function(res) {
       sprintf("# Slice object: point & 2 vectors for %s", section_label),
       paste(emit_point_2vectors_plane("Slice", Psec, Vec_CS, Vec_Penp, hide_points = TRUE), collapse = "\n"),
       "",
-      paste(emit_optional_orthogonal_view(Psec, Z_camera, section_label), collapse = "\n"),
+      paste(emit_optional_orthogonal_view(Psec, X_screen, section_label), collapse = "\n"),
       "",
       "# Camera: slice parallel to screen; ARP horizontal; anterior view when applicable",
       paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
@@ -558,7 +558,7 @@ avizo_tcl_mandible <- function(res) {
       "# Slice object: normal & point for CS3",
       paste(emit_slice_normal_point("Slice", Psec, Vec_1_1Line), collapse = "\n"),
       "",
-      paste(emit_optional_orthogonal_view(Psec, Z_camera, "CS3"), collapse = "\n"),
+      paste(emit_optional_orthogonal_view(Psec, X_screen, "CS3"), collapse = "\n"),
       "",
       sprintf("# Camera: slice parallel to screen; ARP horizontal; CS3 side = %s", res$cs3_camera_side),
       paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
