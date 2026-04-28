@@ -3,3 +3,4 @@
 .RData
 .Ruserdata
 *.bakdev/mandible_validation_outputs/
+/dev/mandible_validation_outputs/
