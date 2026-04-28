@@ -32,8 +32,9 @@ devtools::load_all()
 If the package is hosted on GitHub, installation will follow the usual form:
 
 ```r
-# Example only: replace user/repository with the final repository path
-# remotes::install_github("user/OrientCSG")
+install.packages("remotes")
+remotes::install_github("Alex-Martin1/OrientCSG")
+library(OrientCSG)
 ```
 
 ## Basic mandibular workflow
