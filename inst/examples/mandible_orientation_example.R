@@ -1,7 +1,7 @@
 # If OrientCSG is not installed yet, run:
 #
 # install.packages("remotes")
-#remotes::install_github("Alex-Martin1/OrientCSG")
+# remotes::install_github("Alex-Martin1/OrientCSG")
 
 # Then load the package:
 

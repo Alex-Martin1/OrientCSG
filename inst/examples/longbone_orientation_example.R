@@ -133,7 +133,7 @@ res_humerus_table
 res_humerus_table$summary
 res_humerus_table$manual_orientation
 
-# Print the generated Avizo/ TCL block in a readable format for manual copying.
+# Print the generated Avizo TCL block in a readable format for manual copying.
 cat(get_tcl(res_humerus_table, section = "SECTION_35"))
 cat(get_tcl(res_humerus_table, section = "SECTION_50"))
 
@@ -144,10 +144,10 @@ copy_tcl(res_humerus_table, section = "SECTION_50")
 
 
 
-# Notes for Avizo/Amira ====
+# Notes for Avizo ====
 #
 # The generated TCL code assumes that the following objects already exist in
-# the Avizo/Amira project and have these exact names:
+# the Avizo project and have these exact names:
 #
 #   Slice
 #   ML

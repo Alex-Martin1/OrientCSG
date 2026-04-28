@@ -2,5 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
-*.bakdev/mandible_validation_outputs/
+*.bak
 /dev/mandible_validation_outputs/
