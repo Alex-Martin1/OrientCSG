@@ -8,13 +8,16 @@ orient_mandible(
   landmarks_str,
   individual_id = "MANDIBLE_001",
   camera_distance_mm = 300,
-  cs3_camera_side = c("RIGHT", "LEFT")
+  cs3_camera_side = c("RIGHT", "LEFT"),
+  complete_arch = FALSE,
+  estimate_lm10 = FALSE,
+  compute_bigonial = TRUE
 )
 }
 \arguments{
-\item{landmarks_str}{Character string containing the coordinates of the 11
-mandibular landmarks in the fixed protocol order. Values may be separated by
-spaces, tabs, commas, semicolons, or vertical bars.}
+\item{landmarks_str}{Character string containing the coordinates of 9, 11, or
+12 mandibular landmarks in the fixed protocol order. Values may be separated
+by spaces, tabs, commas, semicolons, or vertical bars.}
 
 \item{individual_id}{Character identifier for the specimen. This value is
 copied into the output tables.}
@@ -25,6 +28,20 @@ practical value for the current image-capture workflow.}
 
 \item{cs3_camera_side}{Character value indicating the side from which CS3
 should be viewed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}.}
+
+\item{complete_arch}{Logical. If \code{FALSE} (default), \code{LM1_Line} is estimated by
+reflection across the plane defined by \code{LM2}, \code{LM3}, and \code{LM4}. If \code{TRUE},
+\code{LM4} is interpreted as the physically preserved \code{LM1_Line}/\code{A_Line} point.}
+
+\item{estimate_lm10}{Logical. If \code{FALSE} (default), mandibular length is
+computed directly from \code{LM10} to \code{LM11} when both landmarks are available. If
+\code{TRUE}, \code{LM10} is reflected across the relevant symmetry plane and
+mandibular length is computed from the reflected point to \code{LM11}.}
+
+\item{compute_bigonial}{Logical. If \code{TRUE} (default), bigonial breadth is
+computed directly when \code{LM12} is present or estimated by reflection otherwise.
+If \code{FALSE}, bigonial breadth is reported as non-computable, which is useful
+when \code{LM9} had to be placed only as an approximate workflow point.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
@@ -34,59 +51,78 @@ components:
 \item \code{type}: Protocol type, here \code{"MANDIBLE"}.
 \item \code{individual_id}: Specimen identifier.
 \item \code{landmarks}: Landmark coordinate matrix.
+\item \code{landmark_count}: Number of landmarks supplied.
+\item \code{complete_arch}: Whether complete-arch mode was used.
+\item \code{estimate_lm10}: Whether \code{LM10} was reflected for mandibular length.
+\item \code{compute_bigonial}: Whether bigonial breadth was computed.
 \item \code{points}: Computed points, including \code{LM1_Line}, \code{LM9_Line}, \code{LM0},
-\code{CS1B}, and \code{CS2B}.
+\code{CS1B}, and \code{CS2B}; \code{LM10_Line} is also included when computed.
 \item \code{vectors}: Computed orientation vectors.
 \item \code{summary}: Summary table for landmarks, computed points, and vectors.
-\item \code{measurements}: Linear mandibular measurements useful for size-related
-checks or standardization.
+\item \code{measurements}: Linear mandibular measurements. The table includes
+\code{status} and \code{method} columns indicating whether each value is direct,
+estimated, computed, or non-computable.
 \item \code{manual_orientation}: Table arranged for manual verification of section
-orientation in Avizo/Amira.
+orientation in Avizo.
 \item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3}.
 }
 }
 \description{
 \code{orient_mandible()} implements the mandibular orientation workflow used by
-OrientCSG. It receives the coordinates of the 11 landmarks defined in the
-mandibular protocol, reconstructs the geometric reference system, computes the
-three planned cross-sections, and returns both tabular results and Avizo TCL
-command blocks for automatic orientation of the relevant objects in Avizo or
-Amira.
+OrientCSG. It receives the coordinates of the mandibular landmarks defined in
+the protocol, reconstructs the geometric reference system, computes the three
+planned cross-sections, and returns both tabular results and Avizo TCL command
+blocks for automatic orientation of the relevant objects in Avizo.
 }
-\section{Landmark order}{
+\section{Landmark order and preservation modes}{
 
-The function expects exactly 11 landmarks, pasted as a single coordinate
+The function accepts 9, 11, or 12 landmarks, pasted as a single coordinate
 string. The coordinates must be supplied in the fixed order used by the
-mandibular protocol: \code{LM1}, \code{LM2}, ..., \code{LM11}. Each landmark must contain
-three coordinates (\code{x}, \code{y}, \code{z}). The function does not infer landmark
-identity from anatomical position; it assumes that the order of the input
-string is correct.
+mandibular protocol. Each landmark must contain three coordinates (\code{x}, \code{y},
+\code{z}). The function does not infer landmark identity from anatomical position;
+it assumes that the order of the input string is correct.
+
+The 11-landmark input preserves the original workflow and assumes that
+\code{LM1}, \code{LM2}, ..., \code{LM11} are available. The 12-landmark input adds \code{LM12},
+interpreted as the contralateral gonion; when \code{compute_bigonial = TRUE}, this
+allows direct computation of bigonial breadth as \code{LM9}--\code{LM12}. The 9-landmark
+input is intended for specimens where \code{LM10} and \code{LM11} cannot be placed; in
+that case mandibular length is returned as non-computable.
+}
+
+\section{Complete-arch mode}{
+
+By default, \code{complete_arch = FALSE}, and \code{LM1_Line} is estimated by reflecting
+\code{LM1} across the plane defined by \code{LM2}, \code{LM3}, and \code{LM4}, matching the
+original fragmented-mandible workflow. When \code{complete_arch = TRUE}, \code{LM4} is
+interpreted as the physically preserved \code{LM1_Line}/\code{A_Line} point. In this
+mode, dental arch breadth is computed directly as \code{LM1}--\code{LM4}, and the
+reflection plane used for estimated contralateral points is rebuilt from the
+complete arch.
 }
 
 \section{Geometric procedure}{
 
-The workflow first estimates \code{LM1_Line} by reflecting \code{LM1} across the plane
-defined by \code{LM2}, \code{LM3}, and \code{LM4}. The alveolar reference plane (ARP) is then
-defined from \code{LM1}, \code{LM2}, and \code{LM1_Line}. This plane provides the reference
-system used to orient all mandibular cross-sections.
+The alveolar reference plane (ARP) is defined from \code{LM1}, \code{LM2}, and
+\code{LM1_Line}. This plane provides the reference system used to orient all
+mandibular cross-sections. Cross-section 1 (\code{CS1}) is defined from the
+direction \code{LM5 -> LM6} and is made perpendicular to the ARP. Cross-section 2
+(\code{CS2}) follows the same logic, using the direction \code{LM7 -> LM8}.
+Cross-section 3 (\code{CS3}) is defined by a point and a normal: it passes through
+\code{LM2} and uses the \code{LM1 -> LM1_Line} direction as its normal.
 
-Cross-section 1 (\code{CS1}) is defined from the direction \code{LM5 -> LM6} and is made
-perpendicular to the ARP. Cross-section 2 (\code{CS2}) follows the same logic, using
-the direction \code{LM7 -> LM8}. Cross-section 3 (\code{CS3}) is defined by a point and a
-normal: it passes through \code{LM2} and uses the \code{LM1 -> LM1_Line} direction as its
-normal. The function also computes auxiliary points and vectors, including
-\code{LM0}, \code{Vec_0_2}, \code{Vec_1_1Line}, and \code{Vec_Penp}, because these elements are
-needed for manual verification, image orientation, and size-related
-measurements.
+The function also computes auxiliary points and vectors, including \code{LM0},
+\code{Vec_0_2}, \code{Vec_1_1Line}, and \code{Vec_Penp}, because these elements are needed
+for manual verification, image orientation, and size-related measurements.
 }
 
-\section{Avizo/Amira requirements}{
+\section{Avizo requirements}{
 
-The generated TCL code assumes that the Avizo/Amira project contains objects
-with specific names. For mandibular workflows, the relevant objects are
-typically \code{ARP} and \code{Slice}. An optional object named \code{OrthogonalView} can be
-used as a visual check plane, but the TCL code is written so that it will still
-run if this object does not exist.
+The generated TCL code assumes that the Avizo project contains objects with
+specific names. For mandibular workflows, the relevant objects are typically
+\code{ARP} and \code{Slice}. An optional object named \code{OrthogonalView} can be used as a
+visual check plane, but the TCL code is written so that it will still run if
+this object does not exist.
 }
 
 \examples{
@@ -112,9 +148,9 @@ res <- orient_mandible(
   cs3_camera_side = "RIGHT"
 )
 
-View(res$summary)
-View(res$measurements)
-cat(res$avizo_tcl$CS1)
+res$summary
+res$measurements
+cat(get_tcl(res, section = "CS1"))
 }
 
 }

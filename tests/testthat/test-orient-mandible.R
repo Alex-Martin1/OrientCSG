@@ -12,6 +12,10 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_equal(res$type, "MANDIBLE")
   expect_equal(res$individual_id, "MANDIBLE_TEST")
   expect_equal(res$cs3_camera_side, "RIGHT")
+  expect_equal(res$landmark_count, 11)
+  expect_false(res$complete_arch)
+  expect_false(res$estimate_lm10)
+  expect_true(res$compute_bigonial)
   
   expect_equal(rownames(res$landmarks), paste0("LM", 1:11))
   expect_equal(names(res$avizo_tcl), c("CS1", "CS2", "CS3"))
@@ -23,6 +27,7 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_equal(nrow(res$summary), 18)
   expect_equal(nrow(res$measurements), 5)
   expect_equal(nrow(res$manual_orientation), 12)
+  expect_equal(names(res$measurements), c("Individual", "metric", "value_mm", "status", "method"))
   
   expect_unit_vector(res$vectors$Vec_Penp)
   expect_unit_vector(res$vectors$Anterior_ref)
@@ -63,7 +68,7 @@ test_that("orient_mandible() generates expected TCL blocks", {
 test_that("orient_mandible() validates malformed input", {
   expect_error(
     orient_mandible("1 2 3"),
-    "requires 33 numeric values"
+    "requires 27, 33, or 36 numeric values"
   )
   
   expect_error(
@@ -71,6 +76,22 @@ test_that("orient_mandible() validates malformed input", {
       landmarks_str = mandible_landmarks_str,
       cs3_camera_side = "POSTERIOR"
     )
+  )
+
+  expect_error(
+    orient_mandible(
+      landmarks_str = mandible_landmarks_str_9,
+      estimate_lm10 = TRUE
+    ),
+    "estimate_lm10 = TRUE requires"
+  )
+
+  expect_error(
+    orient_mandible(
+      landmarks_str = mandible_landmarks_str,
+      complete_arch = NA
+    ),
+    "complete_arch must be TRUE or FALSE"
   )
 })
 
@@ -81,4 +102,92 @@ test_that("orient_mandible() accepts lowercase CS3 side values", {
   )
   
   expect_equal(res$cs3_camera_side, "LEFT")
+})
+
+test_that("orient_mandible() supports 12 landmarks with direct bigonial breadth", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str_12,
+    individual_id = "MANDIBLE_12"
+  )
+
+  expect_equal(res$landmark_count, 12)
+  expect_equal(rownames(res$landmarks), paste0("LM", 1:12))
+  expect_equal(nrow(res$summary), 19)
+
+  bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
+  expect_equal(bigonial$status, "direct")
+  expect_equal(bigonial$method, "LM9_LM12")
+  expect_equal(
+    bigonial$value_mm,
+    round(dist3(res$landmarks["LM9", ], res$landmarks["LM12", ]), 6)
+  )
+})
+
+test_that("orient_mandible() supports 9 landmarks with non-computable mandibular length", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str_9,
+    individual_id = "MANDIBLE_9"
+  )
+
+  expect_equal(res$landmark_count, 9)
+  expect_equal(rownames(res$landmarks), paste0("LM", 1:9))
+  expect_equal(names(res$avizo_tcl), c("CS1", "CS2", "CS3"))
+
+  mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
+  expect_true(is.na(mandibular_length$value_mm))
+  expect_equal(mandibular_length$status, "uncomputable")
+  expect_equal(mandibular_length$method, "missing_LM10_LM11")
+})
+
+test_that("orient_mandible() supports complete-arch mode", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    complete_arch = TRUE
+  )
+
+  expect_true(res$complete_arch)
+  expect_equal(
+    unname(res$points$LM1_Line),
+    unname(res$landmarks["LM4", ]),
+    tolerance = 1e-6
+  )
+  expect_equal(res$reflection_method, "complete_arch_plane_LM1_LM4_LM2_ARP")
+
+  dental <- res$measurements[res$measurements$metric == "Dental_arch_breadth", ]
+  expect_equal(dental$status, "direct")
+  expect_equal(dental$method, "LM1_LM4_A_Line")
+  expect_equal(
+    dental$value_mm,
+    round(dist3(res$landmarks["LM1", ], res$landmarks["LM4", ]), 6)
+  )
+})
+
+test_that("orient_mandible() can suppress bigonial breadth", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    compute_bigonial = FALSE
+  )
+
+  bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
+  expect_true(is.na(bigonial$value_mm))
+  expect_equal(bigonial$status, "uncomputable")
+  expect_equal(bigonial$method, "LM9_not_preserved")
+})
+
+test_that("orient_mandible() can estimate LM10 for mandibular length", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    estimate_lm10 = TRUE
+  )
+
+  expect_true(res$estimate_lm10)
+  expect_named(res$points, c("LM1_Line", "LM9_Line", "LM0", "CS1B", "CS2B", "LM10_Line"))
+
+  mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
+  expect_equal(mandibular_length$status, "estimated")
+  expect_contains_fixed(mandibular_length$method, "reflected_LM10_plane_P_LM2_LM3_LM4_to_LM11")
+  expect_equal(
+    mandibular_length$value_mm,
+    round(dist3(res$points$LM10_Line, res$landmarks["LM11", ]), 6)
+  )
 })

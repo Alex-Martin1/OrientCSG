@@ -1,6 +1,6 @@
 # OrientCSG
 
-OrientCSG is an R package for reproducible orientation of mandibular and long-bone cross-sections in cross-sectional geometry workflows. It was designed to support systematic virtual image capture from CT-derived anatomical data, with future extension to 3D scan-derived data currently under development The package is especially useful when sections must be oriented consistently across specimens before measuring biomechanical properties.
+OrientCSG is an R package for reproducible orientation of mandibular and long-bone cross-sections in cross-sectional geometry workflows. It was designed to support systematic virtual image capture from CT-derived anatomical data, with future extension to 3D scan-derived data currently under development. The package is especially useful when sections must be oriented consistently across specimens before measuring biomechanical properties.
 
 The package computes anatomical reference systems that allow transverse section planes to be oriented according to criteria grounded in Ruff’s (2002) proposals for long bones and broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019). It also computes section locations, orientation vectors, camera positions, summary tables, manual-orientation tables, and Amira/Avizo TCL command blocks.
 
@@ -43,9 +43,12 @@ The mandibular workflow is implemented in `orient_mandible()`.
 
 It currently:
 
-- defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line` -which can be estimated when the specimen is fragmented-;
+- defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line`;
 - computes `CS1`, `CS2`, and `CS3` following the mandibular landmark protocol;
-- returns summary tables, size-related mandibular measurements, manual-orientation tables, and one Avizo TCL block per section.
+- supports 9-, 11-, and 12-landmark inputs to accommodate different preservation states;
+- supports `complete_arch = TRUE` when the physical `LM1_Line`/`A_Line` point is preserved;
+- can suppress bigonial breadth calculation with `compute_bigonial = FALSE` when the gonion landmark is only an approximate workflow point;
+- returns summary tables, size-related mandibular measurements with status/method metadata, manual-orientation tables, and one Avizo TCL block per section.
 
 ### 2. Long-bone cross-sections
 
@@ -70,7 +73,7 @@ OrientCSG currently has different preservation requirements for mandibular and l
 
 For long bones, the current implementation assumes complete or near-complete specimens. This is because biomechanical length, section locations, and anatomical axes are computed from landmarks and reference directions that require preservation of the relevant proximal and distal anatomy. A version designed to orient fragmented long bones is currently under development, but it is not yet implemented.
 
-For mandibles, the workflow can be applied to fragmented specimens provided that the anatomical region required by the landmark protocol is sufficiently preserved. In practical terms, this means that the specimen should preserve, at minimum, the region extending from the first incisor to the second molar (both included), together with the landmarks needed to define the mandibular reference system and the target cross-sections.
+For mandibles, the workflow can be applied to fragmented specimens provided that the anatomical region required by the landmark protocol is sufficiently preserved. In practical terms, this means that the specimen should preserve, at minimum, the region extending from the first incisor to the second molar (both included), together with the landmarks needed to define the mandibular reference system and the target cross-sections. The function currently accepts 9, 11, or 12 landmarks. The 9-landmark input is intended for cases where `LM10` and `LM11` cannot be placed; mandibular length is then returned as non-computable. The 12-landmark input adds `LM12` as the contralateral gonion, allowing direct computation of bigonial breadth.
 
 ## Methodological documentation
 
@@ -98,7 +101,7 @@ For long-bone workflows, the expected objects are:
 
 ## Basic mandibular workflow
 
-The mandibular workflow expects 11 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export or another coordinate source.
+The mandibular workflow accepts 9, 11, or 12 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export or another coordinate source. The 11-landmark input preserves the original fragmented-mandible workflow.
 
 ```r
 library(OrientCSG)
@@ -129,6 +132,43 @@ res$summary
 res$measurements
 res$manual_orientation
 ```
+
+### Mandibular preservation options
+
+By default, `orient_mandible()` assumes the original fragmented-mandible workflow:
+
+```r
+res <- orient_mandible(
+  landmarks_str = landmarks_str,
+  complete_arch = FALSE,
+  estimate_lm10 = FALSE,
+  compute_bigonial = TRUE
+)
+```
+
+If the mandibular arch is sufficiently complete and the physical `LM1_Line`/`A_Line` point is preserved, set `complete_arch = TRUE`. In this mode, `LM4` is interpreted as the real `LM1_Line` point rather than the landmark used to estimate it by reflection:
+
+```r
+res <- orient_mandible(
+  landmarks_str = landmarks_str,
+  complete_arch = TRUE
+)
+```
+
+If the contralateral gonion is preserved, provide 12 landmarks. `LM12` will be interpreted as the contralateral gonion and bigonial breadth will be computed directly as `LM9`--`LM12`.
+
+If `LM10` and `LM11` cannot be placed, provide only the first 9 landmarks. In that case, the package will still generate the section-orientation TCL blocks, but mandibular length will be returned as non-computable in `res$measurements`.
+
+If `LM9` had to be placed only as an approximate workflow point and bigonial breadth should not be used, set `compute_bigonial = FALSE`:
+
+```r
+res <- orient_mandible(
+  landmarks_str = landmarks_str,
+  compute_bigonial = FALSE
+)
+```
+
+The `measurements` table includes `status` and `method` columns to indicate whether each measurement was computed directly, estimated by reflection, computed from derived geometry, or left as non-computable.
 
 To retrieve a TCL block:
 
@@ -257,6 +297,9 @@ write_tcl(res, file = "section_50.tcl", section = "SECTION_50")
 Most errors or unexpected orientations are caused by one of the following problems:
 
 - landmark coordinates were pasted in the wrong order;
+- the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, or `compute_bigonial`);
+- the wrong number of mandibular landmarks was supplied;
+- the BoneJ eigenvector matrix was copied incorrectly;
 - the wrong long-bone mode was selected;
 - the required Avizo objects do not exist or have different names;
 - `HUMERUS_TABLE` was used even though scan orientation was not anatomically standardized;
@@ -274,7 +317,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 ## Development status
 
-OrientCSG is under active methodological development. Version 0.1.0 focuses on Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows.
+OrientCSG is under active methodological development. Version 0.1.0 introduced Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows. The current development version adds broader mandibular preservation handling, including 9-, 11-, and 12-landmark inputs and explicit measurement status/method metadata.
 
 Future extensions may add alternatives for free and open-source software, including 3D Slicer and MeshLab-based surface mesh workflows. Planned developments also include support for additional long bones, particularly the femur (in the nearer term) and the radius (at a later stage), as well as protocols for orienting fragmented long-bone specimens.
 

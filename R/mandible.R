@@ -1,45 +1,57 @@
 #' Orient mandibular cross-sections for image capture
 #'
 #' `orient_mandible()` implements the mandibular orientation workflow used by
-#' OrientCSG. It receives the coordinates of the 11 landmarks defined in the
-#' mandibular protocol, reconstructs the geometric reference system, computes the
-#' three planned cross-sections, and returns both tabular results and Avizo TCL
-#' command blocks for automatic orientation of the relevant objects in Avizo or
-#' Amira.
+#' OrientCSG. It receives the coordinates of the mandibular landmarks defined in
+#' the protocol, reconstructs the geometric reference system, computes the three
+#' planned cross-sections, and returns both tabular results and Avizo TCL command
+#' blocks for automatic orientation of the relevant objects in Avizo.
 #'
-#' @section Landmark order:
-#' The function expects exactly 11 landmarks, pasted as a single coordinate
+#' @section Landmark order and preservation modes:
+#' The function accepts 9, 11, or 12 landmarks, pasted as a single coordinate
 #' string. The coordinates must be supplied in the fixed order used by the
-#' mandibular protocol: `LM1`, `LM2`, ..., `LM11`. Each landmark must contain
-#' three coordinates (`x`, `y`, `z`). The function does not infer landmark
-#' identity from anatomical position; it assumes that the order of the input
-#' string is correct.
+#' mandibular protocol. Each landmark must contain three coordinates (`x`, `y`,
+#' `z`). The function does not infer landmark identity from anatomical position;
+#' it assumes that the order of the input string is correct.
+#'
+#' The 11-landmark input preserves the original workflow and assumes that
+#' `LM1`, `LM2`, ..., `LM11` are available. The 12-landmark input adds `LM12`,
+#' interpreted as the contralateral gonion; when `compute_bigonial = TRUE`, this
+#' allows direct computation of bigonial breadth as `LM9`--`LM12`. The 9-landmark
+#' input is intended for specimens where `LM10` and `LM11` cannot be placed; in
+#' that case mandibular length is returned as non-computable.
+#'
+#' @section Complete-arch mode:
+#' By default, `complete_arch = FALSE`, and `LM1_Line` is estimated by reflecting
+#' `LM1` across the plane defined by `LM2`, `LM3`, and `LM4`, matching the
+#' original fragmented-mandible workflow. When `complete_arch = TRUE`, `LM4` is
+#' interpreted as the physically preserved `LM1_Line`/`A_Line` point. In this
+#' mode, dental arch breadth is computed directly as `LM1`--`LM4`, and the
+#' reflection plane used for estimated contralateral points is rebuilt from the
+#' complete arch.
 #'
 #' @section Geometric procedure:
-#' The workflow first estimates `LM1_Line` by reflecting `LM1` across the plane
-#' defined by `LM2`, `LM3`, and `LM4`. The alveolar reference plane (ARP) is then
-#' defined from `LM1`, `LM2`, and `LM1_Line`. This plane provides the reference
-#' system used to orient all mandibular cross-sections.
+#' The alveolar reference plane (ARP) is defined from `LM1`, `LM2`, and
+#' `LM1_Line`. This plane provides the reference system used to orient all
+#' mandibular cross-sections. Cross-section 1 (`CS1`) is defined from the
+#' direction `LM5 -> LM6` and is made perpendicular to the ARP. Cross-section 2
+#' (`CS2`) follows the same logic, using the direction `LM7 -> LM8`.
+#' Cross-section 3 (`CS3`) is defined by a point and a normal: it passes through
+#' `LM2` and uses the `LM1 -> LM1_Line` direction as its normal.
 #'
-#' Cross-section 1 (`CS1`) is defined from the direction `LM5 -> LM6` and is made
-#' perpendicular to the ARP. Cross-section 2 (`CS2`) follows the same logic, using
-#' the direction `LM7 -> LM8`. Cross-section 3 (`CS3`) is defined by a point and a
-#' normal: it passes through `LM2` and uses the `LM1 -> LM1_Line` direction as its
-#' normal. The function also computes auxiliary points and vectors, including
-#' `LM0`, `Vec_0_2`, `Vec_1_1Line`, and `Vec_Penp`, because these elements are
-#' needed for manual verification, image orientation, and size-related
-#' measurements.
+#' The function also computes auxiliary points and vectors, including `LM0`,
+#' `Vec_0_2`, `Vec_1_1Line`, and `Vec_Penp`, because these elements are needed
+#' for manual verification, image orientation, and size-related measurements.
 #'
-#' @section Avizo/Amira requirements:
-#' The generated TCL code assumes that the Avizo/Amira project contains objects
-#' with specific names. For mandibular workflows, the relevant objects are
-#' typically `ARP` and `Slice`. An optional object named `OrthogonalView` can be
-#' used as a visual check plane, but the TCL code is written so that it will still
-#' run if this object does not exist.
+#' @section Avizo requirements:
+#' The generated TCL code assumes that the Avizo project contains objects with
+#' specific names. For mandibular workflows, the relevant objects are typically
+#' `ARP` and `Slice`. An optional object named `OrthogonalView` can be used as a
+#' visual check plane, but the TCL code is written so that it will still run if
+#' this object does not exist.
 #'
-#' @param landmarks_str Character string containing the coordinates of the 11
-#'   mandibular landmarks in the fixed protocol order. Values may be separated by
-#'   spaces, tabs, commas, semicolons, or vertical bars.
+#' @param landmarks_str Character string containing the coordinates of 9, 11, or
+#'   12 mandibular landmarks in the fixed protocol order. Values may be separated
+#'   by spaces, tabs, commas, semicolons, or vertical bars.
 #' @param individual_id Character identifier for the specimen. This value is
 #'   copied into the output tables.
 #' @param camera_distance_mm Numeric value giving the approximate camera distance
@@ -47,6 +59,17 @@
 #'   practical value for the current image-capture workflow.
 #' @param cs3_camera_side Character value indicating the side from which CS3
 #'   should be viewed. Allowed values are `"RIGHT"` and `"LEFT"`.
+#' @param complete_arch Logical. If `FALSE` (default), `LM1_Line` is estimated by
+#'   reflection across the plane defined by `LM2`, `LM3`, and `LM4`. If `TRUE`,
+#'   `LM4` is interpreted as the physically preserved `LM1_Line`/`A_Line` point.
+#' @param estimate_lm10 Logical. If `FALSE` (default), mandibular length is
+#'   computed directly from `LM10` to `LM11` when both landmarks are available. If
+#'   `TRUE`, `LM10` is reflected across the relevant symmetry plane and
+#'   mandibular length is computed from the reflected point to `LM11`.
+#' @param compute_bigonial Logical. If `TRUE` (default), bigonial breadth is
+#'   computed directly when `LM12` is present or estimated by reflection otherwise.
+#'   If `FALSE`, bigonial breadth is reported as non-computable, which is useful
+#'   when `LM9` had to be placed only as an approximate workflow point.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -55,16 +78,20 @@
 #'   - `type`: Protocol type, here `"MANDIBLE"`.
 #'   - `individual_id`: Specimen identifier.
 #'   - `landmarks`: Landmark coordinate matrix.
+#'   - `landmark_count`: Number of landmarks supplied.
+#'   - `complete_arch`: Whether complete-arch mode was used.
+#'   - `estimate_lm10`: Whether `LM10` was reflected for mandibular length.
+#'   - `compute_bigonial`: Whether bigonial breadth was computed.
 #'   - `points`: Computed points, including `LM1_Line`, `LM9_Line`, `LM0`,
-#'     `CS1B`, and `CS2B`.
+#'     `CS1B`, and `CS2B`; `LM10_Line` is also included when computed.
 #'   - `vectors`: Computed orientation vectors.
 #'   - `summary`: Summary table for landmarks, computed points, and vectors.
-#'   - `measurements`: Linear mandibular measurements useful for size-related
-#'     checks or standardization.
+#'   - `measurements`: Linear mandibular measurements. The table includes
+#'     `status` and `method` columns indicating whether each value is direct,
+#'     estimated, computed, or non-computable.
 #'   - `manual_orientation`: Table arranged for manual verification of section
-#'     orientation in Avizo/Amira.
+#'     orientation in Avizo.
 #'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`.
-#'   
 #'
 #' @examples
 #' \dontrun{
@@ -89,9 +116,9 @@
 #'   cs3_camera_side = "RIGHT"
 #' )
 #'
-#' View(res$summary)
-#' View(res$measurements)
-#' cat(res$avizo_tcl$CS1)
+#' res$summary
+#' res$measurements
+#' cat(get_tcl(res, section = "CS1"))
 #' }
 #'
 #' @export
@@ -99,23 +126,41 @@
 orient_mandible <- function(landmarks_str,
                             individual_id = "MANDIBLE_001",
                             camera_distance_mm = 300,
-                            cs3_camera_side = c("RIGHT", "LEFT")) {
+                            cs3_camera_side = c("RIGHT", "LEFT"),
+                            complete_arch = FALSE,
+                            estimate_lm10 = FALSE,
+                            compute_bigonial = TRUE) {
   cs3_camera_side <- match.arg(toupper(cs3_camera_side), c("RIGHT", "LEFT"))
+  complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
+  estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
+  compute_bigonial <- assert_logical_scalar(compute_bigonial, "compute_bigonial")
 
-  # Read the 11 protocol landmarks and assign fixed anatomical labels. The
-  # downstream calculations depend on this order, so no reordering is attempted.
-  mat_pts <- parse_landmarks(landmarks_str, n_landmarks = 11, context = "MANDIBLE")
-  rownames(mat_pts) <- paste0("LM", 1:11)
+  mat_pts <- parse_mandible_landmarks(landmarks_str)
+  landmark_count <- nrow(mat_pts)
 
-  LM1  <- mat_pts[1, ];  LM2  <- mat_pts[2, ];  LM3  <- mat_pts[3, ];  LM4  <- mat_pts[4, ]
-  LM5  <- mat_pts[5, ];  LM6  <- mat_pts[6, ];  LM7  <- mat_pts[7, ];  LM8  <- mat_pts[8, ]
-  LM9  <- mat_pts[9, ];  LM10 <- mat_pts[10, ]; LM11 <- mat_pts[11, ]
+  if (estimate_lm10 && landmark_count < 11) {
+    stop("estimate_lm10 = TRUE requires 11 or 12 mandibular landmarks, including LM10 and LM11.", call. = FALSE)
+  }
 
-  # Estimate contralateral reference points by reflection across the plane
-  # defined by LM2, LM3, and LM4. LM1_Line is required for the ARP; LM9_Line is
-  # used only for the estimated bigonial breadth measurement.
-  LM1_Line <- reflect_point_across_plane(LM1, LM2, LM3, LM4)
-  LM9_Line <- reflect_point_across_plane(LM9, LM2, LM3, LM4)
+  LM1 <- mat_pts["LM1", ]; LM2 <- mat_pts["LM2", ]; LM3 <- mat_pts["LM3", ]; LM4 <- mat_pts["LM4", ]
+  LM5 <- mat_pts["LM5", ]; LM6 <- mat_pts["LM6", ]; LM7 <- mat_pts["LM7", ]; LM8 <- mat_pts["LM8", ]
+  LM9 <- mat_pts["LM9", ]
+  LM10 <- if ("LM10" %in% rownames(mat_pts)) mat_pts["LM10", ] else NULL
+  LM11 <- if ("LM11" %in% rownames(mat_pts)) mat_pts["LM11", ] else NULL
+  LM12 <- if ("LM12" %in% rownames(mat_pts)) mat_pts["LM12", ] else NULL
+
+  # In the original fragmented workflow, LM1_Line is estimated by reflection
+  # across plane P = LM2-LM3-LM4. In complete-arch mode, LM4 is treated as the
+  # physically preserved LM1_Line/A_Line point.
+  reflection_method <- NULL
+  LM10_Line <- NULL
+
+  if (complete_arch) {
+    LM1_Line <- LM4
+  } else {
+    LM1_Line <- reflect_point_across_plane(LM1, LM2, LM3, LM4)
+    reflection_method <- "plane_P_LM2_LM3_LM4"
+  }
 
   Vec_1_1Line <- LM1_Line - LM1
   if (sqrt(sum(Vec_1_1Line^2)) < 1e-12) {
@@ -137,6 +182,27 @@ orient_mandible <- function(landmarks_str,
   # where the vector was used to enforce perpendicularity of CS1 and CS2.
   Vec_Penp <- nrm(cross3(Vec_0_2, Vec_1_1Line))
 
+  if (complete_arch) {
+    # Complete-arch symmetry plane: it passes through the midpoint of LM1 and
+    # the real LM1_Line/A_Line point, contains the anterior direction toward LM2,
+    # and is perpendicular to the ARP. This provides the reflection plane used for
+    # contralateral estimates when the dental arch is preserved.
+    M_1_1Line <- (LM1 + LM1_Line) / 2
+    reflection_A <- M_1_1Line
+    reflection_B <- LM2
+    reflection_C <- M_1_1Line + Vec_Penp
+    reflection_method <- "complete_arch_plane_LM1_LM4_LM2_ARP"
+  } else {
+    reflection_A <- LM2
+    reflection_B <- LM3
+    reflection_C <- LM4
+  }
+
+  LM9_Line <- reflect_point_across_plane(LM9, reflection_A, reflection_B, reflection_C)
+  if (estimate_lm10) {
+    LM10_Line <- reflect_point_across_plane(LM10, reflection_A, reflection_B, reflection_C)
+  }
+
   CS1B <- LM5
   CS2B <- LM7
   Vec_CS1 <- LM6 - LM5
@@ -151,52 +217,41 @@ orient_mandible <- function(landmarks_str,
 
   Anterior_ref <- nrm(Vec_0_2)
 
-  summary_metrics <- c(
-    "LM1", "LM2", "LM3", "LM4", "LM1_Line",
-    "CS1B", "Vec_CS1", "CS2B", "Vec_CS2", "Vec_Penp",
-    "Vec_0_2", "Vec_1_1Line", "LM0", "LM6", "LM8", "LM9", "LM10", "LM11"
+  summary_entries <- list(
+    LM1 = LM1, LM2 = LM2, LM3 = LM3, LM4 = LM4, LM1_Line = LM1_Line,
+    CS1B = CS1B, Vec_CS1 = Vec_CS1, CS2B = CS2B, Vec_CS2 = Vec_CS2,
+    Vec_Penp = Vec_Penp, Vec_0_2 = Vec_0_2, Vec_1_1Line = Vec_1_1Line,
+    LM0 = LM0, LM6 = LM6, LM8 = LM8, LM9 = LM9
   )
-  summary_mat <- rbind(
-    LM1, LM2, LM3, LM4, LM1_Line,
-    CS1B, Vec_CS1, CS2B, Vec_CS2, Vec_Penp,
-    Vec_0_2, Vec_1_1Line, LM0, LM6, LM8, LM9, LM10, LM11
-  )
+  if (!is.null(LM10)) summary_entries$LM10 <- LM10
+  if (!is.null(LM11)) summary_entries$LM11 <- LM11
+  if (!is.null(LM12)) summary_entries$LM12 <- LM12
+  if (!is.null(LM10_Line)) summary_entries$LM10_Line <- LM10_Line
 
-  summary_tbl <- data.frame(
-    Individual = rep(individual_id, length(summary_metrics)),
-    metric = summary_metrics,
-    x = round(summary_mat[, 1], 6),
-    y = round(summary_mat[, 2], 6),
-    z = round(summary_mat[, 3], 6),
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
+  summary_tbl <- make_xyz_summary(summary_entries, individual_id)
 
-  measurements <- data.frame(
-    Individual = rep(individual_id, 5),
-    metric = c(
-      "Corpus_length_LM3_LM9",
-      "Mandibular_length_LM10_LM11",
-      "Estimated_dental_arch_breadth_LM1_LM1_Line",
-      "Dental_arch_superior_length_LM2_LM0",
-      "Estimated_bigonial_breadth_LM9_LM9_Line"
-    ),
-    value_mm = round(
-      c(
-        dist3(LM3, LM9),
-        dist3(LM10, LM11),
-        dist3(LM1, LM1_Line),
-        dist3(LM2, LM0),
-        dist3(LM9, LM9_Line)
-      ),
-      6
-    ),
-    check.names = FALSE,
-    stringsAsFactors = FALSE
+  measurements <- build_mandible_measurements(
+    individual_id = individual_id,
+    LM1 = LM1,
+    LM2 = LM2,
+    LM3 = LM3,
+    LM4 = LM4,
+    LM9 = LM9,
+    LM10 = LM10,
+    LM11 = LM11,
+    LM12 = LM12,
+    LM0 = LM0,
+    LM1_Line = LM1_Line,
+    LM9_Line = LM9_Line,
+    LM10_Line = LM10_Line,
+    complete_arch = complete_arch,
+    estimate_lm10 = estimate_lm10,
+    compute_bigonial = compute_bigonial,
+    reflection_method = reflection_method
   )
 
   # This table mirrors the logic of the protocol and is meant for checking or
-  # reproducing the orientation manually in Avizo/Amira if needed.
+  # reproducing the orientation manually in Avizo if needed.
   manual_orientation <- rbind(
     data.frame(section = "ARP", role = "Point 1", object = "ARP", value = "LM1", x = LM1[1], y = LM1[2], z = LM1[3]),
     data.frame(section = "ARP", role = "Point 2", object = "ARP", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
@@ -229,11 +284,17 @@ orient_mandible <- function(landmarks_str,
     CS1B = CS1B,
     CS2B = CS2B
   )
+  if (!is.null(LM10_Line)) points$LM10_Line <- LM10_Line
 
   res <- list(
     type = "MANDIBLE",
     individual_id = individual_id,
     landmarks = mat_pts,
+    landmark_count = landmark_count,
+    complete_arch = complete_arch,
+    estimate_lm10 = estimate_lm10,
+    compute_bigonial = compute_bigonial,
+    reflection_method = reflection_method,
     points = points,
     vectors = vectors,
     summary = summary_tbl,
@@ -248,12 +309,170 @@ orient_mandible <- function(landmarks_str,
   res
 }
 
+# Internal mandibular parsing helper -----------------------------------------
+#
+# Accept exactly the preservation patterns supported by the mandibular workflow:
+# 9 landmarks (LM1-LM9), 11 landmarks (LM1-LM11), or 12 landmarks (LM1-LM12).
+parse_mandible_landmarks <- function(landmarks_str) {
+  nums <- extract_nums(landmarks_str)
+  allowed_landmarks <- c(9, 11, 12)
+  allowed_values <- allowed_landmarks * 3
+
+  if (!(length(nums) %in% allowed_values)) {
+    stop(
+      sprintf(
+        "MANDIBLE requires 27, 33, or 36 numeric values: 9, 11, or 12 landmarks x 3 coordinates. Detected %d numeric values.",
+        length(nums)
+      ),
+      call. = FALSE
+    )
+  }
+
+  n_landmarks <- length(nums) / 3
+  out <- matrix(nums, ncol = 3, byrow = TRUE)
+  rownames(out) <- paste0("LM", seq_len(n_landmarks))
+  out
+}
+
+# Internal scalar validation helper ------------------------------------------
+assert_logical_scalar <- function(x, arg) {
+  if (!is.logical(x) || length(x) != 1 || is.na(x)) {
+    stop(sprintf("%s must be TRUE or FALSE.", arg), call. = FALSE)
+  }
+  x
+}
+
+# Internal summary helper -----------------------------------------------------
+make_xyz_summary <- function(entries, individual_id) {
+  mat <- do.call(rbind, entries)
+  data.frame(
+    Individual = rep(individual_id, length(entries)),
+    metric = names(entries),
+    x = round(mat[, 1], 6),
+    y = round(mat[, 2], 6),
+    z = round(mat[, 3], 6),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
+# Internal measurement helper -------------------------------------------------
+build_mandible_measurements <- function(individual_id,
+                                        LM1,
+                                        LM2,
+                                        LM3,
+                                        LM4,
+                                        LM9,
+                                        LM10,
+                                        LM11,
+                                        LM12,
+                                        LM0,
+                                        LM1_Line,
+                                        LM9_Line,
+                                        LM10_Line,
+                                        complete_arch,
+                                        estimate_lm10,
+                                        compute_bigonial,
+                                        reflection_method) {
+  rows <- list()
+
+  add_measurement <- function(metric, value_mm, status, method) {
+    data.frame(
+      Individual = individual_id,
+      metric = metric,
+      value_mm = if (is.na(value_mm)) NA_real_ else round(value_mm, 6),
+      status = status,
+      method = method,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  rows[[length(rows) + 1]] <- add_measurement(
+    "Corpus_length",
+    dist3(LM3, LM9),
+    "direct",
+    "LM3_LM9"
+  )
+
+  if (is.null(LM10) || is.null(LM11)) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Mandibular_length",
+      NA_real_,
+      "uncomputable",
+      "missing_LM10_LM11"
+    )
+  } else if (estimate_lm10) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Mandibular_length",
+      dist3(LM10_Line, LM11),
+      "estimated",
+      paste0("reflected_LM10_", reflection_method, "_to_LM11")
+    )
+  } else {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Mandibular_length",
+      dist3(LM10, LM11),
+      "direct",
+      "LM10_LM11"
+    )
+  }
+
+  if (complete_arch) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Dental_arch_breadth",
+      dist3(LM1, LM4),
+      "direct",
+      "LM1_LM4_A_Line"
+    )
+  } else {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Dental_arch_breadth",
+      dist3(LM1, LM1_Line),
+      "estimated",
+      paste0("reflected_LM1_", reflection_method)
+    )
+  }
+
+  rows[[length(rows) + 1]] <- add_measurement(
+    "Dental_arch_superior_length",
+    dist3(LM2, LM0),
+    "computed",
+    "LM2_LM0_projection_on_LM1_LM1_Line"
+  )
+
+  if (!compute_bigonial) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Bigonial_breadth",
+      NA_real_,
+      "uncomputable",
+      "LM9_not_preserved"
+    )
+  } else if (!is.null(LM12)) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Bigonial_breadth",
+      dist3(LM9, LM12),
+      "direct",
+      "LM9_LM12"
+    )
+  } else {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Bigonial_breadth",
+      dist3(LM9, LM9_Line),
+      "estimated",
+      paste0("reflected_LM9_", reflection_method)
+    )
+  }
+
+  do.call(rbind, rows)
+}
+
 # Internal mandibular TCL generator -----------------------------------------
 #
 # Transform the mandibular orientation object into three Avizo TCL blocks, one
 # for each planned cross-section. The geometric calculations are completed before
 # this function is called; here the task is only to translate those results into
-# Avizo/Amira command syntax.
+# Avizo command syntax.
 avizo_tcl_mandible <- function(res) {
   LM <- res$landmarks
   LM1 <- LM["LM1", ]
