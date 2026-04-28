@@ -1,7 +1,17 @@
 #' Normalize a numeric vector
 #'
+#' Low-level vector utility used internally by OrientCSG and exported for
+#' convenience. `nrm()` returns the unit vector pointing in the same direction
+#' as the input vector.
+#'
 #' @param v Numeric vector.
-#' @return Unit vector.
+#'
+#' @return A numeric vector with unit length.
+#'
+#' @examples
+#' nrm(c(2, 0, 0))
+#' nrm(c(1, 1, 0))
+#'
 #' @export
 nrm <- function(v) {
   nv <- sqrt(sum(v * v))
@@ -9,17 +19,38 @@ nrm <- function(v) {
   v / nv
 }
 
-#' Dot product for 3D vectors
+
+#' Dot product for numeric vectors
 #'
-#' @param a,b Numeric vectors.
-#' @return Numeric scalar.
+#' Low-level vector utility used internally by OrientCSG and exported for
+#' convenience. `dot3()` computes the dot product between two numeric vectors.
+#' In the orientation workflows, it is mainly used with 3D vectors.
+#'
+#' @param a,b Numeric vectors of the same length.
+#'
+#' @return A single numeric value giving the dot product of `a` and `b`.
+#'
+#' @examples
+#' dot3(c(1, 2, 3), c(4, 5, 6))
+#' dot3(c(1, 0, 0), c(0, 1, 0))
+#'
 #' @export
 dot3 <- function(a, b) sum(a * b)
 
+
 #' Cross product for 3D vectors
 #'
+#' Low-level 3D vector utility used internally by OrientCSG and exported for
+#' convenience. `cross3()` computes the cross product between two 3D vectors.
+#'
 #' @param a,b Numeric vectors of length 3.
-#' @return Numeric vector of length 3.
+#'
+#' @return A numeric vector of length 3 giving the cross product `a x b`.
+#'
+#' @examples
+#' cross3(c(1, 0, 0), c(0, 1, 0))
+#' cross3(c(0, 1, 0), c(1, 0, 0))
+#'
 #' @export
 cross3 <- function(a, b) {
   c(
@@ -29,12 +60,14 @@ cross3 <- function(a, b) {
   )
 }
 
+
 #' Compute the Euclidean distance between two 3D points
 #'
-#' `dist3()` computes the Euclidean distance between two points in
-#' three-dimensional space. The returned value is expressed in the same
-#' linear unit as the input coordinates. For example, if the coordinates
-#' are given in millimetres, the returned distance is also in millimetres.
+#' Low-level 3D utility used internally by OrientCSG and exported for
+#' convenience. `dist3()` computes the Euclidean distance between two points in
+#' three-dimensional space. The returned value is expressed in the same linear
+#' unit as the input coordinates. For example, if the coordinates are given in
+#' millimetres, the returned distance is also in millimetres.
 #'
 #' @param point_a Numeric vector of length 3 with the coordinates of the first point.
 #' @param point_b Numeric vector of length 3 with the coordinates of the second point.

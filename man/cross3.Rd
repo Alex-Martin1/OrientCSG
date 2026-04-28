@@ -10,8 +10,14 @@ cross3(a, b)
 \item{a, b}{Numeric vectors of length 3.}
 }
 \value{
-Numeric vector of length 3.
+A numeric vector of length 3 giving the cross product \verb{a x b}.
 }
 \description{
-Cross product for 3D vectors
+Low-level 3D vector utility used internally by OrientCSG and exported for
+convenience. \code{cross3()} computes the cross product between two 3D vectors.
+}
+\examples{
+cross3(c(1, 0, 0), c(0, 1, 0))
+cross3(c(0, 1, 0), c(1, 0, 0))
+
 }

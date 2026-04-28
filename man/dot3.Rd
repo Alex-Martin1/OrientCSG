@@ -2,16 +2,23 @@
 % Please edit documentation in R/utils-vector.R
 \name{dot3}
 \alias{dot3}
-\title{Dot product for 3D vectors}
+\title{Dot product for numeric vectors}
 \usage{
 dot3(a, b)
 }
 \arguments{
-\item{a, b}{Numeric vectors.}
+\item{a, b}{Numeric vectors of the same length.}
 }
 \value{
-Numeric scalar.
+A single numeric value giving the dot product of \code{a} and \code{b}.
 }
 \description{
-Dot product for 3D vectors
+Low-level vector utility used internally by OrientCSG and exported for
+convenience. \code{dot3()} computes the dot product between two numeric vectors.
+In the orientation workflows, it is mainly used with 3D vectors.
+}
+\examples{
+dot3(c(1, 2, 3), c(4, 5, 6))
+dot3(c(1, 0, 0), c(0, 1, 0))
+
 }

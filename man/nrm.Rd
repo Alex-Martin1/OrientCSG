@@ -10,8 +10,15 @@ nrm(v)
 \item{v}{Numeric vector.}
 }
 \value{
-Unit vector.
+A numeric vector with unit length.
 }
 \description{
-Normalize a numeric vector
+Low-level vector utility used internally by OrientCSG and exported for
+convenience. \code{nrm()} returns the unit vector pointing in the same direction
+as the input vector.
+}
+\examples{
+nrm(c(2, 0, 0))
+nrm(c(1, 1, 0))
+
 }

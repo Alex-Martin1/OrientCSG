@@ -15,10 +15,11 @@ dist3(point_a, point_b)
 A single numeric value giving the Euclidean distance between \code{point_a} and \code{point_b}.
 }
 \description{
-\code{dist3()} computes the Euclidean distance between two points in
-three-dimensional space. The returned value is expressed in the same
-linear unit as the input coordinates. For example, if the coordinates
-are given in millimetres, the returned distance is also in millimetres.
+Low-level 3D utility used internally by OrientCSG and exported for
+convenience. \code{dist3()} computes the Euclidean distance between two points in
+three-dimensional space. The returned value is expressed in the same linear
+unit as the input coordinates. For example, if the coordinates are given in
+millimetres, the returned distance is also in millimetres.
 }
 \examples{
 dist3(c(1, 2, 3), c(5, 5, 3))
