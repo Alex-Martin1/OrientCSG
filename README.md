@@ -46,8 +46,6 @@ It currently:
 - defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line`;
 - computes `CS1`, `CS2`, and `CS3` following the mandibular landmark protocol;
 - supports 9-, 11-, and 12-landmark inputs to accommodate different preservation states;
-- supports `complete_arch = TRUE` when the physical `LM1_Line`/`A_Line` point is preserved;
-- can suppress bigonial breadth calculation with `compute_bigonial = FALSE` when the gonion landmark is only an approximate workflow point;
 - returns summary tables, size-related mandibular measurements with status/method metadata, manual-orientation tables, and one Avizo TCL block per section.
 
 ### 2. Long-bone cross-sections

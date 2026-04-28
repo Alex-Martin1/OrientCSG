@@ -29,20 +29,29 @@ emit_hide_plane_points <- function(obj) {
 
 # Internal Avizo TCL helper --------------------------------------------------
 #
-# Emit commands for a plane defined by three points. In the mandibular workflow
-# this is used to orient the ARP object from LM1, LM2, and LM1_Line. The function
-# assumes that the target object already exists in Avizo/Amira and has the name
-# supplied in `obj`.
+# Compute a plane from three protocol points, but emit it to Avizo as
+# origin + normal. This is more reliable for clipping-plane objects than
+# sending planePoint1/2/3 directly.
+#
+# In the mandibular workflow this is used for the ARP object:
+# LM1, LM2, and LM1_Line. LM1_Line may be estimated or directly landmarked
+# depending on the preservation mode.
 emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE, digits = 6) {
+  V1 <- P2 - P1
+  V2 <- P3 - P1
+  N <- nrm(cross3(V1, V2))
+  
+  # Centroid used only to place the visible plane handle near the landmarks.
+  P0 <- (P1 + P2 + P3) / 3
+  
   out <- c(
-    sprintf('"%s" planeDefinition setValue 1', obj),
-    sprintf('"%s" planePoint1 setCoord 0 %s', obj, fmt_vec(P1, digits)),
-    sprintf('"%s" planePoint2 setCoord 0 %s', obj, fmt_vec(P2, digits)),
-    sprintf('"%s" planePoint3 setCoord 0 %s', obj, fmt_vec(P3, digits))
+    sprintf('"%s" planeDefinition setValue 0', obj),
+    sprintf('"%s" origin setCoord 0 %s', obj, fmt_vec(P0, digits)),
+    sprintf('"%s" normal setCoord 0 %s', obj, fmt_vec(N, digits))
   )
-
+  
   if (hide_points) out <- c(out, emit_hide_plane_points(obj))
-
+  
   if (!is.null(color) && length(color) == 3) {
     out <- c(
       out,
@@ -52,7 +61,7 @@ emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE
       )
     )
   }
-
+  
   c(out, sprintf('"%s" fire', obj))
 }
 

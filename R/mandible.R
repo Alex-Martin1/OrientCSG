@@ -68,8 +68,9 @@
 #'   mandibular length is computed from the reflected point to `LM11`.
 #' @param compute_bigonial Logical. If `TRUE` (default), bigonial breadth is
 #'   computed directly when `LM12` is present or estimated by reflection otherwise.
-#'   If `FALSE`, bigonial breadth is reported as non-computable, which is useful
-#'   when `LM9` had to be placed only as an approximate workflow point.
+#'   If `FALSE`, bigonial breadth is reported as non-computable. This is useful
+#'   when the measure should be excluded, for example because the relevant gonial
+#'   anatomy is not reliable.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -218,10 +219,31 @@ orient_mandible <- function(landmarks_str,
   Anterior_ref <- nrm(Vec_0_2)
 
   summary_entries <- list(
-    LM1 = LM1, LM2 = LM2, LM3 = LM3, LM4 = LM4, LM1_Line = LM1_Line,
-    CS1B = CS1B, Vec_CS1 = Vec_CS1, CS2B = CS2B, Vec_CS2 = Vec_CS2,
-    Vec_Penp = Vec_Penp, Vec_0_2 = Vec_0_2, Vec_1_1Line = Vec_1_1Line,
-    LM0 = LM0, LM6 = LM6, LM8 = LM8, LM9 = LM9
+    LM1 = LM1,
+    LM2 = LM2,
+    LM3 = LM3
+  )
+  
+  if (!complete_arch) {
+    summary_entries$LM4 <- LM4
+  }
+  
+  summary_entries <- c(
+    summary_entries,
+    list(
+      LM1_Line = LM1_Line,
+      CS1B = CS1B,
+      Vec_CS1 = Vec_CS1,
+      CS2B = CS2B,
+      Vec_CS2 = Vec_CS2,
+      Vec_Penp = Vec_Penp,
+      Vec_0_2 = Vec_0_2,
+      Vec_1_1Line = Vec_1_1Line,
+      LM0 = LM0,
+      LM6 = LM6,
+      LM8 = LM8,
+      LM9 = LM9
+    )
   )
   if (!is.null(LM10)) summary_entries$LM10 <- LM10
   if (!is.null(LM11)) summary_entries$LM11 <- LM11
@@ -446,7 +468,7 @@ build_mandible_measurements <- function(individual_id,
       "Bigonial_breadth",
       NA_real_,
       "uncomputable",
-      "LM9_not_preserved"
+      "bigonial_not_computed"
     )
   } else if (!is.null(LM12)) {
     rows[[length(rows) + 1]] <- add_measurement(

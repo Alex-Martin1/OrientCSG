@@ -59,7 +59,9 @@ test_that("orient_mandible() generates expected TCL blocks", {
   expect_contains_fixed(tcl_cs2, "# MANDIBLE - CS2")
   expect_contains_fixed(tcl_cs3, "# MANDIBLE - CS3")
   
-  expect_contains_fixed(tcl_cs1, "\"ARP\" planeDefinition setValue 1")
+  expect_contains_fixed(tcl_cs1, "\"ARP\" planeDefinition setValue 0")
+  expect_contains_fixed(tcl_cs1, "\"ARP\" origin setCoord 0")
+  expect_contains_fixed(tcl_cs1, "\"ARP\" normal setCoord 0")
   expect_contains_fixed(tcl_cs1, "\"Slice\" planeDefinition setValue 2")
   expect_contains_fixed(tcl_cs3, "\"Slice\" normal setCoord 0")
   expect_contains_fixed(tcl_cs1, "viewer 0 setCameraType orthographic")
@@ -171,7 +173,7 @@ test_that("orient_mandible() can suppress bigonial breadth", {
   bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
   expect_true(is.na(bigonial$value_mm))
   expect_equal(bigonial$status, "uncomputable")
-  expect_equal(bigonial$method, "LM9_not_preserved")
+  expect_equal(bigonial$method, "bigonial_not_computed")
 })
 
 test_that("orient_mandible() can estimate LM10 for mandibular length", {

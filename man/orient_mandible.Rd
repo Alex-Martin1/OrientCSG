@@ -40,8 +40,9 @@ mandibular length is computed from the reflected point to \code{LM11}.}
 
 \item{compute_bigonial}{Logical. If \code{TRUE} (default), bigonial breadth is
 computed directly when \code{LM12} is present or estimated by reflection otherwise.
-If \code{FALSE}, bigonial breadth is reported as non-computable, which is useful
-when \code{LM9} had to be placed only as an approximate workflow point.}
+If \code{FALSE}, bigonial breadth is reported as non-computable. This is useful
+when the measure should be excluded, for example because the relevant gonial
+anatomy is not reliable.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
