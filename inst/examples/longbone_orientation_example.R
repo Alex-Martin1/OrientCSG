@@ -1,14 +1,19 @@
-# Long-bone orientation examples for OrientCSG
+# If OrientCSG is not installed yet, run:
 #
-# This script illustrates the three long-bone orientation modes currently
-# supported by OrientCSG:
+# install.packages("remotes")
+# remotes::install_github("Alex-Martin1/OrientCSG")
 #
+# Then load the package:
+
+library(OrientCSG)
+
+# This script illustrates the three long-bone orientation modes currently supported by OrientCSG:
+
 #   1. TIBIA
 #   2. HUMERUS
 #   3. HUMERUS_TABLE
-#
 
-library(OrientCSG)
+
 
 
 # 1. Tibia example ====
@@ -44,8 +49,8 @@ res_tibia
 res_tibia$summary
 res_tibia$manual_orientation
 
-# Print the generated Avizo/Amira TCL block in a readable format for manual copying.
-cat(res_tibia$avizo_tcl[["SECTION_50"]])
+# Print the generated Avizo TCL block in a readable format for manual copying.
+cat(get_tcl(res_tibia, section = "SECTION_50"))
 
 # To copy this command block to the clipboard, run:
 copy_tcl(res_tibia, section = "SECTION_50")
@@ -90,9 +95,9 @@ res_humerus
 res_humerus$summary
 res_humerus$manual_orientation
 
-# Print the generated Avizo/Amira TCL block in a readable format for manual copying.
-cat(res_humerus$avizo_tcl[["SECTION_35"]])
-cat(res_humerus$avizo_tcl[["SECTION_50"]])
+# Print the generated Avizo TCL block in a readable format for manual copying.
+cat(get_tcl(res_humerus, section = "SECTION_35"))
+cat(get_tcl(res_humerus, section = "SECTION_50"))
 
 
 # To copy a command block to the clipboard, run:
@@ -128,9 +133,9 @@ res_humerus_table
 res_humerus_table$summary
 res_humerus_table$manual_orientation
 
-# Print the generated Avizo/Amira TCL block in a readable format for manual copying.
-cat(res_humerus_table$avizo_tcl[["SECTION_35"]])
-cat(res_humerus_table$avizo_tcl[["SECTION_50"]])
+# Print the generated Avizo/ TCL block in a readable format for manual copying.
+cat(get_tcl(res_humerus_table, section = "SECTION_35"))
+cat(get_tcl(res_humerus_table, section = "SECTION_50"))
 
 
 # To copy a command block to the clipboard, run:

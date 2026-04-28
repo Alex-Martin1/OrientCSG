@@ -1,6 +1,26 @@
+# If OrientCSG is not installed yet, run:
+#
+# install.packages("remotes")
+#remotes::install_github("Alex-Martin1/OrientCSG")
+
+# Then load the package:
+
 library(OrientCSG)
 
-# Example mandibular landmark coordinates.
+
+
+# This example shows the default mandibular workflow:
+#
+#   11 landmarks
+#   complete_arch = FALSE
+#   compute_bigonial = TRUE
+#   estimate_lm10 = FALSE
+#
+# This corresponds to a mandibular specimen fragmented approximately by half, where one side is sufficiently preserved to place LM1-LM11 following the
+# default landmark protocol. In this case, LM1_Line and the contralateral gonion are estimated geometrically.
+#
+
+
 # The coordinates must be provided in the fixed order LM1 to LM11.
 landmarks_str <- "
 -30.802746 -7.687321 -143.703278
@@ -20,7 +40,10 @@ res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_EXAMPLE",
   camera_distance_mm = 300,
-  cs3_camera_side = "RIGHT"
+  cs3_camera_side = "RIGHT",
+  complete_arch = FALSE,
+  compute_bigonial = TRUE,
+  estimate_lm10 = FALSE
 )
 
 res
@@ -28,7 +51,7 @@ res$summary
 res$measurements
 
 # Print the generated Avizo TCL block in a readable format for manual copying.
-cat(res$avizo_tcl$CS1)
+cat(get_tcl(res, section = "CS1"))
 
 # To copy the command block to the clipboard, run:
 copy_tcl(res, section = "CS1")
