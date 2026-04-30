@@ -52,6 +52,12 @@ res$measurements
 
 # Print the generated Avizo TCL block in a readable format for manual copying.
 cat(get_tcl(res, section = "CS1"))
+cat(get_tcl(res, section = "CS2"))
+cat(get_tcl(res, section = "CS3"))
 
 # To copy the command block to the clipboard, run:
 copy_tcl(res, section = "CS1")
+
+copy_tcl(res, section = "CS2")
+
+copy_tcl(res, section = "CS3")
