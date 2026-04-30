@@ -57,14 +57,16 @@ components:
 \item \code{estimate_lm10}: Whether \code{LM10} was reflected for mandibular length.
 \item \code{compute_bigonial}: Whether bigonial breadth was computed.
 \item \code{points}: Computed points, including \code{LM1_Line}, \code{LM9_Line}, \code{LM0},
-\code{CS1B}, and \code{CS2B}; \code{LM10_Line} is also included when computed.
+\code{ARP_Origin}, \code{CS1B}, and \code{CS2B}; \code{LM10_Line} is also included when
+computed.
 \item \code{vectors}: Computed orientation vectors.
-\item \code{summary}: Summary table for landmarks, computed points, and vectors.
+\item \code{summary}: Compact summary table for key landmarks, computed points, and
+vectors used for plane orientation.
 \item \code{measurements}: Linear mandibular measurements. The table includes
 \code{status} and \code{method} columns indicating whether each value is direct,
 estimated, computed, or non-computable.
-\item \code{manual_orientation}: Table arranged for manual verification of section
-orientation in Avizo.
+\item \code{manual_orientation}: Table arranged for manual verification of ARP and
+section orientation in Avizo/Amira.
 \item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3}.
 }
 }
@@ -113,8 +115,11 @@ Cross-section 3 (\code{CS3}) is defined by a point and a normal: it passes throu
 \code{LM2} and uses the \code{LM1 -> LM1_Line} direction as its normal.
 
 The function also computes auxiliary points and vectors, including \code{LM0},
-\code{Vec_0_2}, \code{Vec_1_1Line}, and \code{Vec_Penp}, because these elements are needed
-for manual verification, image orientation, and size-related measurements.
+\code{ARP_Origin}, \code{Vec_1_1Line}, \code{Vec_Penp}, \code{Vec_CS1_Normal}, and
+\code{Vec_CS2_Normal}, because these elements are needed for manual verification,
+image orientation, and size-related measurements. \code{Vec_CS1} and \code{Vec_CS2} are
+retained internally for TCL and camera generation, but are not included in the
+compact summary table.
 }
 
 \section{Avizo requirements}{
