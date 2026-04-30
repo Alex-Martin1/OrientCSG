@@ -39,8 +39,11 @@
 #' `LM2` and uses the `LM1 -> LM1_Line` direction as its normal.
 #'
 #' The function also computes auxiliary points and vectors, including `LM0`,
-#' `Vec_0_2`, `Vec_1_1Line`, and `Vec_Penp`, because these elements are needed
-#' for manual verification, image orientation, and size-related measurements.
+#' `ARP_Origin`, `Vec_1_1Line`, `Vec_Penp`, `Vec_CS1_Normal`, and
+#' `Vec_CS2_Normal`, because these elements are needed for manual verification,
+#' image orientation, and size-related measurements. `Vec_CS1` and `Vec_CS2` are
+#' retained internally for TCL and camera generation, but are not included in the
+#' compact summary table.
 #'
 #' @section Avizo requirements:
 #' The generated TCL code assumes that the Avizo project contains objects with
@@ -84,14 +87,16 @@
 #'   - `estimate_lm10`: Whether `LM10` was reflected for mandibular length.
 #'   - `compute_bigonial`: Whether bigonial breadth was computed.
 #'   - `points`: Computed points, including `LM1_Line`, `LM9_Line`, `LM0`,
-#'     `CS1B`, and `CS2B`; `LM10_Line` is also included when computed.
+#'     `ARP_Origin`, `CS1B`, and `CS2B`; `LM10_Line` is also included when
+#'     computed.
 #'   - `vectors`: Computed orientation vectors.
-#'   - `summary`: Summary table for landmarks, computed points, and vectors.
+#'   - `summary`: Compact summary table for key landmarks, computed points, and
+#'     vectors used for plane orientation.
 #'   - `measurements`: Linear mandibular measurements. The table includes
 #'     `status` and `method` columns indicating whether each value is direct,
 #'     estimated, computed, or non-computable.
-#'   - `manual_orientation`: Table arranged for manual verification of section
-#'     orientation in Avizo.
+#'   - `manual_orientation`: Table arranged for manual verification of ARP and
+#'     section orientation in Avizo/Amira.
 #'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`.
 #'
 #' @examples
@@ -183,6 +188,10 @@ orient_mandible <- function(landmarks_str,
   # where the vector was used to enforce perpendicularity of CS1 and CS2.
   Vec_Penp <- nrm(cross3(Vec_0_2, Vec_1_1Line))
 
+  # The ARP is emitted to Amira/Avizo as origin + normal. The origin is the
+  # centroid of the three points that conceptually define the ARP.
+  ARP_Origin <- (LM1 + LM2 + LM1_Line) / 3
+
   if (complete_arch) {
     # Complete-arch symmetry plane: it passes through the midpoint of LM1 and
     # the real LM1_Line/A_Line point, contains the anterior direction toward LM2,
@@ -216,6 +225,9 @@ orient_mandible <- function(landmarks_str,
     stop("LM7 and LM8 coincide; Vec_CS2 cannot be defined.", call. = FALSE)
   }
 
+  Vec_CS1_Normal <- nrm(cross3(Vec_CS1, Vec_Penp))
+  Vec_CS2_Normal <- nrm(cross3(Vec_CS2, Vec_Penp))
+
   Anterior_ref <- nrm(Vec_0_2)
 
   summary_entries <- list(
@@ -232,12 +244,12 @@ orient_mandible <- function(landmarks_str,
     summary_entries,
     list(
       LM1_Line = LM1_Line,
-      CS1B = CS1B,
-      Vec_CS1 = Vec_CS1,
-      CS2B = CS2B,
-      Vec_CS2 = Vec_CS2,
+      ARP_Origin = ARP_Origin,
       Vec_Penp = Vec_Penp,
-      Vec_0_2 = Vec_0_2,
+      CS1B = CS1B,
+      Vec_CS1_Normal = Vec_CS1_Normal,
+      CS2B = CS2B,
+      Vec_CS2_Normal = Vec_CS2_Normal,
       Vec_1_1Line = Vec_1_1Line,
       LM0 = LM0,
       LM6 = LM6,
@@ -275,15 +287,14 @@ orient_mandible <- function(landmarks_str,
   # This table mirrors the logic of the protocol and is meant for checking or
   # reproducing the orientation manually in Avizo if needed.
   manual_orientation <- rbind(
-    data.frame(section = "ARP", role = "Point 1", object = "ARP", value = "LM1", x = LM1[1], y = LM1[2], z = LM1[3]),
-    data.frame(section = "ARP", role = "Point 2", object = "ARP", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
-    data.frame(section = "ARP", role = "Point 3", object = "ARP", value = "LM1_Line", x = LM1_Line[1], y = LM1_Line[2], z = LM1_Line[3]),
+    data.frame(section = "ARP", role = "Origin", object = "ARP", value = "ARP_Origin", x = ARP_Origin[1], y = ARP_Origin[2], z = ARP_Origin[3]),
+    data.frame(section = "ARP", role = "Normal", object = "ARP", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),
     data.frame(section = "CS1", role = "Plane point", object = "Slice", value = "CS1B/LM5", x = CS1B[1], y = CS1B[2], z = CS1B[3]),
-    data.frame(section = "CS1", role = "Vector 1", object = "Slice", value = "Vec_CS1", x = Vec_CS1[1], y = Vec_CS1[2], z = Vec_CS1[3]),
-    data.frame(section = "CS1", role = "Vector 2", object = "Slice", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),
+    data.frame(section = "CS1", role = "Normal", object = "Slice", value = "Vec_CS1_Normal", x = Vec_CS1_Normal[1], y = Vec_CS1_Normal[2], z = Vec_CS1_Normal[3]),
+    data.frame(section = "CS1", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS1", x = Vec_CS1[1], y = Vec_CS1[2], z = Vec_CS1[3]),
     data.frame(section = "CS2", role = "Plane point", object = "Slice", value = "CS2B/LM7", x = CS2B[1], y = CS2B[2], z = CS2B[3]),
-    data.frame(section = "CS2", role = "Vector 1", object = "Slice", value = "Vec_CS2", x = Vec_CS2[1], y = Vec_CS2[2], z = Vec_CS2[3]),
-    data.frame(section = "CS2", role = "Vector 2", object = "Slice", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),
+    data.frame(section = "CS2", role = "Normal", object = "Slice", value = "Vec_CS2_Normal", x = Vec_CS2_Normal[1], y = Vec_CS2_Normal[2], z = Vec_CS2_Normal[3]),
+    data.frame(section = "CS2", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS2", x = Vec_CS2[1], y = Vec_CS2[2], z = Vec_CS2[3]),
     data.frame(section = "CS3", role = "Plane point", object = "Slice", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
     data.frame(section = "CS3", role = "Normal", object = "Slice", value = "Vec_1_1Line", x = Vec_1_1Line[1], y = Vec_1_1Line[2], z = Vec_1_1Line[3]),
     data.frame(section = "CS3", role = "Screen-horizontal reference", object = "Camera", value = "Vec_0_2", x = Vec_0_2[1], y = Vec_0_2[2], z = Vec_0_2[3])
@@ -296,13 +307,16 @@ orient_mandible <- function(landmarks_str,
     Vec_0_2 = Vec_0_2,
     Vec_Penp = Vec_Penp,
     Vec_CS1 = Vec_CS1,
+    Vec_CS1_Normal = Vec_CS1_Normal,
     Vec_CS2 = Vec_CS2,
+    Vec_CS2_Normal = Vec_CS2_Normal,
     Anterior_ref = Anterior_ref
   )
   points <- list(
     LM1_Line = LM1_Line,
     LM9_Line = LM9_Line,
     LM0 = LM0,
+    ARP_Origin = ARP_Origin,
     CS1B = CS1B,
     CS2B = CS2B
   )
@@ -517,6 +531,13 @@ avizo_tcl_mandible <- function(res) {
     }
     X_screen <- nrm(X_screen)
 
+    # CS1 and CS2 are geometrically defined by the landmark section direction
+    # and the ARP normal. For better Amira/Avizo compatibility, the Slice object
+    # is emitted as a normal-and-point plane. This is equivalent to the previous
+    # point-and-two-vectors definition because the slice normal is perpendicular
+    # to both in-plane vectors.
+    Z_slice <- nrm(cross3(Vec_CS, Vec_Penp))
+
     # The camera direction is perpendicular to both the screen-horizontal section
     # vector and the ARP normal. Its sign is selected so that the section is shown
     # from the anterior side whenever this can be defined from Vec_0_2.
@@ -531,8 +552,8 @@ avizo_tcl_mandible <- function(res) {
       "# ARP clipping plane: 3 points = LM1, LM2, LM1_Line",
       paste(arp_block(), collapse = "\n"),
       "",
-      sprintf("# Slice object: point & 2 vectors for %s", section_label),
-      paste(emit_point_2vectors_plane("Slice", Psec, Vec_CS, Vec_Penp, hide_points = TRUE), collapse = "\n"),
+      sprintf("# Slice object: normal & point for %s", section_label),
+      paste(emit_slice_normal_point("Slice", Psec, Z_slice), collapse = "\n"),
       "",
       paste(emit_optional_orthogonal_view(Psec, X_screen, section_label), collapse = "\n"),
       "",

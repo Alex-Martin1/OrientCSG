@@ -26,10 +26,14 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   
   expect_equal(nrow(res$summary), 18)
   expect_equal(nrow(res$measurements), 5)
-  expect_equal(nrow(res$manual_orientation), 12)
+  expect_equal(nrow(res$manual_orientation), 11)
+  expect_false(any(res$summary$metric %in% c("Vec_CS1", "Vec_CS2", "Vec_0_2")))
+  expect_true(all(c("ARP_Origin", "Vec_CS1_Normal", "Vec_CS2_Normal") %in% res$summary$metric))
   expect_equal(names(res$measurements), c("Individual", "metric", "value_mm", "status", "method"))
   
   expect_unit_vector(res$vectors$Vec_Penp)
+  expect_unit_vector(res$vectors$Vec_CS1_Normal)
+  expect_unit_vector(res$vectors$Vec_CS2_Normal)
   expect_unit_vector(res$vectors$Anterior_ref)
   
   expect_equal(
@@ -62,7 +66,9 @@ test_that("orient_mandible() generates expected TCL blocks", {
   expect_contains_fixed(tcl_cs1, "\"ARP\" planeDefinition setValue 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" origin setCoord 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" normal setCoord 0")
-  expect_contains_fixed(tcl_cs1, "\"Slice\" planeDefinition setValue 2")
+  expect_contains_fixed(tcl_cs1, "\"Slice\" planeDefinition setValue 0")
+  expect_contains_fixed(tcl_cs1, "\"Slice\" normal setCoord 0")
+  expect_false(grepl("planeVector1|planeVector2", tcl_cs1))
   expect_contains_fixed(tcl_cs3, "\"Slice\" normal setCoord 0")
   expect_contains_fixed(tcl_cs1, "viewer 0 setCameraType orthographic")
 })
@@ -183,7 +189,7 @@ test_that("orient_mandible() can estimate LM10 for mandibular length", {
   )
 
   expect_true(res$estimate_lm10)
-  expect_named(res$points, c("LM1_Line", "LM9_Line", "LM0", "CS1B", "CS2B", "LM10_Line"))
+  expect_named(res$points, c("LM1_Line", "LM9_Line", "LM0", "ARP_Origin", "CS1B", "CS2B", "LM10_Line"))
 
   mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
   expect_equal(mandibular_length$status, "estimated")

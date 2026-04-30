@@ -68,9 +68,8 @@ emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE
 # Internal Avizo TCL helper --------------------------------------------------
 #
 # Emit commands for a plane defined by one point and two vectors. This is used
-# for mandibular CS1 and CS2, where one vector follows the landmark-defined
-# cross-sectional direction and the other enforces perpendicularity to the ARP.
-# It is also used to display the long-bone ML and AP anatomical planes.
+# to display the long-bone ML and AP anatomical planes. Mandibular slices are
+# emitted as normal-and-point planes for better Amira/Avizo compatibility.
 emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points = TRUE, digits = 6) {
   P2 <- P + V1
   P3 <- P + V2
@@ -102,7 +101,7 @@ emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points 
 # Internal Avizo TCL helper --------------------------------------------------
 #
 # Emit commands for a plane defined by a point and a normal vector. This is used
-# for long-bone transverse sections and for mandibular CS3.
+# for long-bone transverse sections and for all mandibular Slice objects.
 emit_slice_normal_point <- function(obj, P, N, digits = 6) {
   c(
     sprintf('"%s" planeDefinition setValue 0', obj),

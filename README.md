@@ -315,7 +315,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 ## Development status
 
-OrientCSG is under active methodological development. Version 0.1.1 introduced Avizo TCL generation for mandibular, tibial, humeral, table-position humeral workflows and adds broader mandibular preservation handling. The current development version adds broader mandibular preservation handling, including 9-, 11-, and 12-landmark inputs and explicit measurement status/method metadata.
+OrientCSG is under active methodological development. Version 0.1.2 updates mandibular TCL generation so that CS1, CS2, and CS3 are all emitted as normal-and-point Slice definitions, improving compatibility across Amira/Avizo versions while preserving the same orientation geometry. Version 0.1.1 introduced Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows, including 9-, 11-, and 12-landmark mandibular inputs and explicit measurement status/method metadata.
 
 Future extensions may add alternatives for free and open-source software, including 3D Slicer and MeshLab-based surface mesh workflows. Planned developments also include support for additional long bones, particularly the femur (in the nearer term) and the radius (at a later stage), as well as protocols for orienting fragmented long-bone specimens.
 
