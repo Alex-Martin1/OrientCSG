@@ -107,8 +107,10 @@ test_that("orient_longbone() generates expected TCL blocks", {
   expect_contains_fixed(tcl_50, "# SECTION 50%")
   
   expect_contains_fixed(tcl_35, "\"Slice\" planeDefinition setValue 0")
-  expect_contains_fixed(tcl_35, "\"ML\" planeDefinition setValue 2")
-  expect_contains_fixed(tcl_35, "\"AP\" planeDefinition setValue 2")
+  expect_contains_fixed(tcl_35, "\"ML\" planeDefinition setValue 0")
+  expect_contains_fixed(tcl_35, "\"AP\" planeDefinition setValue 0")
+  expect_false(grepl("\"ML\" planeVector", tcl_35, fixed = TRUE))
+  expect_false(grepl("\"AP\" planeVector", tcl_35, fixed = TRUE))
   expect_contains_fixed(tcl_35, "viewer 0 setCameraType orthographic")
 })
 

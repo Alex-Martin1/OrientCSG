@@ -1,8 +1,9 @@
 # Internal Avizo TCL helper --------------------------------------------------
 #
 # Write a three-component vector into an Avizo port that expects one component
-# per `setValue` call. This format is used by several plane objects when their
-# orientation is defined by two in-plane vectors.
+# per `setValue` call. This format is retained for compatibility with older
+# point-and-two-vector commands, but generated orientation blocks now prefer
+# normal-and-point plane definitions for better Amira/Avizo compatibility.
 emit_setValue_vec3 <- function(obj, port, v, digits = 6) {
   c(
     sprintf('"%s" %s setValue 0 %s', obj, port, fmt_num(v[1], digits)),
@@ -67,9 +68,10 @@ emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE
 
 # Internal Avizo TCL helper --------------------------------------------------
 #
-# Emit commands for a plane defined by one point and two vectors. This is used
-# to display the long-bone ML and AP anatomical planes. Mandibular slices are
-# emitted as normal-and-point planes for better Amira/Avizo compatibility.
+# Emit commands for a plane defined by one point and two vectors. This helper is
+# retained for compatibility and debugging, but current mandibular and long-bone
+# TCL blocks use normal-and-point plane definitions for better Amira/Avizo
+# compatibility.
 emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points = TRUE, digits = 6) {
   P2 <- P + V1
   P3 <- P + V2
@@ -101,15 +103,32 @@ emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points 
 # Internal Avizo TCL helper --------------------------------------------------
 #
 # Emit commands for a plane defined by a point and a normal vector. This is used
-# for long-bone transverse sections and for all mandibular Slice objects.
-emit_slice_normal_point <- function(obj, P, N, digits = 6) {
-  c(
+# for Slice and Clipping Plane objects in the generated TCL blocks.
+emit_normal_point_plane <- function(obj, P, N, color = NULL, hide_points = TRUE, digits = 6) {
+  out <- c(
     sprintf('"%s" planeDefinition setValue 0', obj),
     sprintf('"%s" origin setCoord 0 %s', obj, fmt_vec(P, digits)),
-    sprintf('"%s" normal setCoord 0 %s', obj, fmt_vec(N, digits)),
-    emit_hide_plane_points(obj),
-    sprintf('"%s" fire', obj)
+    sprintf('"%s" normal setCoord 0 %s', obj, fmt_vec(N, digits))
   )
+
+  if (hide_points) out <- c(out, emit_hide_plane_points(obj))
+
+  if (!is.null(color) && length(color) == 3) {
+    out <- c(
+      out,
+      sprintf(
+        'catch {"%s" frameSettings setState item 0 1 item 2 1 color 3 %s %s %s 0}',
+        obj, fmt_num(color[1], 3), fmt_num(color[2], 3), fmt_num(color[3], 3)
+      )
+    )
+  }
+
+  c(out, sprintf('"%s" fire', obj))
+}
+
+# Backward-compatible internal alias.
+emit_slice_normal_point <- function(obj, P, N, digits = 6) {
+  emit_normal_point_plane(obj, P, N, digits = digits)
 }
 
 # Internal Avizo TCL helper --------------------------------------------------

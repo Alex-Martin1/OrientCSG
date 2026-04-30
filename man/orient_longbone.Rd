@@ -97,7 +97,9 @@ blocks named \code{"SECTION_35"} and \code{"SECTION_50"}.
 The generated TCL code assumes that the Avizo/Amira project contains one Slice
 object named \code{Slice} and two Clipping Plane objects named \code{ML} and \code{AP}. The
 Slice object is used for the transverse section, whereas the \code{ML} and \code{AP}
-planes provide visual anatomical references.
+planes provide visual anatomical references. All three planes are emitted as
+normal-and-point definitions in the TCL code for improved compatibility across
+Amira/Avizo versions.
 }
 
 \examples{

@@ -38,7 +38,9 @@
 #' The generated TCL code assumes that the Avizo/Amira project contains one Slice
 #' object named `Slice` and two Clipping Plane objects named `ML` and `AP`. The
 #' Slice object is used for the transverse section, whereas the `ML` and `AP`
-#' planes provide visual anatomical references.
+#' planes provide visual anatomical references. All three planes are emitted as
+#' normal-and-point definitions in the TCL code for improved compatibility across
+#' Amira/Avizo versions.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
 #'   `"TIBIA"`, `"HUMERUS"`, or `"HUMERUS_TABLE"`.
@@ -306,7 +308,9 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camDist = 300) {
 #
 # Convert a long-bone orientation result into one Avizo TCL block per requested
 # section. Each block repositions the Slice object, updates the ML and AP visual
-# planes, and sets the camera for standardized image capture.
+# planes, and sets the camera for standardized image capture. The Slice, ML, and
+# AP planes are emitted as normal-and-point definitions for better compatibility
+# across Amira/Avizo versions.
 avizo_tcl_longbone <- function(res) {
   Lh <- res$vectors$L
   MLh <- res$vectors$ML
@@ -317,17 +321,21 @@ avizo_tcl_longbone <- function(res) {
     key <- names(res$section_points)[i]
     label <- res$section_loc[i]
     Psec <- res$section_points[[i]]
+    ML_normal <- nrm(cross3(Lh, MLh))
+    AP_normal <- nrm(cross3(Lh, APh))
 
     block <- c(
       "# ============================================================",
       sprintf("# SECTION %s%%", label),
       "# ============================================================",
       "",
-      paste(emit_slice_normal_point("Slice", Psec, Lh), collapse = "\n"),
+      paste(emit_normal_point_plane("Slice", Psec, Lh), collapse = "\n"),
       "",
-      paste(emit_point_2vectors_plane("ML", Psec, Lh, MLh, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
+      "# ML visual plane: normal & point",
+      paste(emit_normal_point_plane("ML", Psec, ML_normal, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
       "",
-      paste(emit_point_2vectors_plane("AP", Psec, Lh, APh, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n"),
+      "# AP visual plane: normal & point",
+      paste(emit_normal_point_plane("AP", Psec, AP_normal, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n"),
       "",
       paste(emit_longbone_camera(Psec, Lh, MLh, APh, mode = res$type, camDist = res$camera_distance_mm), collapse = "\n")
     )
