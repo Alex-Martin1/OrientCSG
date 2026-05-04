@@ -57,3 +57,23 @@ test_that("write_tcl() writes a selected TCL block to disk", {
   
   expect_equal(written, expected)
 })
+test_that("get_slicer_py() returns selected and combined Slicer blocks", {
+  res <- list(
+    slicer_py = list(
+      SECTION_35 = "print('SECTION_35')",
+      SECTION_50 = "print('SECTION_50')"
+    )
+  )
+
+  selected <- get_slicer_py(res, section = "SECTION_50")
+  combined <- get_slicer_py(res)
+
+  expect_equal(selected, "print('SECTION_50')")
+  expect_contains_fixed(combined, "print('SECTION_35')")
+  expect_contains_fixed(combined, "print('SECTION_50')")
+
+  expect_error(
+    get_slicer_py(res, section = "SECTION_65"),
+    "Available sections"
+  )
+})

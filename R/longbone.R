@@ -54,7 +54,21 @@
 #' @param individual_id Character identifier for the specimen. This value is
 #'   copied into the output tables.
 #' @param camera_distance_mm Numeric value giving the approximate camera distance
-#'   used in the generated Avizo TCL commands.
+#'   used in the generated Avizo TCL commands or Slicer Python block.
+#' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
+#'   from `mesh_file` by treating the closed surface mesh as a homogeneous solid.
+#' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks
+#'   instead of Avizo TCL blocks. Currently implemented for tibiae.
+#' @param mesh_file Optional path to a closed surface mesh (`.ply`, `.stl`, or
+#'   `.obj`) used when `SOLID = TRUE`.
+#' @param slicer_landmarks_str Optional text block copied from a 3D Slicer
+#'   Markups table. Currently implemented for tibiae. Landmark recognition is
+#'   positional.
+#' @param model_name Optional model node name used by the generated Slicer Python
+#'   block. If omitted, the basename of `mesh_file` is used when available.
+#' @param landmark_coordinate_system Coordinate system of `slicer_landmarks_str`.
+#'   Use `"LPS"` for coordinates exported in the mesh/external convention and
+#'   `"RAS"` for coordinates taken directly from Slicer world coordinates.
 #'
 #' @return An object of class `orientcsg_longbone` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -102,14 +116,32 @@
 #' @export
 #'
 orient_longbone <- function(mode,
-                            longitudinal_matrix_str,
-                            landmarks_str,
+                            longitudinal_matrix_str = NULL,
+                            landmarks_str = NULL,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
-                            camera_distance_mm = 300) {
+                            camera_distance_mm = 300,
+                            SOLID = FALSE,
+                            SLICER = FALSE,
+                            mesh_file = NULL,
+                            slicer_landmarks_str = NULL,
+                            model_name = NULL,
+                            landmark_coordinate_system = "LPS") {
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
     stop('`mode` must be one of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".', call. = FALSE)
+  }
+
+  if (!is.logical(SOLID) || length(SOLID) != 1L || is.na(SOLID)) {
+    stop("`SOLID` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (!is.logical(SLICER) || length(SLICER) != 1L || is.na(SLICER)) {
+    stop("`SLICER` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (isTRUE(SLICER) && mode != "TIBIA") {
+    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"`.', call. = FALSE)
   }
 
   section_loc <- as.numeric(section_loc)
@@ -117,16 +149,48 @@ orient_longbone <- function(mode,
     stop("`section_loc` must contain numeric percentages between 0 and 100.", call. = FALSE)
   }
 
-  # BoneJ and Avizo/Amira use different coordinate conventions in this workflow.
-  # The diagonal transformation below reproduces the correction used in the
-  # original protocol: (x, y, z) -> (-x, -y, z).
-  M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
-  T_bonej_to_avizo <- diag(c(-1, -1, 1))
-  M_avizo <- T_bonej_to_avizo %*% M_bonej
-  L <- M_avizo[, 1]
+  mesh_axes <- NULL
+
+  if (isTRUE(SOLID)) {
+    if (is.null(mesh_file)) {
+      stop("`mesh_file` is required when `SOLID = TRUE`.", call. = FALSE)
+    }
+
+    mesh_axes <- compute_mesh_inertia_axes(mesh_file)
+    L <- mesh_axes$eigenvectors[, "axis_min_inertia"]
+  } else {
+    if (is.null(longitudinal_matrix_str)) {
+      stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
+    }
+
+    # BoneJ and Avizo/Amira use different coordinate conventions in this workflow.
+    # The diagonal transformation below reproduces the correction used in the
+    # original protocol: (x, y, z) -> (-x, -y, z).
+    M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
+    T_bonej_to_avizo <- diag(c(-1, -1, 1))
+    M_avizo <- T_bonej_to_avizo %*% M_bonej
+    L <- M_avizo[, 1]
+  }
 
   n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
-  mat_pts <- parse_landmarks(landmarks_str, n_landmarks = n_landmarks, context = mode)
+
+  if (!is.null(slicer_landmarks_str)) {
+    if (mode != "TIBIA") {
+      stop("`slicer_landmarks_str` is currently implemented only for tibiae.", call. = FALSE)
+    }
+
+    mat_pts <- parse_slicer_landmarks(
+      slicer_landmarks_str,
+      coordinate_system = landmark_coordinate_system
+    )
+  } else {
+    if (is.null(landmarks_str)) {
+      stop("`landmarks_str` is required unless `slicer_landmarks_str` is supplied.", call. = FALSE)
+    }
+
+    mat_pts <- parse_landmarks(landmarks_str, n_landmarks = n_landmarks, context = mode)
+  }
+
   rownames(mat_pts) <- paste0("P", seq_len(n_landmarks))
 
   P1 <- mat_pts[1, ]
@@ -182,6 +246,8 @@ orient_longbone <- function(mode,
     }
   }
 
+  projected <- list()
+
   # Compute biomechanical length and the origin of each requested section. The
   # distance is always measured parallel to the longitudinal axis, following the
   # logic of the original long-bone protocol.
@@ -192,12 +258,16 @@ orient_longbone <- function(mode,
     Bio_vec <- Proj_Mid - Proj_LM3
     Bio_length <- sqrt(sum(Bio_vec^2))
     point_at_pct <- function(pct) Proj_LM3 + (pct / 100) * Bio_vec
+    projected$Proj_TibioTalar <- Proj_LM3
+    projected$Proj_Midpoint <- Proj_Mid
   } else if (mode == "HUMERUS") {
     Proj_LM3 <- P3
     Proj_LM4 <- P3 + dot3(P4 - P3, Lh) * Lh
     Bio_vec <- Proj_LM4 - Proj_LM3
     Bio_length <- sqrt(sum(Bio_vec^2))
     point_at_pct <- function(pct) Proj_LM3 + (pct / 100) * Bio_vec
+    projected$Proj_LM3 <- Proj_LM3
+    projected$Proj_LM4 <- Proj_LM4
   } else {
     Bio_length <- abs(dot3(P2 - P1, Lh))
     point_at_pct <- function(pct) P1 + (pct / 100) * Bio_length * Lh
@@ -256,6 +326,14 @@ orient_longbone <- function(mode,
   numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
   manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
 
+  if (is.null(model_name) || length(model_name) != 1L || is.na(model_name) || !nzchar(model_name)) {
+    if (!is.null(mesh_file)) {
+      model_name <- tools::file_path_sans_ext(basename(mesh_file))
+    } else {
+      model_name <- "Segment_1_solid"
+    }
+  }
+
   res <- list(
     type = mode,
     individual_id = individual_id,
@@ -265,11 +343,25 @@ orient_longbone <- function(mode,
     section_points = section_points,
     summary = summary_tbl,
     manual_orientation = manual_orientation,
-    camera_distance_mm = camera_distance_mm
+    camera_distance_mm = camera_distance_mm,
+    SOLID = SOLID,
+    SLICER = SLICER,
+    mesh_file = mesh_file,
+    model_name = model_name,
+    mesh_axes = mesh_axes,
+    projected = projected
   )
   class(res) <- c("orientcsg_longbone", "orientcsg_orientation")
 
-  res$avizo_tcl <- avizo_tcl_longbone(res)
+  if (isTRUE(SLICER)) {
+    res$slicer_py <- lapply(names(res$section_points), function(sec) {
+      emit_slicer_section_python(res, section = sec)
+    })
+    names(res$slicer_py) <- names(res$section_points)
+  } else {
+    res$avizo_tcl <- avizo_tcl_longbone(res)
+  }
+
   res
 }
 

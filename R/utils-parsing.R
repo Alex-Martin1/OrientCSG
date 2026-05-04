@@ -55,3 +55,76 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
 
   matrix(nums[1:9], nrow = 3, byrow = TRUE)
 }
+
+
+# Internal parsing helper ----------------------------------------------------
+#
+# Extract numeric tokens from text that may also contain labels such as F-1.
+# This is used for 3D Slicer Markups tables copied as plain text.
+extract_numeric_tokens <- function(txt) {
+  pattern <- "[-+]?(?:\\d*\\.\\d+|\\d+\\.?\\d*)(?:[eE][-+]?\\d+)?"
+  matches <- gregexpr(pattern, txt, perl = TRUE)
+  out <- regmatches(txt, matches)[[1]]
+  as.numeric(out)
+}
+
+# Internal coordinate helper -------------------------------------------------
+#
+# Convert between RAS and LPS/external conventions by inverting X and Y. The
+# operation is its own inverse, so the same helper is used in both directions.
+flip_xy <- function(x) {
+  x <- as.numeric(x)
+  c(-x[1], -x[2], x[3])
+}
+
+# Internal parsing helper ----------------------------------------------------
+#
+# Read tibial landmarks copied from a 3D Slicer Markups table. Recognition is
+# positional, matching the protocol rather than relying on labels in the table.
+# The fixed Slicer row order is:
+#   row 1 = Plateau2
+#   row 2 = Plateau1
+#   row 3 = TibioTalar
+# The returned matrix is reordered internally as Plateau1, Plateau2, TibioTalar.
+parse_slicer_landmarks <- function(slicer_landmarks_str,
+                                   coordinate_system = "LPS") {
+  lines <- unlist(strsplit(slicer_landmarks_str, "\n", fixed = TRUE))
+  lines <- trimws(lines)
+  lines <- lines[nzchar(lines)]
+  lines <- lines[!grepl("^#", lines)]
+
+  landmark_order <- c("Plateau2", "Plateau1", "TibioTalar")
+  coord_cols <- c(2, 3, 4)
+
+  if (length(lines) < length(landmark_order)) {
+    stop("Fewer Slicer landmark rows than expected for tibia.", call. = FALSE)
+  }
+
+  mat <- matrix(NA_real_, nrow = length(landmark_order), ncol = 3)
+  colnames(mat) <- c("x", "y", "z")
+  rownames(mat) <- landmark_order
+
+  for (i in seq_along(landmark_order)) {
+    vals <- extract_numeric_tokens(lines[i])
+
+    if (length(vals) < max(coord_cols)) {
+      stop(
+        sprintf("Slicer landmark row %d does not contain enough numeric columns.", i),
+        call. = FALSE
+      )
+    }
+
+    mat[i, ] <- vals[coord_cols]
+  }
+
+  coordinate_system <- toupper(trimws(coordinate_system))
+  if (coordinate_system == "RAS") {
+    mat <- t(apply(mat, 1, flip_xy))
+    colnames(mat) <- c("x", "y", "z")
+    rownames(mat) <- landmark_order
+  } else if (coordinate_system != "LPS") {
+    stop('`landmark_coordinate_system` must be "LPS" or "RAS".', call. = FALSE)
+  }
+
+  mat[c("Plateau1", "Plateau2", "TibioTalar"), , drop = FALSE]
+}

@@ -1,7 +1,7 @@
 # If OrientCSG is not installed yet, run:
 #
-# install.packages("remotes")
-# remotes::install_github("Alex-Martin1/OrientCSG")
+#install.packages("remotes")
+#remotes::install_github("Alex-Martin1/OrientCSG")
 #
 # Then load the package:
 
@@ -25,9 +25,9 @@ library(OrientCSG)
 #   LM3 = tibio-talar landmark
 
 longitudinal_matrix_str_tibia <- "
-||0.008|-0.758|-0.653||
-||0.017|-0.652|0.758||
-||1.000|0.017|-0.008||
+||0.011|-0.780|-0.626||
+||0.019|-0.626|0.780||
+||1.000|0.021|-0.008||
 "
 
 tibia_landmarks_str <- "

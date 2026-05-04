@@ -80,6 +80,78 @@ copy_tcl <- function(res, section = NULL) {
   copy_to_clipboard(txt)
 }
 
+
+#' Get 3D Slicer Python commands from an orientation object
+#'
+#' `get_slicer_py()` extracts one or more generated Python command blocks from a
+#' result created with `orient_longbone(..., SLICER = TRUE)`. The returned block
+#' is intended to be pasted into the 3D Slicer Python Interactor.
+#'
+#' @param res An orientation result returned by [orient_longbone()].
+#' @param section Optional section name, usually in the format `"SECTION_50"`.
+#'
+#' @return A character scalar containing one or more 3D Slicer Python blocks.
+#'
+#' @examples
+#' \dontrun{
+#' py <- get_slicer_py(res, section = "SECTION_50")
+#' cat(py)
+#' }
+#'
+#' @export
+#'
+get_slicer_py <- function(res, section = NULL) {
+  if (is.null(res$slicer_py)) {
+    stop("The object does not contain `slicer_py` blocks.", call. = FALSE)
+  }
+
+  if (is.null(section)) {
+    return(
+      paste(
+        unlist(res$slicer_py, use.names = FALSE),
+        collapse = "\n\n# ------------------------------------------------------------\n\n"
+      )
+    )
+  }
+
+  if (!section %in% names(res$slicer_py)) {
+    stop(
+      sprintf(
+        "Section '%s' does not exist. Available sections: %s",
+        section, paste(names(res$slicer_py), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  res$slicer_py[[section]]
+}
+
+#' Copy 3D Slicer Python commands to the system clipboard
+#'
+#' `copy_slicer_py()` copies one or more generated 3D Slicer Python command
+#' blocks from an orientation result to the system clipboard.
+#'
+#' @param res An orientation result returned by [orient_longbone()].
+#' @param section Optional section name. If `NULL`, all available blocks are
+#'   copied.
+#'
+#' @return Invisibly returns `TRUE` if the copy operation was attempted
+#'   successfully. If no supported clipboard mechanism is available, the function
+#'   issues a warning and invisibly returns `FALSE`.
+#'
+#' @examples
+#' \dontrun{
+#' copy_slicer_py(res, section = "SECTION_50")
+#' }
+#'
+#' @export
+#'
+copy_slicer_py <- function(res, section = NULL) {
+  txt <- get_slicer_py(res, section = section)
+  copy_to_clipboard(txt)
+}
+
 #' Write Avizo TCL commands to a text file
 #'
 #' `write_tcl()` writes one or more generated Avizo TCL command blocks to disk.
@@ -168,6 +240,10 @@ print.orientcsg_orientation <- function(x, ...) {
 
   if (!is.null(x$avizo_tcl)) {
     cat("TCL blocks:", paste(names(x$avizo_tcl), collapse = ", "), "\n")
+  }
+
+  if (!is.null(x$slicer_py)) {
+    cat("Slicer Python blocks:", paste(names(x$slicer_py), collapse = ", "), "\n")
   }
 
   invisible(x)

@@ -6,11 +6,17 @@
 \usage{
 orient_longbone(
   mode,
-  longitudinal_matrix_str,
-  landmarks_str,
+  longitudinal_matrix_str = NULL,
+  landmarks_str = NULL,
   section_loc = 50,
   individual_id = "LONG_BONE_001",
-  camera_distance_mm = 300
+  camera_distance_mm = 300,
+  SOLID = FALSE,
+  SLICER = FALSE,
+  mesh_file = NULL,
+  slicer_landmarks_str = NULL,
+  model_name = NULL,
+  landmark_coordinate_system = "LPS"
 )
 }
 \arguments{
@@ -31,7 +37,27 @@ percentages of biomechanical length.}
 copied into the output tables.}
 
 \item{camera_distance_mm}{Numeric value giving the approximate camera distance
-used in the generated Avizo TCL commands.}
+used in the generated Avizo TCL commands or Slicer Python block.}
+
+\item{SOLID}{Logical. If \code{TRUE}, the longitudinal axis is computed directly
+from \code{mesh_file} by treating the closed surface mesh as a homogeneous solid.}
+
+\item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks
+instead of Avizo TCL blocks. Currently implemented for tibiae.}
+
+\item{mesh_file}{Optional path to a closed surface mesh (\code{.ply}, \code{.stl}, or
+\code{.obj}) used when \code{SOLID = TRUE}.}
+
+\item{slicer_landmarks_str}{Optional text block copied from a 3D Slicer
+Markups table. Currently implemented for tibiae. Landmark recognition is
+positional.}
+
+\item{model_name}{Optional model node name used by the generated Slicer Python
+block. If omitted, the basename of \code{mesh_file} is used when available.}
+
+\item{landmark_coordinate_system}{Coordinate system of \code{slicer_landmarks_str}.
+Use \code{"LPS"} for coordinates exported in the mesh/external convention and
+\code{"RAS"} for coordinates taken directly from Slicer world coordinates.}
 }
 \value{
 An object of class \code{orientcsg_longbone} and
