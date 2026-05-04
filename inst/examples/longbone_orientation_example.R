@@ -45,9 +45,9 @@ res_tibia <- orient_longbone(
   camera_distance_mm = 300
 )
 
-res_tibia
+#res_tibia
 res_tibia$summary
-res_tibia$manual_orientation
+#res_tibia$manual_orientation
 
 # Print the generated Avizo TCL block in a readable format for manual copying.
 cat(get_tcl(res_tibia, section = "SECTION_50"))
@@ -144,11 +144,44 @@ copy_tcl(res_humerus_table, section = "SECTION_50")
 
 
 
-# Notes for Avizo ====
-#
-# The generated TCL code assumes that the following objects already exist in
-# the Avizo project and have these exact names:
-#
-#   Slice
-#   ML
-#   AP
+
+
+
+
+# TIBIA: solid mesh + 3D Slicer workflow=====
+
+# This workflow is intended for closed surface meshes (.ply, .stl, .obj).
+
+
+# Replace mesh_file with the full path to your own mesh file. For example:
+# mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
+
+mesh_file <- ""
+
+
+# Landmarks exported/copied from 3D Slicer.
+slicer_landmarks_str <- "
+1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
+2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
+3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
+"
+
+res_solid_slicer <- orient_longbone(
+  mode = "TIBIA",
+  mesh_file = mesh_file,
+  slicer_landmarks_str = slicer_landmarks_str,
+  section_loc = 50,
+  individual_id = "T108",
+  model_name = "T108_solid",
+  SOLID = TRUE,
+  SLICER = TRUE
+)
+
+res_solid_slicer$summary
+
+# Inspect the mesh-derived principal inertia axes
+res_solid_slicer$mesh_axes$eigenvectors
+
+cat(get_slicer_py(res_solid_slicer, "SECTION_50"))
+
+copy_slicer_py(res_solid_slicer, "SECTION_50")
