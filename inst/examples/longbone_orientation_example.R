@@ -185,3 +185,56 @@ res_solid_slicer$mesh_axes$eigenvectors
 cat(get_slicer_py(res_solid_slicer, "SECTION_50"))
 
 copy_slicer_py(res_solid_slicer, "SECTION_50")
+
+
+
+# HUMERUS: solid mesh + 3D Slicer workflow=====
+
+# This workflow mirrors the tibial solid mesh + Slicer workflow, but uses
+# mode = "HUMERUS". It is intended for closed humeral surface meshes.
+# HUMERUS_TABLE is intentionally not supported for Slicer output.
+
+# Replace mesh_file_humerus with the full path to your own humeral mesh file.
+# For example:
+# mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_solid.ply"
+
+mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_solid.ply"
+
+# Landmarks exported/copied from 3D Slicer.
+# The current humerus/Slicer workflow expects the rows in this fixed order:
+#   row 1 = MedialTrocleaAnt
+#   row 2 = CapitulumAnt
+#   row 3 = LateralTrocleaDist
+#   row 4 = ProximalHead
+#
+# The coordinates below are written in Slicer RAS convention. If the original
+# coordinates come from Avizo/Amira or another LPS-like mesh convention, invert
+# X and Y before pasting them in this Slicer-table format.
+
+slicer_landmarks_str_humerus <- "
+1 -164.789749145508 15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
+2 -186.393386840820 15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
+3 -182.241800000000  6.976971000000 -59.921390000000 0 0 0 1 1 1 0 F-3 2 0
+4 -182.721400000000 -8.127365000000 -345.482760000000 0 0 0 1 1 1 0 F-4 2 0
+"
+
+res_humerus_solid_slicer <- orient_longbone(
+  mode = "HUMERUS",
+  mesh_file = mesh_file_humerus,
+  slicer_landmarks_str = slicer_landmarks_str_humerus,
+  landmark_coordinate_system = "RAS",
+  section_loc = c(35, 50),
+  individual_id = "H108",
+  model_name = "H108_solid",
+  SOLID = TRUE,
+  SLICER = TRUE
+)
+
+res_humerus_solid_slicer$summary
+
+# Inspect the mesh-derived principal inertia axes
+res_humerus_solid_slicer$mesh_axes$eigenvectors
+
+cat(get_slicer_py(res_humerus_solid_slicer, "SECTION_35"))
+
+copy_slicer_py(res_humerus_solid_slicer, "SECTION_35")

@@ -54,10 +54,12 @@ The long-bone workflow is implemented in `orient_longbone()`.
 
 It currently:
 
-- uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis;
-- applies the BoneJ-to-Avizo coordinate correction `(x, y, z) -> (-x, -y, z)`;
-- supports `TIBIA`, `HUMERUS`, and `HUMERUS_TABLE` modes;
-- computes biomechanical length, section locations, anatomical axes, manual-orientation tables, and Avizo TCL blocks for each requested section percentage.
+- uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis in the classic volume-image workflow;
+- can alternatively compute the longitudinal axis directly from a closed surface mesh when `SOLID = TRUE`;
+- applies the BoneJ-to-Avizo coordinate correction `(x, y, z) -> (-x, -y, z)` when using BoneJ eigenvectors;
+- supports `TIBIA`, `HUMERUS`, and `HUMERUS_TABLE` modes for Avizo/Amira TCL output;
+- supports 3D Slicer Python output for `TIBIA` and `HUMERUS` when `SLICER = TRUE`;
+- computes biomechanical length, section locations, anatomical axes, manual-orientation tables, and command blocks for each requested section percentage.
 
 The three supported modes are:
 
@@ -245,6 +247,40 @@ res <- orient_longbone(
 names(res$avizo_tcl)
 ```
 
+### Solid mesh + 3D Slicer workflow
+
+For closed surface meshes (`.ply`, `.stl`, or `.obj`), `orient_longbone()` can compute the longitudinal axis directly from the mesh by treating it as a homogeneous solid. This workflow is activated with `SOLID = TRUE`. If `SLICER = TRUE`, OrientCSG generates a Python block that can be pasted into the 3D Slicer Python Interactor to create the oriented section and set the 3D view.
+
+The Slicer workflow is currently implemented for `TIBIA` and `HUMERUS`. It is intentionally not implemented for `HUMERUS_TABLE`, because table-position logic depends on a standardized scan orientation that is usually not preserved in free 3D surface scanning workflows.
+
+```r
+mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
+
+slicer_landmarks_str <- "
+1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
+2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
+3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
+"
+
+res_solid_slicer <- orient_longbone(
+  mode = "TIBIA",
+  mesh_file = mesh_file,
+  slicer_landmarks_str = slicer_landmarks_str,
+  section_loc = 50,
+  individual_id = "T108",
+  model_name = "T108_solid",
+  SOLID = TRUE,
+  SLICER = TRUE
+)
+
+res_solid_slicer$summary
+res_solid_slicer$mesh_axes$eigenvectors
+cat(get_slicer_py(res_solid_slicer, "SECTION_50"))
+copy_slicer_py(res_solid_slicer, "SECTION_50")
+```
+
+For humeri, the same workflow can be used with `mode = "HUMERUS"`, four Slicer landmark rows, and a humeral mesh file. If coordinates are first obtained in Avizo/Amira or another LPS-like mesh convention and then pasted in Slicer-table format, invert X and Y and set `landmark_coordinate_system = "RAS"`. See the installed long-bone example script for a complete humeral example.
+
 ## Installed examples
 
 OrientCSG includes example scripts that can be inspected or executed after installation:
@@ -301,7 +337,8 @@ Most errors or unexpected orientations are caused by one of the following proble
 - the wrong long-bone mode was selected;
 - the required Avizo objects do not exist or have different names;
 - `HUMERUS_TABLE` was used even though scan orientation was not anatomically standardized;
-- section names were typed incorrectly when using `get_tcl()`, `copy_tcl()`, or `write_tcl()`.
+- `SLICER = TRUE` was requested with `HUMERUS_TABLE`, which is not supported;
+- section names were typed incorrectly when using `get_tcl()`, `copy_tcl()`, `write_tcl()`, `get_slicer_py()`, or `copy_slicer_py()`.
 
 ## Utility function
 
@@ -317,7 +354,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development. Version 0.1.2 updates mandibular TCL generation so that CS1, CS2, and CS3 are all emitted as normal-and-point Slice definitions, improving compatibility across Amira/Avizo versions while preserving the same orientation geometry. Version 0.1.1 introduced Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows, including 9-, 11-, and 12-landmark mandibular inputs and explicit measurement status/method metadata.
 
-Future extensions may add alternatives for free and open-source software, including 3D Slicer and MeshLab-based surface mesh workflows. Planned developments also include support for additional long bones, particularly the femur (in the nearer term) and the radius (at a later stage), as well as protocols for orienting fragmented long-bone specimens.
+Recent development has added a solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections. Planned developments include additional long bones, particularly the femur (in the nearer term) and the radius (at a later stage), as well as protocols for orienting fragmented long-bone specimens.
 
 ## References
 

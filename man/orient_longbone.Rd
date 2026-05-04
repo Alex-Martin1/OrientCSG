@@ -43,14 +43,15 @@ used in the generated Avizo TCL commands or Slicer Python block.}
 from \code{mesh_file} by treating the closed surface mesh as a homogeneous solid.}
 
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks
-instead of Avizo TCL blocks. Currently implemented for tibiae.}
+instead of Avizo TCL blocks. Currently implemented for tibiae and humeri.
+\code{HUMERUS_TABLE} is intentionally not supported for Slicer output.}
 
 \item{mesh_file}{Optional path to a closed surface mesh (\code{.ply}, \code{.stl}, or
 \code{.obj}) used when \code{SOLID = TRUE}.}
 
 \item{slicer_landmarks_str}{Optional text block copied from a 3D Slicer
-Markups table. Currently implemented for tibiae. Landmark recognition is
-positional.}
+Markups table. Landmark recognition is positional and depends on \code{mode}.
+Currently implemented for \code{TIBIA} and \code{HUMERUS}.}
 
 \item{model_name}{Optional model node name used by the generated Slicer Python
 block. If omitted, the basename of \code{mesh_file} is used when available.}
@@ -74,7 +75,10 @@ components:
 biomechanical length.
 \item \code{manual_orientation}: Table arranged for manual verification of
 anatomical planes and transverse section orientation in Avizo/Amira.
-\item \code{avizo_tcl}: Named list of Avizo TCL command blocks.
+\item \code{avizo_tcl}: Named list of Avizo TCL command blocks, when \code{SLICER = FALSE}.
+\item \code{slicer_py}: Named list of 3D Slicer Python command blocks, when
+\code{SLICER = TRUE}.
+\item \code{mesh_axes}: Mesh-derived inertia information, when \code{SOLID = TRUE}.
 }
 }
 \description{

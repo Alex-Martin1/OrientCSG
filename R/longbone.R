@@ -58,12 +58,13 @@
 #' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
 #'   from `mesh_file` by treating the closed surface mesh as a homogeneous solid.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks
-#'   instead of Avizo TCL blocks. Currently implemented for tibiae.
+#'   instead of Avizo TCL blocks. Currently implemented for tibiae and humeri.
+#'   `HUMERUS_TABLE` is intentionally not supported for Slicer output.
 #' @param mesh_file Optional path to a closed surface mesh (`.ply`, `.stl`, or
 #'   `.obj`) used when `SOLID = TRUE`.
 #' @param slicer_landmarks_str Optional text block copied from a 3D Slicer
-#'   Markups table. Currently implemented for tibiae. Landmark recognition is
-#'   positional.
+#'   Markups table. Landmark recognition is positional and depends on `mode`.
+#'   Currently implemented for `TIBIA` and `HUMERUS`.
 #' @param model_name Optional model node name used by the generated Slicer Python
 #'   block. If omitted, the basename of `mesh_file` is used when available.
 #' @param landmark_coordinate_system Coordinate system of `slicer_landmarks_str`.
@@ -84,8 +85,10 @@
 #'     biomechanical length.
 #'   - `manual_orientation`: Table arranged for manual verification of
 #'     anatomical planes and transverse section orientation in Avizo/Amira.
-#'   - `avizo_tcl`: Named list of Avizo TCL command blocks.
-#'  
+#'   - `avizo_tcl`: Named list of Avizo TCL command blocks, when `SLICER = FALSE`.
+#'   - `slicer_py`: Named list of 3D Slicer Python command blocks, when
+#'     `SLICER = TRUE`.
+#'   - `mesh_axes`: Mesh-derived inertia information, when `SOLID = TRUE`.
 #'
 #' @examples
 #' \dontrun{
@@ -140,8 +143,12 @@ orient_longbone <- function(mode,
     stop("`SLICER` must be TRUE or FALSE.", call. = FALSE)
   }
 
-  if (isTRUE(SLICER) && mode != "TIBIA") {
-    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"`.', call. = FALSE)
+  if (isTRUE(SLICER) && mode == "HUMERUS_TABLE") {
+    stop('`SLICER = TRUE` is not implemented for `mode = "HUMERUS_TABLE"`.', call. = FALSE)
+  }
+
+  if (isTRUE(SLICER) && !mode %in% c("TIBIA", "HUMERUS")) {
+    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"`.', call. = FALSE)
   }
 
   section_loc <- as.numeric(section_loc)
@@ -175,12 +182,9 @@ orient_longbone <- function(mode,
   n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
 
   if (!is.null(slicer_landmarks_str)) {
-    if (mode != "TIBIA") {
-      stop("`slicer_landmarks_str` is currently implemented only for tibiae.", call. = FALSE)
-    }
-
     mat_pts <- parse_slicer_landmarks(
       slicer_landmarks_str,
+      mode = mode,
       coordinate_system = landmark_coordinate_system
     )
   } else {

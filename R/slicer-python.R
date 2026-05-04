@@ -4,8 +4,8 @@
 # section. The generated block is intended to be pasted into the 3D Slicer
 # Python Interactor with the corresponding mesh model already loaded.
 emit_slicer_section_python <- function(res, section = NULL) {
-  if (!identical(res$type, "TIBIA")) {
-    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"`.", call. = FALSE)
+  if (!res$type %in% c("TIBIA", "HUMERUS")) {
+    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -23,8 +23,22 @@ emit_slicer_section_python <- function(res, section = NULL) {
     )
   }
 
-  if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
-    stop("Projected tibial endpoints are required for Slicer output.", call. = FALSE)
+  if (identical(res$type, "TIBIA")) {
+    if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
+      stop("Projected tibial endpoints are required for Slicer output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_TibioTalar
+    proximal_endpoint <- res$projected$Proj_Midpoint
+    anterior_up_sign <- -1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "HUMERUS")) {
+    if (is.null(res$projected$Proj_LM3) || is.null(res$projected$Proj_LM4)) {
+      stop("Projected humeral endpoints are required for Slicer output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_LM3
+    proximal_endpoint <- res$projected$Proj_LM4
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
   }
 
   # The R workflow stores coordinates in the external mesh/LPS convention. Slicer
@@ -33,8 +47,8 @@ emit_slicer_section_python <- function(res, section = NULL) {
   L_ras <- flip_xy(res$vectors$L)
   ML_ras <- flip_xy(res$vectors$ML)
   AP_ras <- flip_xy(res$vectors$AP)
-  distal_ras <- flip_xy(res$projected$Proj_TibioTalar)
-  proximal_ras <- flip_xy(res$projected$Proj_Midpoint)
+  distal_ras <- flip_xy(distal_endpoint)
+  proximal_ras <- flip_xy(proximal_endpoint)
 
   section_percent <- sub("^SECTION_", "", section)
 
@@ -69,12 +83,12 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "CREATE_FILLED_SECTION = True",
     "CREATE_SECTION_OUTLINE_NODE = False",
     "CREATE_AXIS_LINES = True",
-    "L_AXIS_FULL_TIBIA_LENGTH = True",
+    "L_AXIS_FULL_LENGTH = True",
     "ML_AP_AXIS_LENGTH_MM = 80.0",
     "CAPTURE_MODE = False",
     "HIDE_ORIGINAL_MODEL_IN_CAPTURE = True",
-    "ANTERIOR_UP_SIGN = -1",
-    "ML_RIGHT_SIGN = 1",
+    sprintf("ANTERIOR_UP_SIGN = %s", fmt_num_py(anterior_up_sign)),
+    sprintf("ML_RIGHT_SIGN = %s", fmt_num_py(ml_right_sign)),
     "RULER_COLOR = 0",
     "",
     "def nrm(v):",
@@ -345,7 +359,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "if CREATE_SECTION_OUTLINE_NODE:",
     "    sectionOutlineNode = add_model_node(sectionOutline, name=f'SECTION_{SECTION_PERCENT:g}_outline', color=(1.0, 1.0, 1.0), opacity=1.0, line_width=4.0)",
     "if CREATE_AXIS_LINES:",
-    "    if L_AXIS_FULL_TIBIA_LENGTH:",
+    "    if L_AXIS_FULL_LENGTH:",
     "        add_axis_line(f'SECTION_{SECTION_PERCENT:g}_L', DISTAL_AXIS_POINT, PROXIMAL_AXIS_POINT, color=(0.0, 1.0, 0.0))",
     "    else:",
     "        add_centered_axis_line(f'SECTION_{SECTION_PERCENT:g}_L', PSEC, L, length=np.linalg.norm(PROXIMAL_AXIS_POINT - DISTAL_AXIS_POINT), color=(0.0, 1.0, 0.0))",

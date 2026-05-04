@@ -79,25 +79,49 @@ flip_xy <- function(x) {
 
 # Internal parsing helper ----------------------------------------------------
 #
-# Read tibial landmarks copied from a 3D Slicer Markups table. Recognition is
+# Read long-bone landmarks copied from a 3D Slicer Markups table. Recognition is
 # positional, matching the protocol rather than relying on labels in the table.
-# The fixed Slicer row order is:
+#
+# For tibiae, the fixed Slicer row order is:
 #   row 1 = Plateau2
 #   row 2 = Plateau1
 #   row 3 = TibioTalar
 # The returned matrix is reordered internally as Plateau1, Plateau2, TibioTalar.
+#
+# For humeri, the fixed Slicer row order is:
+#   row 1 = MedialTrocleaAnt
+#   row 2 = CapitulumAnt
+#   row 3 = LateralTrocleaDist
+#   row 4 = ProximalHead
+# The returned matrix preserves this order, matching the HUMERUS mode in
+# orient_longbone().
 parse_slicer_landmarks <- function(slicer_landmarks_str,
+                                   mode = "TIBIA",
                                    coordinate_system = "LPS") {
+  mode <- toupper(trimws(mode))
+
+  if (mode == "TIBIA") {
+    landmark_order <- c("Plateau2", "Plateau1", "TibioTalar")
+    return_order <- c("Plateau1", "Plateau2", "TibioTalar")
+  } else if (mode == "HUMERUS") {
+    landmark_order <- c("MedialTrocleaAnt", "CapitulumAnt", "LateralTrocleaDist", "ProximalHead")
+    return_order <- landmark_order
+  } else {
+    stop('Slicer landmark parsing is implemented only for `mode = "TIBIA"` and `mode = "HUMERUS"`.', call. = FALSE)
+  }
+
   lines <- unlist(strsplit(slicer_landmarks_str, "\n", fixed = TRUE))
   lines <- trimws(lines)
   lines <- lines[nzchar(lines)]
   lines <- lines[!grepl("^#", lines)]
 
-  landmark_order <- c("Plateau2", "Plateau1", "TibioTalar")
   coord_cols <- c(2, 3, 4)
 
   if (length(lines) < length(landmark_order)) {
-    stop("Fewer Slicer landmark rows than expected for tibia.", call. = FALSE)
+    stop(
+      sprintf("Fewer Slicer landmark rows than expected for %s.", tolower(mode)),
+      call. = FALSE
+    )
   }
 
   mat <- matrix(NA_real_, nrow = length(landmark_order), ncol = 3)
@@ -126,5 +150,5 @@ parse_slicer_landmarks <- function(slicer_landmarks_str,
     stop('`landmark_coordinate_system` must be "LPS" or "RAS".', call. = FALSE)
   }
 
-  mat[c("Plateau1", "Plateau2", "TibioTalar"), , drop = FALSE]
+  mat[return_order, , drop = FALSE]
 }
