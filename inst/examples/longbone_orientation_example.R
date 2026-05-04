@@ -1,7 +1,7 @@
 # If OrientCSG is not installed yet, run:
 #
 #install.packages("remotes")
-#remotes::install_github("Alex-Martin1/OrientCSG")
+remotes::install_github("Alex-Martin1/OrientCSG")
 #
 # Then load the package:
 
@@ -156,7 +156,7 @@ copy_tcl(res_humerus_table, section = "SECTION_50")
 # Replace mesh_file with the full path to your own mesh file. For example:
 # mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
 
-mesh_file <- ""
+mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
 
 
 # Landmarks exported/copied from 3D Slicer.
