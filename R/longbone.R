@@ -1,10 +1,36 @@
-#' Orient long-bone cross-sections for image capture
+#' Orient long-bone cross-sections and generate capture scripts
 #'
-#' `orient_longbone()` implements the long-bone orientation workflow used by
-#' OrientCSG. It combines a longitudinal axis derived from BoneJ Moments of
-#' Inertia with a small set of anatomical landmarks to compute cross-sectional
-#' locations, anatomical orientation vectors, and Avizo TCL command blocks for
-#' automatic section capture.
+#' `orient_longbone()` implements the long-bone orientation workflows used by
+#' OrientCSG. It computes biomechanical length, cross-sectional locations, and
+#' anatomical orientation vectors for tibiae and humeri from a small set of
+#' anatomical landmarks plus either a BoneJ Moments of Inertia eigenvector matrix
+#' or a closed surface mesh. The function can generate Avizo/Amira TCL command
+#' blocks for the classic CT-derived workflow or 3D Slicer Python command blocks
+#' for workflows based on solid surface meshes.
+#'
+#' @section Input workflows:
+#' The `SOLID` argument controls how the longitudinal axis is obtained.
+#'
+#' - `SOLID = FALSE` implements the classic DICOM/CT workflow. In this mode,
+#'   `longitudinal_matrix_str` must contain the 3 x 3 BoneJ Moments of Inertia
+#'   eigenvector matrix, and the first column is interpreted as the longitudinal
+#'   axis after applying the BoneJ-to-Avizo/Amira coordinate correction.
+#' - `SOLID = TRUE` implements the solid-mesh workflow. In this mode, `mesh_file`
+#'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
+#'   is treated as a homogeneous closed solid, and the eigenvector associated
+#'   with the smallest principal moment of inertia is used as the longitudinal
+#'   axis. This workflow requires the suggested package Rvcg.
+#'
+#' @section Output backends:
+#' The `SLICER` argument controls the type of capture script returned.
+#'
+#' - `SLICER = FALSE` returns Avizo/Amira TCL blocks. This is the default backend
+#'   and is compatible with `mode = "TIBIA"`, `mode = "HUMERUS"`, and
+#'   `mode = "HUMERUS_TABLE"`.
+#' - `SLICER = TRUE` returns 3D Slicer Python blocks. This backend is implemented
+#'   for `mode = "TIBIA"` and `mode = "HUMERUS"`. It is intentionally not
+#'   implemented for `mode = "HUMERUS_TABLE"`, because surface scans do not
+#'   preserve a reliable scanner/table orientation.
 #'
 #' @section Orientation modes:
 #' The `mode` argument determines how landmarks are interpreted and how the
@@ -18,37 +44,47 @@
 #'   length, and one proximal landmark on the humeral head.
 #' - `"HUMERUS_TABLE"` uses two landmarks defining humeral biomechanical length.
 #'   The mediolateral direction is derived from the scanner X axis. This mode is
-#'   intended for humeri scanned in a standardized table position.
-#' 
+#'   intended for humeri scanned in a standardized table position and is only
+#'   available for Avizo/Amira TCL output.
 #'
 #' @section Longitudinal axis:
-#' The function expects the 3 x 3 eigenvector matrix returned by BoneJ. Following
-#' the long-bone protocol, the first column is treated as the longitudinal axis.
-#' A coordinate-system correction is then applied to transfer this direction to
-#' the Avizo/Amira convention used by the TCL commands. The sign of the
+#' When `SOLID = FALSE`, the function expects the 3 x 3 eigenvector matrix
+#' returned by BoneJ. Following the long-bone protocol, the first column is
+#' treated as the longitudinal axis. A coordinate-system correction is then
+#' applied to transfer this direction to the Avizo/Amira convention used by the
+#' TCL commands. When `SOLID = TRUE`, the longitudinal axis is estimated directly
+#' from the closed mesh by volumetric inertia. In both cases, the sign of the
 #' longitudinal vector is adjusted when anatomical landmarks provide a distal to
 #' proximal reference.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
-#' of biomechanical length. For example, `section_loc = c(35, 50)` generates TCL
-#' blocks named `"SECTION_35"` and `"SECTION_50"`.
+#' of biomechanical length. For example, `section_loc = c(35, 50)` generates
+#' script blocks named `"SECTION_35"` and `"SECTION_50"`.
 #'
 #' @section Avizo/Amira requirements:
-#' The generated TCL code assumes that the Avizo/Amira project contains one Slice
-#' object named `Slice` and two Clipping Plane objects named `ML` and `AP`. The
-#' Slice object is used for the transverse section, whereas the `ML` and `AP`
-#' planes provide visual anatomical references. All three planes are emitted as
-#' normal-and-point definitions in the TCL code for improved compatibility across
-#' Amira/Avizo versions.
+#' When `SLICER = FALSE`, the generated TCL code assumes that the Avizo/Amira
+#' project contains one Slice object named `Slice` and two Clipping Plane objects
+#' named `ML` and `AP`. The Slice object is used for the transverse section,
+#' whereas the `ML` and `AP` planes provide visual anatomical references. All
+#' three planes are emitted as normal-and-point definitions in the TCL code for
+#' improved compatibility across Amira/Avizo versions.
+#'
+#' @section 3D Slicer requirements:
+#' When `SLICER = TRUE`, the generated Python code assumes that the corresponding
+#' model is loaded in 3D Slicer. If `model_name` is omitted, the function uses the
+#' basename of `mesh_file` when available. Landmarks copied from a Slicer Markups
+#' table can be supplied through `slicer_landmarks_str`; their coordinate system
+#' is controlled by `landmark_coordinate_system`.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
 #'   `"TIBIA"`, `"HUMERUS"`, or `"HUMERUS_TABLE"`.
 #' @param longitudinal_matrix_str Character string containing the 3 x 3 BoneJ
-#'   eigenvector matrix. The first column is interpreted as the longitudinal
-#'   vector.
+#'   eigenvector matrix. Required when `SOLID = FALSE`. The first column is
+#'   interpreted as the longitudinal vector.
 #' @param landmarks_str Character string containing landmark coordinates. The
-#'   expected number and interpretation of landmarks depend on `mode`.
+#'   expected number and interpretation of landmarks depend on `mode`. Required
+#'   unless landmarks are supplied with `slicer_landmarks_str`.
 #' @param section_loc Numeric vector of section locations expressed as
 #'   percentages of biomechanical length.
 #' @param individual_id Character identifier for the specimen. This value is
@@ -56,12 +92,15 @@
 #' @param camera_distance_mm Numeric value giving the approximate camera distance
 #'   used in the generated Avizo TCL commands or Slicer Python block.
 #' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
-#'   from `mesh_file` by treating the closed surface mesh as a homogeneous solid.
-#' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks
-#'   instead of Avizo TCL blocks. Currently implemented for tibiae and humeri.
-#'   `HUMERUS_TABLE` is intentionally not supported for Slicer output.
-#' @param mesh_file Optional path to a closed surface mesh (`.ply`, `.stl`, or
-#'   `.obj`) used when `SOLID = TRUE`.
+#'   from `mesh_file` by treating a watertight closed surface mesh as a
+#'   homogeneous solid. If `FALSE`, the longitudinal axis is read from
+#'   `longitudinal_matrix_str`.
+#' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
+#'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
+#'   implemented for tibiae and humeri; `HUMERUS_TABLE` is intentionally not
+#'   supported for Slicer output.
+#' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
+#'   `.stl`, or `.obj`) used when `SOLID = TRUE`.
 #' @param slicer_landmarks_str Optional text block copied from a 3D Slicer
 #'   Markups table. Landmark recognition is positional and depends on `mode`.
 #'   Currently implemented for `TIBIA` and `HUMERUS`.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/longbone.R
 \name{orient_longbone}
 \alias{orient_longbone}
-\title{Orient long-bone cross-sections for image capture}
+\title{Orient long-bone cross-sections and generate capture scripts}
 \usage{
 orient_longbone(
   mode,
@@ -24,11 +24,12 @@ orient_longbone(
 \code{"TIBIA"}, \code{"HUMERUS"}, or \code{"HUMERUS_TABLE"}.}
 
 \item{longitudinal_matrix_str}{Character string containing the 3 x 3 BoneJ
-eigenvector matrix. The first column is interpreted as the longitudinal
-vector.}
+eigenvector matrix. Required when \code{SOLID = FALSE}. The first column is
+interpreted as the longitudinal vector.}
 
 \item{landmarks_str}{Character string containing landmark coordinates. The
-expected number and interpretation of landmarks depend on \code{mode}.}
+expected number and interpretation of landmarks depend on \code{mode}. Required
+unless landmarks are supplied with \code{slicer_landmarks_str}.}
 
 \item{section_loc}{Numeric vector of section locations expressed as
 percentages of biomechanical length.}
@@ -40,14 +41,17 @@ copied into the output tables.}
 used in the generated Avizo TCL commands or Slicer Python block.}
 
 \item{SOLID}{Logical. If \code{TRUE}, the longitudinal axis is computed directly
-from \code{mesh_file} by treating the closed surface mesh as a homogeneous solid.}
+from \code{mesh_file} by treating a watertight closed surface mesh as a
+homogeneous solid. If \code{FALSE}, the longitudinal axis is read from
+\code{longitudinal_matrix_str}.}
 
-\item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks
-instead of Avizo TCL blocks. Currently implemented for tibiae and humeri.
-\code{HUMERUS_TABLE} is intentionally not supported for Slicer output.}
+\item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
+If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
+implemented for tibiae and humeri; \code{HUMERUS_TABLE} is intentionally not
+supported for Slicer output.}
 
-\item{mesh_file}{Optional path to a closed surface mesh (\code{.ply}, \code{.stl}, or
-\code{.obj}) used when \code{SOLID = TRUE}.}
+\item{mesh_file}{Optional path to a watertight closed surface mesh (\code{.ply},
+\code{.stl}, or \code{.obj}) used when \code{SOLID = TRUE}.}
 
 \item{slicer_landmarks_str}{Optional text block copied from a 3D Slicer
 Markups table. Landmark recognition is positional and depends on \code{mode}.
@@ -82,12 +86,44 @@ anatomical planes and transverse section orientation in Avizo/Amira.
 }
 }
 \description{
-\code{orient_longbone()} implements the long-bone orientation workflow used by
-OrientCSG. It combines a longitudinal axis derived from BoneJ Moments of
-Inertia with a small set of anatomical landmarks to compute cross-sectional
-locations, anatomical orientation vectors, and Avizo TCL command blocks for
-automatic section capture.
+\code{orient_longbone()} implements the long-bone orientation workflows used by
+OrientCSG. It computes biomechanical length, cross-sectional locations, and
+anatomical orientation vectors for tibiae and humeri from a small set of
+anatomical landmarks plus either a BoneJ Moments of Inertia eigenvector matrix
+or a closed surface mesh. The function can generate Avizo/Amira TCL command
+blocks for the classic CT-derived workflow or 3D Slicer Python command blocks
+for workflows based on solid surface meshes.
 }
+\section{Input workflows}{
+
+The \code{SOLID} argument controls how the longitudinal axis is obtained.
+\itemize{
+\item \code{SOLID = FALSE} implements the classic DICOM/CT workflow. In this mode,
+\code{longitudinal_matrix_str} must contain the 3 x 3 BoneJ Moments of Inertia
+eigenvector matrix, and the first column is interpreted as the longitudinal
+axis after applying the BoneJ-to-Avizo/Amira coordinate correction.
+\item \code{SOLID = TRUE} implements the solid-mesh workflow. In this mode, \code{mesh_file}
+must point to a watertight \code{.ply}, \code{.stl}, or \code{.obj} surface mesh. The mesh
+is treated as a homogeneous closed solid, and the eigenvector associated
+with the smallest principal moment of inertia is used as the longitudinal
+axis. This workflow requires the suggested package Rvcg.
+}
+}
+
+\section{Output backends}{
+
+The \code{SLICER} argument controls the type of capture script returned.
+\itemize{
+\item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks. This is the default backend
+and is compatible with \code{mode = "TIBIA"}, \code{mode = "HUMERUS"}, and
+\code{mode = "HUMERUS_TABLE"}.
+\item \code{SLICER = TRUE} returns 3D Slicer Python blocks. This backend is implemented
+for \code{mode = "TIBIA"} and \code{mode = "HUMERUS"}. It is intentionally not
+implemented for \code{mode = "HUMERUS_TABLE"}, because surface scans do not
+preserve a reliable scanner/table orientation.
+}
+}
+
 \section{Orientation modes}{
 
 The \code{mode} argument determines how landmarks are interpreted and how the
@@ -101,16 +137,19 @@ mediolateral reference direction, one distal landmark for biomechanical
 length, and one proximal landmark on the humeral head.
 \item \code{"HUMERUS_TABLE"} uses two landmarks defining humeral biomechanical length.
 The mediolateral direction is derived from the scanner X axis. This mode is
-intended for humeri scanned in a standardized table position.
+intended for humeri scanned in a standardized table position and is only
+available for Avizo/Amira TCL output.
 }
 }
 
 \section{Longitudinal axis}{
 
-The function expects the 3 x 3 eigenvector matrix returned by BoneJ. Following
-the long-bone protocol, the first column is treated as the longitudinal axis.
-A coordinate-system correction is then applied to transfer this direction to
-the Avizo/Amira convention used by the TCL commands. The sign of the
+When \code{SOLID = FALSE}, the function expects the 3 x 3 eigenvector matrix
+returned by BoneJ. Following the long-bone protocol, the first column is
+treated as the longitudinal axis. A coordinate-system correction is then
+applied to transfer this direction to the Avizo/Amira convention used by the
+TCL commands. When \code{SOLID = TRUE}, the longitudinal axis is estimated directly
+from the closed mesh by volumetric inertia. In both cases, the sign of the
 longitudinal vector is adjusted when anatomical landmarks provide a distal to
 proximal reference.
 }
@@ -118,18 +157,27 @@ proximal reference.
 \section{Section locations}{
 
 \code{section_loc} gives the desired section position or positions as percentages
-of biomechanical length. For example, \code{section_loc = c(35, 50)} generates TCL
-blocks named \code{"SECTION_35"} and \code{"SECTION_50"}.
+of biomechanical length. For example, \code{section_loc = c(35, 50)} generates
+script blocks named \code{"SECTION_35"} and \code{"SECTION_50"}.
 }
 
 \section{Avizo/Amira requirements}{
 
-The generated TCL code assumes that the Avizo/Amira project contains one Slice
-object named \code{Slice} and two Clipping Plane objects named \code{ML} and \code{AP}. The
-Slice object is used for the transverse section, whereas the \code{ML} and \code{AP}
-planes provide visual anatomical references. All three planes are emitted as
-normal-and-point definitions in the TCL code for improved compatibility across
-Amira/Avizo versions.
+When \code{SLICER = FALSE}, the generated TCL code assumes that the Avizo/Amira
+project contains one Slice object named \code{Slice} and two Clipping Plane objects
+named \code{ML} and \code{AP}. The Slice object is used for the transverse section,
+whereas the \code{ML} and \code{AP} planes provide visual anatomical references. All
+three planes are emitted as normal-and-point definitions in the TCL code for
+improved compatibility across Amira/Avizo versions.
+}
+
+\section{3D Slicer requirements}{
+
+When \code{SLICER = TRUE}, the generated Python code assumes that the corresponding
+model is loaded in 3D Slicer. If \code{model_name} is omitted, the function uses the
+basename of \code{mesh_file} when available. Landmarks copied from a Slicer Markups
+table can be supplied through \code{slicer_landmarks_str}; their coordinate system
+is controlled by \code{landmark_coordinate_system}.
 }
 
 \examples{
