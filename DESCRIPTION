@@ -1,7 +1,7 @@
 Package: OrientCSG
 Type: Package
 Title: Orientation Tools for Bone Cross-Sectional Geometry
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: person(given = "Alejandro", family = "Martin-Sanchez", email = "almartan@ucm.es", role = c("aut", "cre"))
 Description: Provides geometric tools for the reproducible orientation of mandibular and long-bone cross-sections in cross-sectional geometry workflows. The package computes anatomical reference systems, section locations, orientation vectors, camera positions, and software-specific command blocks to support systematic virtual image-capture protocols. These functions automate geometric operations that could otherwise be performed manually, reducing processing time and limiting potential transcription, orientation, and procedural errors.
 License: GPL-3
