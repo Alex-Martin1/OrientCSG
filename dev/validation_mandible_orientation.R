@@ -112,7 +112,7 @@ landmarks_9_CAF <- "
 
 # ============================================================
 # 1. Default:
-# 11 landmarks + complete_arch = FALSE + compute_bigonial = TRUE
+# 11 landmarks + complete_arch = FALSE + lm9_valid = TRUE
 # ============================================================
 
 res <- orient_mandible(
@@ -120,8 +120,7 @@ res <- orient_mandible(
   individual_id = "MANDIBLE_11_CAF_CBT",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
-  complete_arch = FALSE,
-  compute_bigonial = TRUE
+  complete_arch = FALSE
 )
 
 inspect_mandible_result(res)
@@ -133,7 +132,7 @@ copy_tcl(res, section = "CS3")
 
 # ============================================================
 # 2. Both gonion preserved:
-# 12 landmarks + complete_arch = FALSE + compute_bigonial = TRUE
+# 12 landmarks + complete_arch = FALSE + lm9_valid = TRUE
 # ============================================================
 
 res <- orient_mandible(
@@ -141,8 +140,7 @@ res <- orient_mandible(
   individual_id = "MANDIBLE_12_CAF_CBT",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
-  complete_arch = FALSE,
-  compute_bigonial = TRUE
+  complete_arch = FALSE
 )
 
 inspect_mandible_result(res)
@@ -154,7 +152,7 @@ copy_tcl(res, section = "CS3")
 
 # ============================================================
 # 3. Condyles absent:
-# 9 landmarks + complete_arch = FALSE + compute_bigonial = TRUE
+# 9 landmarks + complete_arch = FALSE + lm9_valid = TRUE
 # ============================================================
 
 res <- orient_mandible(
@@ -162,8 +160,7 @@ res <- orient_mandible(
   individual_id = "MANDIBLE_9_CAF_CBT",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
-  complete_arch = FALSE,
-  compute_bigonial = TRUE
+  complete_arch = FALSE
 )
 
 inspect_mandible_result(res)
@@ -174,8 +171,8 @@ copy_tcl(res, section = "CS3")
 
 
 # ============================================================
-# 4. Condyles absent and bigonial not computed:
-# 9 landmarks + complete_arch = FALSE + compute_bigonial = FALSE
+# 4. Condyles absent and invalid LM9 placeholder:
+# 9 landmarks + complete_arch = FALSE + lm9_valid = FALSE
 # ============================================================
 
 res <- orient_mandible(
@@ -184,7 +181,7 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
-  compute_bigonial = FALSE
+  lm9_valid = FALSE
 )
 
 inspect_mandible_result(res)
@@ -196,7 +193,7 @@ copy_tcl(res, section = "CS3")
 
 # ============================================================
 # 5. Complete arch, one gonion side only:
-# 11 landmarks + complete_arch = TRUE + compute_bigonial = TRUE
+# 11 landmarks + complete_arch = TRUE + lm9_valid = TRUE
 # ============================================================
 
 res <- orient_mandible(
@@ -204,8 +201,7 @@ res <- orient_mandible(
   individual_id = "MANDIBLE_11_CAT_CBT",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
-  complete_arch = TRUE,
-  compute_bigonial = TRUE
+  complete_arch = TRUE
 )
 
 inspect_mandible_result(res)
@@ -217,7 +213,7 @@ copy_tcl(res, section = "CS3")
 
 # ============================================================
 # 6. Complete arch and both gonion preserved:
-# 12 landmarks + complete_arch = TRUE + compute_bigonial = TRUE
+# 12 landmarks + complete_arch = TRUE + lm9_valid = TRUE
 # ============================================================
 
 res <- orient_mandible(
@@ -225,8 +221,7 @@ res <- orient_mandible(
   individual_id = "MANDIBLE_12_CAT_CBT",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
-  complete_arch = TRUE,
-  compute_bigonial = TRUE
+  complete_arch = TRUE
 )
 
 inspect_mandible_result(res)
@@ -247,7 +242,6 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
-  compute_bigonial = TRUE,
   estimate_lm10 = TRUE
 )
 
@@ -269,7 +263,6 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = TRUE,
-  compute_bigonial = TRUE,
   estimate_lm10 = TRUE
 )
 
@@ -291,7 +284,6 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
-  compute_bigonial = TRUE,
   estimate_lm10 = TRUE
 )
 
@@ -313,7 +305,6 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = TRUE,
-  compute_bigonial = TRUE,
   estimate_lm10 = TRUE
 )
 
@@ -325,8 +316,8 @@ copy_tcl(res, section = "CS3")
 
 
 # ============================================================
-# 8. Both gonion preserved but bigonial not computed:
-# 12 landmarks + complete_arch = FALSE + compute_bigonial = FALSE
+# 8. Both gonion preserved but LM9 treated as invalid placeholder:
+# 12 landmarks + complete_arch = FALSE + lm9_valid = FALSE
 # ============================================================
 
 res <- orient_mandible(
@@ -335,7 +326,7 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
-  compute_bigonial = FALSE
+  lm9_valid = FALSE
 )
 
 inspect_mandible_result(res)
@@ -346,8 +337,8 @@ copy_tcl(res, section = "CS3")
 
 
 # ============================================================
-# 9. Complete arch and both gonion preserved, but bigonial not computed:
-# 12 landmarks + complete_arch = TRUE + compute_bigonial = FALSE
+# 9. Complete arch and both gonion preserved, but LM9 treated as invalid placeholder:
+# 12 landmarks + complete_arch = TRUE + lm9_valid = FALSE
 # ============================================================
 
 res <- orient_mandible(
@@ -356,7 +347,7 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = TRUE,
-  compute_bigonial = FALSE
+  lm9_valid = FALSE
 )
 
 inspect_mandible_result(res)

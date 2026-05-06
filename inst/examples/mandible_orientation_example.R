@@ -13,9 +13,8 @@ library(OrientCSG)
 #
 #   11 landmarks
 #   complete_arch = FALSE
-#   lm9_valid = TRUE
-#   compute_bigonial = TRUE
 #   estimate_lm10 = FALSE
+#   lm9_valid = TRUE
 #
 # This corresponds to a mandibular specimen fragmented approximately by half, where one side is sufficiently preserved to place LM1-LM11 following the
 # default landmark protocol. In this case, LM1_Line and the contralateral gonion are estimated geometrically.
@@ -43,9 +42,8 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
-  lm9_valid = TRUE,
-  compute_bigonial = TRUE,
-  estimate_lm10 = FALSE
+  estimate_lm10 = FALSE,
+  lm9_valid = TRUE
 )
 
 res

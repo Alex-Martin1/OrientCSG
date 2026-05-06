@@ -15,15 +15,10 @@
 #'
 #' The 11-landmark input preserves the original workflow and assumes that
 #' `LM1`, `LM2`, ..., `LM11` are available. The 12-landmark input adds `LM12`,
-#' interpreted as the contralateral gonion; when `compute_bigonial = TRUE`, this
-#' allows direct computation of bigonial breadth as `LM9`--`LM12`. The 9-landmark
-#' input is intended for specimens where `LM10` and `LM11` cannot be placed; in
-#' that case mandibular length is returned as non-computable.
-#'
-#' If `LM9` cannot be placed anatomically and is entered only as a placeholder to
-#' preserve the input structure, set `lm9_valid = FALSE`. This keeps the
-#' orientation workflow available but reports all measurements depending on
-#' `LM9`, currently corpus length and bigonial breadth, as non-computable.
+#' interpreted as the contralateral gonion, allowing direct computation of
+#' bigonial breadth as `LM9`--`LM12` when `LM9` is anatomically valid. The
+#' 9-landmark input is intended for specimens where `LM10` and `LM11` cannot be
+#' placed; in that case mandibular length is returned as non-computable.
 #'
 #' @section Complete-arch mode:
 #' By default, `complete_arch = FALSE`, and `LM1_Line` is estimated by reflecting
@@ -74,15 +69,11 @@
 #'   computed directly from `LM10` to `LM11` when both landmarks are available. If
 #'   `TRUE`, `LM10` is reflected across the relevant symmetry plane and
 #'   mandibular length is computed from the reflected point to `LM11`.
-#' @param lm9_valid Logical. If `TRUE` (default), `LM9` is treated as an
-#'   anatomically valid gonial/corpus landmark. If `FALSE`, `LM9` is treated as a
-#'   placeholder used only to preserve the landmark input structure, and
-#'   measurements depending on `LM9` are reported as non-computable.
-#' @param compute_bigonial Logical. If `TRUE` (default), bigonial breadth is
-#'   computed directly when `LM12` is present or estimated by reflection otherwise.
-#'   If `FALSE`, bigonial breadth is reported as non-computable. This suppresses
-#'   only bigonial breadth; use `lm9_valid = FALSE` when `LM9` itself is not an
-#'   anatomically valid landmark.
+#' @param lm9_valid Logical. If `TRUE` (default), `LM9` is interpreted as a real
+#'   anatomical gonion and measurements that depend on it are computed. If
+#'   `FALSE`, `LM9` is treated as a placeholder used only to preserve the input
+#'   structure, and measurements depending on `LM9` are returned as
+#'   non-computable.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -94,11 +85,10 @@
 #'   - `landmark_count`: Number of landmarks supplied.
 #'   - `complete_arch`: Whether complete-arch mode was used.
 #'   - `estimate_lm10`: Whether `LM10` was reflected for mandibular length.
-#'   - `lm9_valid`: Whether `LM9` was treated as an anatomically valid landmark.
-#'   - `compute_bigonial`: Whether bigonial breadth was computed when possible.
-#'   - `points`: Computed points, including `LM1_Line`, `LM9_Line`, `LM0`,
-#'     `ARP_Origin`, `CS1B`, and `CS2B`; `LM10_Line` is also included when
-#'     computed.
+#'   - `lm9_valid`: Whether `LM9` was treated as a real anatomical gonion.
+#'   - `points`: Computed points, including `LM1_Line`, `LM0`,
+#'     `ARP_Origin`, `CS1B`, and `CS2B`; `LM9_Line` and `LM10_Line` are included
+#'     when computed.
 #'   - `vectors`: Computed orientation vectors.
 #'   - `summary`: Compact summary table for key landmarks, computed points, and
 #'     vectors used for plane orientation.
@@ -145,13 +135,11 @@ orient_mandible <- function(landmarks_str,
                             cs3_camera_side = c("RIGHT", "LEFT"),
                             complete_arch = FALSE,
                             estimate_lm10 = FALSE,
-                            lm9_valid = TRUE,
-                            compute_bigonial = TRUE) {
+                            lm9_valid = TRUE) {
   cs3_camera_side <- match.arg(toupper(cs3_camera_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
-  compute_bigonial <- assert_logical_scalar(compute_bigonial, "compute_bigonial")
 
   mat_pts <- parse_mandible_landmarks(landmarks_str)
   landmark_count <- nrow(mat_pts)
@@ -220,7 +208,10 @@ orient_mandible <- function(landmarks_str,
     reflection_C <- LM4
   }
 
-  LM9_Line <- reflect_point_across_plane(LM9, reflection_A, reflection_B, reflection_C)
+  LM9_Line <- NULL
+  if (lm9_valid) {
+    LM9_Line <- reflect_point_across_plane(LM9, reflection_A, reflection_B, reflection_C)
+  }
   if (estimate_lm10) {
     LM10_Line <- reflect_point_across_plane(LM10, reflection_A, reflection_B, reflection_C)
   }
@@ -293,7 +284,6 @@ orient_mandible <- function(landmarks_str,
     complete_arch = complete_arch,
     estimate_lm10 = estimate_lm10,
     lm9_valid = lm9_valid,
-    compute_bigonial = compute_bigonial,
     reflection_method = reflection_method
   )
 
@@ -327,12 +317,12 @@ orient_mandible <- function(landmarks_str,
   )
   points <- list(
     LM1_Line = LM1_Line,
-    LM9_Line = LM9_Line,
     LM0 = LM0,
     ARP_Origin = ARP_Origin,
     CS1B = CS1B,
     CS2B = CS2B
   )
+  if (!is.null(LM9_Line)) points$LM9_Line <- LM9_Line
   if (!is.null(LM10_Line)) points$LM10_Line <- LM10_Line
 
   res <- list(
@@ -343,7 +333,6 @@ orient_mandible <- function(landmarks_str,
     complete_arch = complete_arch,
     estimate_lm10 = estimate_lm10,
     lm9_valid = lm9_valid,
-    compute_bigonial = compute_bigonial,
     reflection_method = reflection_method,
     points = points,
     vectors = vectors,
@@ -423,7 +412,6 @@ build_mandible_measurements <- function(individual_id,
                                         complete_arch,
                                         estimate_lm10,
                                         lm9_valid,
-                                        compute_bigonial,
                                         reflection_method) {
   rows <- list()
 
@@ -439,19 +427,19 @@ build_mandible_measurements <- function(individual_id,
     )
   }
 
-  if (!lm9_valid) {
-    rows[[length(rows) + 1]] <- add_measurement(
-      "Corpus_length",
-      NA_real_,
-      "uncomputable",
-      "missing_or_invalid_LM9"
-    )
-  } else {
+  if (lm9_valid) {
     rows[[length(rows) + 1]] <- add_measurement(
       "Corpus_length",
       dist3(LM3, LM9),
       "direct",
       "LM3_LM9"
+    )
+  } else {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Corpus_length",
+      NA_real_,
+      "uncomputable",
+      "missing_or_invalid_LM9"
     )
   }
 
@@ -507,13 +495,6 @@ build_mandible_measurements <- function(individual_id,
       NA_real_,
       "uncomputable",
       "missing_or_invalid_LM9"
-    )
-  } else if (!compute_bigonial) {
-    rows[[length(rows) + 1]] <- add_measurement(
-      "Bigonial_breadth",
-      NA_real_,
-      "uncomputable",
-      "bigonial_not_computed"
     )
   } else if (!is.null(LM12)) {
     rows[[length(rows) + 1]] <- add_measurement(

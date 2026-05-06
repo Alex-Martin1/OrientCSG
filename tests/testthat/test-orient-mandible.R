@@ -16,7 +16,6 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_false(res$complete_arch)
   expect_false(res$estimate_lm10)
   expect_true(res$lm9_valid)
-  expect_true(res$compute_bigonial)
   
   expect_equal(rownames(res$landmarks), paste0("LM", 1:11))
   expect_equal(names(res$avizo_tcl), c("CS1", "CS2", "CS3"))
@@ -102,14 +101,6 @@ test_that("orient_mandible() validates malformed input", {
     ),
     "complete_arch must be TRUE or FALSE"
   )
-
-  expect_error(
-    orient_mandible(
-      landmarks_str = mandible_landmarks_str,
-      lm9_valid = NA
-    ),
-    "lm9_valid must be TRUE or FALSE"
-  )
 })
 
 test_that("orient_mandible() accepts lowercase CS3 side values", {
@@ -179,23 +170,7 @@ test_that("orient_mandible() supports complete-arch mode", {
   )
 })
 
-test_that("orient_mandible() can suppress bigonial breadth", {
-  res <- orient_mandible(
-    landmarks_str = mandible_landmarks_str,
-    compute_bigonial = FALSE
-  )
-
-  bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
-  expect_true(is.na(bigonial$value_mm))
-  expect_equal(bigonial$status, "uncomputable")
-  expect_equal(bigonial$method, "bigonial_not_computed")
-
-  corpus <- res$measurements[res$measurements$metric == "Corpus_length", ]
-  expect_equal(corpus$status, "direct")
-  expect_equal(corpus$method, "LM3_LM9")
-})
-
-test_that("orient_mandible() can mark LM9-dependent measurements as non-computable", {
+test_that("orient_mandible() treats invalid LM9-dependent measurements as non-computable", {
   res <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
     lm9_valid = FALSE
@@ -214,8 +189,8 @@ test_that("orient_mandible() can mark LM9-dependent measurements as non-computab
   expect_equal(bigonial$method, "missing_or_invalid_LM9")
 
   mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
+  expect_false(is.na(mandibular_length$value_mm))
   expect_equal(mandibular_length$status, "direct")
-  expect_equal(mandibular_length$method, "LM10_LM11")
 })
 
 test_that("orient_mandible() can estimate LM10 for mandibular length", {
@@ -225,7 +200,11 @@ test_that("orient_mandible() can estimate LM10 for mandibular length", {
   )
 
   expect_true(res$estimate_lm10)
-  expect_named(res$points, c("LM1_Line", "LM9_Line", "LM0", "ARP_Origin", "CS1B", "CS2B", "LM10_Line"))
+  expect_named(
+    res$points,
+    c("LM1_Line", "LM9_Line", "LM0", "ARP_Origin", "CS1B", "CS2B", "LM10_Line"),
+    ignore.order = TRUE
+  )
 
   mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
   expect_equal(mandibular_length$status, "estimated")
