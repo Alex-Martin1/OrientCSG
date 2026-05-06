@@ -155,6 +155,7 @@ res <- orient_mandible(
   landmarks_str = landmarks_str,
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
+  lm9_valid = TRUE,
   compute_bigonial = TRUE
 )
 ```
@@ -172,7 +173,9 @@ If the contralateral gonion is preserved, provide 12 landmarks. `LM12` will be i
 
 If `LM10` and `LM11` cannot be placed, provide only the first 9 landmarks. The package will still generate the section-orientation TCL blocks, but mandibular length will be returned as non-computable in `res$measurements`.
 
-If `LM9` had to be placed only as an approximate workflow point and bigonial breadth should not be used, set `compute_bigonial = FALSE`.
+If `LM9` is anatomically valid but bigonial breadth should not be used, set `compute_bigonial = FALSE`. This only suppresses bigonial breadth.
+
+If `LM9` cannot be placed anatomically and is entered only as a placeholder to preserve the input structure, set `lm9_valid = FALSE`. In that case, measurements depending on `LM9`, currently corpus length and bigonial breadth, are returned as non-computable.
 
 ## Classic long-bone workflow: BoneJ + Amira/Avizo
 
@@ -393,7 +396,7 @@ For long-bone workflows, the expected objects are:
 Most errors or unexpected orientations are caused by one of the following problems:
 
 - landmark coordinates were pasted in the wrong order;
-- the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, or `compute_bigonial`);
+- the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, `lm9_valid`, or `compute_bigonial`);
 - the wrong number of mandibular landmarks was supplied;
 - the BoneJ eigenvector matrix was copied incorrectly;
 - the wrong long-bone mode was selected;

@@ -15,6 +15,7 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_equal(res$landmark_count, 11)
   expect_false(res$complete_arch)
   expect_false(res$estimate_lm10)
+  expect_true(res$lm9_valid)
   expect_true(res$compute_bigonial)
   
   expect_equal(rownames(res$landmarks), paste0("LM", 1:11))
@@ -101,6 +102,14 @@ test_that("orient_mandible() validates malformed input", {
     ),
     "complete_arch must be TRUE or FALSE"
   )
+
+  expect_error(
+    orient_mandible(
+      landmarks_str = mandible_landmarks_str,
+      lm9_valid = NA
+    ),
+    "lm9_valid must be TRUE or FALSE"
+  )
 })
 
 test_that("orient_mandible() accepts lowercase CS3 side values", {
@@ -180,6 +189,33 @@ test_that("orient_mandible() can suppress bigonial breadth", {
   expect_true(is.na(bigonial$value_mm))
   expect_equal(bigonial$status, "uncomputable")
   expect_equal(bigonial$method, "bigonial_not_computed")
+
+  corpus <- res$measurements[res$measurements$metric == "Corpus_length", ]
+  expect_equal(corpus$status, "direct")
+  expect_equal(corpus$method, "LM3_LM9")
+})
+
+test_that("orient_mandible() can mark LM9-dependent measurements as non-computable", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm9_valid = FALSE
+  )
+
+  expect_false(res$lm9_valid)
+
+  corpus <- res$measurements[res$measurements$metric == "Corpus_length", ]
+  expect_true(is.na(corpus$value_mm))
+  expect_equal(corpus$status, "uncomputable")
+  expect_equal(corpus$method, "missing_or_invalid_LM9")
+
+  bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
+  expect_true(is.na(bigonial$value_mm))
+  expect_equal(bigonial$status, "uncomputable")
+  expect_equal(bigonial$method, "missing_or_invalid_LM9")
+
+  mandibular_length <- res$measurements[res$measurements$metric == "Mandibular_length", ]
+  expect_equal(mandibular_length$status, "direct")
+  expect_equal(mandibular_length$method, "LM10_LM11")
 })
 
 test_that("orient_mandible() can estimate LM10 for mandibular length", {

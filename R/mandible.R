@@ -20,6 +20,11 @@
 #' input is intended for specimens where `LM10` and `LM11` cannot be placed; in
 #' that case mandibular length is returned as non-computable.
 #'
+#' If `LM9` cannot be placed anatomically and is entered only as a placeholder to
+#' preserve the input structure, set `lm9_valid = FALSE`. This keeps the
+#' orientation workflow available but reports all measurements depending on
+#' `LM9`, currently corpus length and bigonial breadth, as non-computable.
+#'
 #' @section Complete-arch mode:
 #' By default, `complete_arch = FALSE`, and `LM1_Line` is estimated by reflecting
 #' `LM1` across the plane defined by `LM2`, `LM3`, and `LM4`, matching the
@@ -69,11 +74,15 @@
 #'   computed directly from `LM10` to `LM11` when both landmarks are available. If
 #'   `TRUE`, `LM10` is reflected across the relevant symmetry plane and
 #'   mandibular length is computed from the reflected point to `LM11`.
+#' @param lm9_valid Logical. If `TRUE` (default), `LM9` is treated as an
+#'   anatomically valid gonial/corpus landmark. If `FALSE`, `LM9` is treated as a
+#'   placeholder used only to preserve the landmark input structure, and
+#'   measurements depending on `LM9` are reported as non-computable.
 #' @param compute_bigonial Logical. If `TRUE` (default), bigonial breadth is
 #'   computed directly when `LM12` is present or estimated by reflection otherwise.
-#'   If `FALSE`, bigonial breadth is reported as non-computable. This is useful
-#'   when the measure should be excluded, for example because the relevant gonial
-#'   anatomy is not reliable.
+#'   If `FALSE`, bigonial breadth is reported as non-computable. This suppresses
+#'   only bigonial breadth; use `lm9_valid = FALSE` when `LM9` itself is not an
+#'   anatomically valid landmark.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -85,7 +94,8 @@
 #'   - `landmark_count`: Number of landmarks supplied.
 #'   - `complete_arch`: Whether complete-arch mode was used.
 #'   - `estimate_lm10`: Whether `LM10` was reflected for mandibular length.
-#'   - `compute_bigonial`: Whether bigonial breadth was computed.
+#'   - `lm9_valid`: Whether `LM9` was treated as an anatomically valid landmark.
+#'   - `compute_bigonial`: Whether bigonial breadth was computed when possible.
 #'   - `points`: Computed points, including `LM1_Line`, `LM9_Line`, `LM0`,
 #'     `ARP_Origin`, `CS1B`, and `CS2B`; `LM10_Line` is also included when
 #'     computed.
@@ -135,10 +145,12 @@ orient_mandible <- function(landmarks_str,
                             cs3_camera_side = c("RIGHT", "LEFT"),
                             complete_arch = FALSE,
                             estimate_lm10 = FALSE,
+                            lm9_valid = TRUE,
                             compute_bigonial = TRUE) {
   cs3_camera_side <- match.arg(toupper(cs3_camera_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
+  lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
   compute_bigonial <- assert_logical_scalar(compute_bigonial, "compute_bigonial")
 
   mat_pts <- parse_mandible_landmarks(landmarks_str)
@@ -280,6 +292,7 @@ orient_mandible <- function(landmarks_str,
     LM10_Line = LM10_Line,
     complete_arch = complete_arch,
     estimate_lm10 = estimate_lm10,
+    lm9_valid = lm9_valid,
     compute_bigonial = compute_bigonial,
     reflection_method = reflection_method
   )
@@ -329,6 +342,7 @@ orient_mandible <- function(landmarks_str,
     landmark_count = landmark_count,
     complete_arch = complete_arch,
     estimate_lm10 = estimate_lm10,
+    lm9_valid = lm9_valid,
     compute_bigonial = compute_bigonial,
     reflection_method = reflection_method,
     points = points,
@@ -408,6 +422,7 @@ build_mandible_measurements <- function(individual_id,
                                         LM10_Line,
                                         complete_arch,
                                         estimate_lm10,
+                                        lm9_valid,
                                         compute_bigonial,
                                         reflection_method) {
   rows <- list()
@@ -424,12 +439,21 @@ build_mandible_measurements <- function(individual_id,
     )
   }
 
-  rows[[length(rows) + 1]] <- add_measurement(
-    "Corpus_length",
-    dist3(LM3, LM9),
-    "direct",
-    "LM3_LM9"
-  )
+  if (!lm9_valid) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Corpus_length",
+      NA_real_,
+      "uncomputable",
+      "missing_or_invalid_LM9"
+    )
+  } else {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Corpus_length",
+      dist3(LM3, LM9),
+      "direct",
+      "LM3_LM9"
+    )
+  }
 
   if (is.null(LM10) || is.null(LM11)) {
     rows[[length(rows) + 1]] <- add_measurement(
@@ -477,7 +501,14 @@ build_mandible_measurements <- function(individual_id,
     "LM2_LM0_projection_on_LM1_LM1_Line"
   )
 
-  if (!compute_bigonial) {
+  if (!lm9_valid) {
+    rows[[length(rows) + 1]] <- add_measurement(
+      "Bigonial_breadth",
+      NA_real_,
+      "uncomputable",
+      "missing_or_invalid_LM9"
+    )
+  } else if (!compute_bigonial) {
     rows[[length(rows) + 1]] <- add_measurement(
       "Bigonial_breadth",
       NA_real_,

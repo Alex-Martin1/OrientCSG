@@ -13,6 +13,7 @@ library(OrientCSG)
 #
 #   11 landmarks
 #   complete_arch = FALSE
+#   lm9_valid = TRUE
 #   compute_bigonial = TRUE
 #   estimate_lm10 = FALSE
 #
@@ -42,6 +43,7 @@ res <- orient_mandible(
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
+  lm9_valid = TRUE,
   compute_bigonial = TRUE,
   estimate_lm10 = FALSE
 )

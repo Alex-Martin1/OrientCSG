@@ -11,6 +11,7 @@ orient_mandible(
   cs3_camera_side = c("RIGHT", "LEFT"),
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
+  lm9_valid = TRUE,
   compute_bigonial = TRUE
 )
 }
@@ -38,11 +39,16 @@ computed directly from \code{LM10} to \code{LM11} when both landmarks are availa
 \code{TRUE}, \code{LM10} is reflected across the relevant symmetry plane and
 mandibular length is computed from the reflected point to \code{LM11}.}
 
+\item{lm9_valid}{Logical. If \code{TRUE} (default), \code{LM9} is treated as an
+anatomically valid gonial/corpus landmark. If \code{FALSE}, \code{LM9} is treated as a
+placeholder used only to preserve the landmark input structure, and
+measurements depending on \code{LM9} are reported as non-computable.}
+
 \item{compute_bigonial}{Logical. If \code{TRUE} (default), bigonial breadth is
 computed directly when \code{LM12} is present or estimated by reflection otherwise.
-If \code{FALSE}, bigonial breadth is reported as non-computable. This is useful
-when the measure should be excluded, for example because the relevant gonial
-anatomy is not reliable.}
+If \code{FALSE}, bigonial breadth is reported as non-computable. This suppresses
+only bigonial breadth; use \code{lm9_valid = FALSE} when \code{LM9} itself is not an
+anatomically valid landmark.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
@@ -55,7 +61,8 @@ components:
 \item \code{landmark_count}: Number of landmarks supplied.
 \item \code{complete_arch}: Whether complete-arch mode was used.
 \item \code{estimate_lm10}: Whether \code{LM10} was reflected for mandibular length.
-\item \code{compute_bigonial}: Whether bigonial breadth was computed.
+\item \code{lm9_valid}: Whether \code{LM9} was treated as an anatomically valid landmark.
+\item \code{compute_bigonial}: Whether bigonial breadth was computed when possible.
 \item \code{points}: Computed points, including \code{LM1_Line}, \code{LM9_Line}, \code{LM0},
 \code{ARP_Origin}, \code{CS1B}, and \code{CS2B}; \code{LM10_Line} is also included when
 computed.
@@ -91,6 +98,11 @@ interpreted as the contralateral gonion; when \code{compute_bigonial = TRUE}, th
 allows direct computation of bigonial breadth as \code{LM9}--\code{LM12}. The 9-landmark
 input is intended for specimens where \code{LM10} and \code{LM11} cannot be placed; in
 that case mandibular length is returned as non-computable.
+
+If \code{LM9} cannot be placed anatomically and is entered only as a placeholder to
+preserve the input structure, set \code{lm9_valid = FALSE}. This keeps the
+orientation workflow available but reports all measurements depending on
+\code{LM9}, currently corpus length and bigonial breadth, as non-computable.
 }
 
 \section{Complete-arch mode}{
