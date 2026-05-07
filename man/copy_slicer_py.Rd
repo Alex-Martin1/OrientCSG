@@ -7,7 +7,8 @@
 copy_slicer_py(res, section = NULL)
 }
 \arguments{
-\item{res}{An orientation result returned by \code{\link[=orient_longbone]{orient_longbone()}}.}
+\item{res}{An orientation result returned by \code{\link[=orient_longbone]{orient_longbone()}} or
+\code{\link[=orient_mandible]{orient_mandible()}}.}
 
 \item{section}{Optional section name. If \code{NULL}, all available blocks are
 copied.}
@@ -24,6 +25,7 @@ blocks from an orientation result to the system clipboard.
 \examples{
 \dontrun{
 copy_slicer_py(res, section = "SECTION_50")
+copy_slicer_py(res_mandible, section = "CS1")
 }
 
 }

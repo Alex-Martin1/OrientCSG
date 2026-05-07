@@ -214,3 +214,72 @@ test_that("orient_mandible() can estimate LM10 for mandibular length", {
     round(dist3(res$points$LM10_Line, res$landmarks["LM11", ]), 6)
   )
 })
+
+test_that("orient_mandible() separates input format from coordinate system", {
+  lps_mat <- matrix_from_xyz_string(mandible_landmarks_str)
+  ras_slicer <- make_slicer_markup_table(flip_xyz_matrix(lps_mat))
+
+  res_lps <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm_coord_system = "LPS"
+  )
+  res_ras <- orient_mandible(
+    landmarks_str = ras_slicer,
+    lm_coord_system = "RAS"
+  )
+
+  expect_equal(res_ras$lm_coord_system, "RAS")
+  expect_equal(res_ras$internal_coord_system, "LPS")
+  expect_equal(res_ras$landmarks, res_lps$landmarks, tolerance = 1e-6)
+  expect_equal(res_ras$summary, res_lps$summary, tolerance = 1e-6)
+  expect_equal(res_ras$measurements$value_mm, res_lps$measurements$value_mm, tolerance = 1e-6)
+})
+
+test_that("orient_mandible() keeps legacy coordinate and landmark aliases", {
+  res_new <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm_coord_system = "LPS"
+  )
+  res_old <- orient_mandible(
+    slicer_landmarks_str = mandible_landmarks_str,
+    landmark_coordinate_system = "LPS"
+  )
+
+  expect_equal(res_old$landmarks, res_new$landmarks, tolerance = 1e-6)
+  expect_equal(res_old$summary, res_new$summary, tolerance = 1e-6)
+
+  expect_error(
+    orient_mandible(
+      landmarks_str = mandible_landmarks_str,
+      slicer_landmarks_str = mandible_landmarks_str_9
+    ),
+    "Both `landmarks_str` and `slicer_landmarks_str` were supplied"
+  )
+
+  expect_error(
+    orient_mandible(
+      landmarks_str = mandible_landmarks_str,
+      lm_coord_system = "RAS",
+      landmark_coordinate_system = "LPS"
+    ),
+    "both supplied but differ"
+  )
+})
+
+test_that("orient_mandible() generates Slicer Python blocks", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    SLICER = TRUE,
+    volume_name = "MANDIBLE_VOLUME"
+  )
+
+  expect_equal(res$SLICER, TRUE)
+  expect_null(res$avizo_tcl)
+  expect_equal(names(res$slicer_py), c("CS1", "CS2", "CS3"))
+
+  py <- get_slicer_py(res, section = "CS1")
+  expect_contains_fixed(py, "SECTION_LABEL = \"CS1\"")
+  expect_contains_fixed(py, "VOLUME_NAME = \"MANDIBLE_VOLUME\"")
+  expect_contains_fixed(py, "sliceNode.SetSliceToRAS(sliceToRAS)")
+  expect_contains_fixed(py, "PSEC, Slicer RAS")
+})

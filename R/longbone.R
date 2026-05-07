@@ -74,8 +74,10 @@
 #' When `SLICER = TRUE`, the generated Python code assumes that the corresponding
 #' model is loaded in 3D Slicer. If `model_name` is omitted, the function uses the
 #' basename of `mesh_file` when available. Landmarks copied from a Slicer Markups
-#' table can be supplied through `slicer_landmarks_str`; their coordinate system
-#' is controlled by `landmark_coordinate_system`.
+#' table can be supplied through `landmarks_str`; their coordinate system is
+#' controlled explicitly by `lm_coord_system`. The older arguments
+#' `slicer_landmarks_str` and `landmark_coordinate_system` are retained as
+#' aliases for backward compatibility.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
 #'   `"TIBIA"`, `"HUMERUS"`, or `"HUMERUS_TABLE"`.
@@ -83,8 +85,8 @@
 #'   eigenvector matrix. Required when `SOLID = FALSE`. The first column is
 #'   interpreted as the longitudinal vector.
 #' @param landmarks_str Character string containing landmark coordinates. The
-#'   expected number and interpretation of landmarks depend on `mode`. Required
-#'   unless landmarks are supplied with `slicer_landmarks_str`.
+#'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
+#'   coordinates and Slicer Markups-style rows are both accepted.
 #' @param section_loc Numeric vector of section locations expressed as
 #'   percentages of biomechanical length.
 #' @param individual_id Character identifier for the specimen. This value is
@@ -101,14 +103,18 @@
 #'   supported for Slicer output.
 #' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
 #'   `.stl`, or `.obj`) used when `SOLID = TRUE`.
-#' @param slicer_landmarks_str Optional text block copied from a 3D Slicer
-#'   Markups table. Landmark recognition is positional and depends on `mode`.
-#'   Currently implemented for `TIBIA` and `HUMERUS`.
+#' @param lm_coord_system Coordinate system of the input landmark coordinates.
+#'   The default is `"LPS"`, matching the Avizo/Amira-like internal convention.
+#'   Use `"RAS"` for coordinates taken directly from Slicer world coordinates.
+#'   This argument controls the spatial interpretation of the numbers only; it
+#'   does not depend on whether the text was pasted as plain XYZ coordinates or
+#'   as a Slicer Markups table.
+#' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
+#'   older scripts continue to run with the updated parser and coordinate logic.
 #' @param model_name Optional model node name used by the generated Slicer Python
 #'   block. If omitted, the basename of `mesh_file` is used when available.
-#' @param landmark_coordinate_system Coordinate system of `slicer_landmarks_str`.
-#'   Use `"LPS"` for coordinates exported in the mesh/external convention and
-#'   `"RAS"` for coordinates taken directly from Slicer world coordinates.
+#' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
+#'   retained for backward compatibility.
 #'
 #' @return An object of class `orientcsg_longbone` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -166,9 +172,11 @@ orient_longbone <- function(mode,
                             SOLID = FALSE,
                             SLICER = FALSE,
                             mesh_file = NULL,
+                            lm_coord_system = "LPS",
                             slicer_landmarks_str = NULL,
                             model_name = NULL,
-                            landmark_coordinate_system = "LPS") {
+                            landmark_coordinate_system = NULL) {
+  lm_coord_system_missing <- missing(lm_coord_system)
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
     stop('`mode` must be one of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".', call. = FALSE)
@@ -189,6 +197,12 @@ orient_longbone <- function(mode,
   if (isTRUE(SLICER) && !mode %in% c("TIBIA", "HUMERUS")) {
     stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"`.', call. = FALSE)
   }
+
+  lm_coord_system <- resolve_lm_coord_system(
+    lm_coord_system = lm_coord_system,
+    landmark_coordinate_system = landmark_coordinate_system,
+    lm_coord_system_missing = lm_coord_system_missing
+  )
 
   section_loc <- as.numeric(section_loc)
   if (any(!is.finite(section_loc)) || any(section_loc < 0 | section_loc > 100)) {
@@ -220,20 +234,13 @@ orient_longbone <- function(mode,
 
   n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
 
-  if (!is.null(slicer_landmarks_str)) {
-    mat_pts <- parse_slicer_landmarks(
-      slicer_landmarks_str,
-      mode = mode,
-      coordinate_system = landmark_coordinate_system
-    )
-  } else {
-    if (is.null(landmarks_str)) {
-      stop("`landmarks_str` is required unless `slicer_landmarks_str` is supplied.", call. = FALSE)
-    }
+  landmarks_str <- resolve_landmarks_str(
+    landmarks_str = landmarks_str,
+    slicer_landmarks_str = slicer_landmarks_str
+  )
 
-    mat_pts <- parse_landmarks(landmarks_str, n_landmarks = n_landmarks, context = mode)
-  }
-
+  mat_pts <- parse_landmarks(landmarks_str, n_landmarks = n_landmarks, context = mode)
+  mat_pts <- normalize_lm_coordinates(mat_pts, lm_coord_system = lm_coord_system)
   rownames(mat_pts) <- paste0("P", seq_len(n_landmarks))
 
   P1 <- mat_pts[1, ]
@@ -387,6 +394,8 @@ orient_longbone <- function(mode,
     summary = summary_tbl,
     manual_orientation = manual_orientation,
     camera_distance_mm = camera_distance_mm,
+    lm_coord_system = lm_coord_system,
+    internal_coord_system = "LPS",
     SOLID = SOLID,
     SLICER = SLICER,
     mesh_file = mesh_file,

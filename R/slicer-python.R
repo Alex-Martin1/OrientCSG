@@ -398,3 +398,215 @@ emit_slicer_section_python <- function(res, section = NULL) {
 
   paste(code, collapse = "\n")
 }
+
+# Internal 3D Slicer Python generator for mandibles --------------------------
+#
+# Convert a mandibular orientation result into one Python block per planned
+# section. The generated code orients a Slicer slice view to the same section
+# plane used by the Avizo/Amira backend. Internally OrientCSG stores all points
+# and vectors in LPS/external coordinates; the Python block receives RAS values.
+emit_slicer_mandible_python <- function(res, section = NULL) {
+  available_sections <- c("CS1", "CS2", "CS3")
+
+  if (is.null(section)) {
+    section <- available_sections[1]
+  }
+
+  section <- toupper(trimws(section))
+  if (!section %in% available_sections) {
+    stop(
+      sprintf(
+        "Section '%s' does not exist. Available sections: %s",
+        section,
+        paste(available_sections, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  LM <- res$landmarks
+  LM1 <- LM["LM1", ]
+  LM2 <- LM["LM2", ]
+  LM1_Line <- res$points$LM1_Line
+
+  if (section == "CS1") {
+    Psec <- res$points$CS1B
+    normal <- res$vectors$Vec_CS1_Normal
+    x_ref <- project_vector_to_plane(res$vectors$Vec_CS1, normal)
+  } else if (section == "CS2") {
+    Psec <- res$points$CS2B
+    normal <- res$vectors$Vec_CS2_Normal
+    x_ref <- project_vector_to_plane(res$vectors$Vec_CS2, normal)
+  } else {
+    Psec <- LM2
+    normal <- res$vectors$Vec_1_1Line
+    x_ref <- project_vector_to_plane(res$vectors$Vec_0_2, normal)
+  }
+
+  if (sqrt(sum(x_ref^2)) < 1e-12) {
+    stop(sprintf("%s: screen-horizontal reference vector cannot be defined.", section), call. = FALSE)
+  }
+
+  Psec_ras <- flip_xy(Psec)
+  normal_ras <- flip_xy(normal)
+  x_ref_ras <- flip_xy(x_ref)
+  y_pref_ras <- flip_xy(res$vectors$Vec_Penp)
+  arp_origin_ras <- flip_xy(res$points$ARP_Origin)
+  arp_normal_ras <- flip_xy(res$vectors$Vec_Penp)
+  lm1_ras <- flip_xy(LM1)
+  lm2_ras <- flip_xy(LM2)
+  lm1_line_ras <- flip_xy(LM1_Line)
+
+  volume_name <- res$volume_name
+  if (is.null(volume_name) || length(volume_name) != 1L || is.na(volume_name) || !nzchar(volume_name)) {
+    volume_name <- ""
+  }
+
+  code <- c(
+    "import slicer",
+    "import vtk",
+    "import numpy as np",
+    "",
+    "# ============================================================",
+    "# OrientCSG Slicer mandibular slice block generated from R",
+    "# ============================================================",
+    "",
+    sprintf("SECTION_LABEL = %s", py_quote(section)),
+    sprintf("VOLUME_NAME = %s", py_quote(volume_name)),
+    "SLICE_VIEW_NAME = 'Red'",
+    "FIT_SLICE_TO_VOLUME = True",
+    "SHOW_SLICE_INTERSECTIONS = True",
+    "CREATE_ARP_MARKUPS_PLANE = False",
+    "ARP_MARKUPS_PLANE_SIZE_MM = 80.0",
+    "",
+    sprintf("PSEC = %s", fmt_py_vec(Psec_ras)),
+    sprintf("NORMAL = %s", fmt_py_vec(normal_ras)),
+    sprintf("X_SCREEN_REFERENCE = %s", fmt_py_vec(x_ref_ras)),
+    sprintf("Y_PREFERRED = %s", fmt_py_vec(y_pref_ras)),
+    sprintf("ARP_ORIGIN = %s", fmt_py_vec(arp_origin_ras)),
+    sprintf("ARP_NORMAL = %s", fmt_py_vec(arp_normal_ras)),
+    sprintf("LM1 = %s", fmt_py_vec(lm1_ras)),
+    sprintf("LM2 = %s", fmt_py_vec(lm2_ras)),
+    sprintf("LM1_LINE = %s", fmt_py_vec(lm1_line_ras)),
+    "",
+    "def nrm(v):",
+    "    v = np.asarray(v, dtype=float)",
+    "    s = np.linalg.norm(v)",
+    "    if s < 1e-12:",
+    "        raise ValueError('Near-zero vector cannot be normalized.')",
+    "    return v / s",
+    "",
+    "def dot3(a, b):",
+    "    return float(np.dot(a, b))",
+    "",
+    "def make_slice_to_ras(point, normal, x_reference, y_preferred):",
+    "    point = np.asarray(point, dtype=float)",
+    "    z_axis = nrm(normal)",
+    "    x_axis = np.asarray(x_reference, dtype=float) - dot3(x_reference, z_axis) * z_axis",
+    "    if np.linalg.norm(x_axis) < 1e-12:",
+    "        y_tmp = np.asarray(y_preferred, dtype=float) - dot3(y_preferred, z_axis) * z_axis",
+    "        if np.linalg.norm(y_tmp) < 1e-12:",
+    "            raise ValueError('Cannot construct slice axes: both reference vectors are collinear with the normal.')",
+    "        x_axis = np.cross(y_tmp, z_axis)",
+    "    x_axis = nrm(x_axis)",
+    "    y_axis = nrm(np.cross(z_axis, x_axis))",
+    "    x_axis = nrm(np.cross(y_axis, z_axis))",
+    "    y_pref = np.asarray(y_preferred, dtype=float) - dot3(y_preferred, z_axis) * z_axis",
+    "    if np.linalg.norm(y_pref) > 1e-12 and dot3(y_axis, nrm(y_pref)) < 0:",
+    "        x_axis = -x_axis",
+    "        y_axis = -y_axis",
+    "    m = vtk.vtkMatrix4x4()",
+    "    m.Identity()",
+    "    for i in range(3):",
+    "        m.SetElement(i, 0, float(x_axis[i]))",
+    "        m.SetElement(i, 1, float(y_axis[i]))",
+    "        m.SetElement(i, 2, float(z_axis[i]))",
+    "        m.SetElement(i, 3, float(point[i]))",
+    "    return m, x_axis, y_axis, z_axis",
+    "",
+    "def get_slice_widget_and_logic():",
+    "    lm = slicer.app.layoutManager()",
+    "    widget = lm.sliceWidget(SLICE_VIEW_NAME)",
+    "    if widget is None:",
+    "        raise ValueError(f'Could not find Slicer slice view: {SLICE_VIEW_NAME}')",
+    "    return widget, widget.sliceLogic()",
+    "",
+    "def get_volume_node(sliceLogic):",
+    "    if VOLUME_NAME:",
+    "        node = slicer.util.getFirstNodeByName(VOLUME_NAME)",
+    "        if node is None:",
+    "            raise ValueError(f'Could not find volume node named: {VOLUME_NAME}')",
+    "        return node",
+    "    comp = sliceLogic.GetSliceCompositeNode()",
+    "    if comp is not None and comp.GetBackgroundVolumeID():",
+    "        node = slicer.mrmlScene.GetNodeByID(comp.GetBackgroundVolumeID())",
+    "        if node is not None:",
+    "            return node",
+    "    nodes = slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')",
+    "    if len(nodes) == 1:",
+    "        return nodes[0]",
+    "    if len(nodes) > 1:",
+    "        print('Available scalar volume nodes:')",
+    "        for node in nodes:",
+    "            print('  ', node.GetName())",
+    "        raise ValueError('More than one scalar volume exists. Set VOLUME_NAME explicitly.')",
+    "    raise ValueError('No scalar volume node found. Load the DICOM/volume before running this block.')",
+    "",
+    "def set_background_volume(sliceLogic, volumeNode):",
+    "    comp = sliceLogic.GetSliceCompositeNode()",
+    "    if comp is not None:",
+    "        comp.SetBackgroundVolumeID(volumeNode.GetID())",
+    "",
+    "def create_arp_markups_plane():",
+    "    try:",
+    "        node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLMarkupsPlaneNode', 'OrientCSG_ARP')",
+    "        node.SetOriginWorld(ARP_ORIGIN)",
+    "        node.SetNormalWorld(ARP_NORMAL)",
+    "        node.SetSizeWorld([ARP_MARKUPS_PLANE_SIZE_MM, ARP_MARKUPS_PLANE_SIZE_MM])",
+    "        node.CreateDefaultDisplayNodes()",
+    "        d = node.GetDisplayNode()",
+    "        if d is not None:",
+    "            d.SetColor(0.0, 1.0, 0.0)",
+    "            d.SetOpacity(0.35)",
+    "        return node",
+    "    except Exception as exc:",
+    "        print('WARNING: could not create ARP Markups plane:', exc)",
+    "        return None",
+    "",
+    "sliceWidget, sliceLogic = get_slice_widget_and_logic()",
+    "sliceNode = sliceLogic.GetSliceNode()",
+    "volumeNode = get_volume_node(sliceLogic)",
+    "set_background_volume(sliceLogic, volumeNode)",
+    "sliceToRAS, X_AXIS, Y_AXIS, Z_AXIS = make_slice_to_ras(PSEC, NORMAL, X_SCREEN_REFERENCE, Y_PREFERRED)",
+    "sliceNode.SetSliceToRAS(sliceToRAS)",
+    "sliceNode.UpdateMatrices()",
+    "sliceNode.SetSliceVisible(True)",
+    "sliceNode.SetWidgetVisible(True)",
+    "if SHOW_SLICE_INTERSECTIONS:",
+    "    try:",
+    "        sliceNode.SetSliceEdgeVisibility3D(True)",
+    "    except Exception:",
+    "        pass",
+    "if FIT_SLICE_TO_VOLUME:",
+    "    sliceLogic.FitSliceToAll()",
+    "if CREATE_ARP_MARKUPS_PLANE:",
+    "    create_arp_markups_plane()",
+    "sliceWidget.sliceView().scheduleRender()",
+    "",
+    "print('================ ORIENTCSG / SLICER MANDIBLE ================')",
+    "print('Section:', SECTION_LABEL)",
+    "print('Volume:', volumeNode.GetName())",
+    "print('Slice view:', SLICE_VIEW_NAME)",
+    "print('PSEC, Slicer RAS:', PSEC)",
+    "print('NORMAL, Slicer RAS:', NORMAL)",
+    "print('Screen X, Y and normal axes, Slicer RAS:')",
+    "print(X_AXIS)",
+    "print(Y_AXIS)",
+    "print(Z_AXIS)",
+    "print('ARP origin and normal, Slicer RAS:')",
+    "print(ARP_ORIGIN)",
+    "print(ARP_NORMAL)"
+  )
+
+  paste(code, collapse = "\n")
+}

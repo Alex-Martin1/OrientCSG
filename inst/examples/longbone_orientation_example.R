@@ -160,7 +160,7 @@ mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
 
 
 # Landmarks exported/copied from 3D Slicer.
-slicer_landmarks_str <- "
+landmarks_str_slicer <- "
 1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
 2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
 3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
@@ -169,7 +169,8 @@ slicer_landmarks_str <- "
 res_solid_slicer <- orient_longbone(
   mode = "TIBIA",
   mesh_file = mesh_file,
-  slicer_landmarks_str = slicer_landmarks_str,
+  landmarks_str = landmarks_str_slicer,
+  lm_coord_system = "RAS",
   section_loc = 50,
   individual_id = "T108",
   model_name = "T108_solid",
@@ -198,7 +199,7 @@ copy_slicer_py(res_solid_slicer, "SECTION_50")
 
 mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_solid.ply"
 
-slicer_landmarks_str_humerus <- "
+landmarks_str_slicer_humerus <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
 2 186.393386840820 -15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
 3 182.241800000000  -6.976971000000 -59.921390000000 0 0 0 1 1 1 0 F-3 2 0
@@ -208,7 +209,8 @@ slicer_landmarks_str_humerus <- "
 res_humerus_solid_slicer <- orient_longbone(
   mode = "HUMERUS",
   mesh_file = mesh_file_humerus,
-  slicer_landmarks_str = slicer_landmarks_str_humerus,
+  landmarks_str = landmarks_str_slicer_humerus,
+  lm_coord_system = "RAS",
   section_loc = c(35, 50),
   individual_id = "H108",
   model_name = "H108_solid",

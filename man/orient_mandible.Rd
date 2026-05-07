@@ -5,19 +5,25 @@
 \title{Orient mandibular cross-sections for image capture}
 \usage{
 orient_mandible(
-  landmarks_str,
+  landmarks_str = NULL,
   individual_id = "MANDIBLE_001",
   camera_distance_mm = 300,
   cs3_camera_side = c("RIGHT", "LEFT"),
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
-  lm9_valid = TRUE
+  lm9_valid = TRUE,
+  lm_coord_system = "LPS",
+  SLICER = FALSE,
+  slicer_landmarks_str = NULL,
+  landmark_coordinate_system = NULL,
+  volume_name = NULL
 )
 }
 \arguments{
 \item{landmarks_str}{Character string containing the coordinates of 9, 11, or
-12 mandibular landmarks in the fixed protocol order. Values may be separated
-by spaces, tabs, commas, semicolons, or vertical bars.}
+12 mandibular landmarks in the fixed protocol order. Plain XYZ coordinates
+and Slicer Markups-style rows are both accepted. Values may be separated by
+spaces, tabs, commas, semicolons, or vertical bars.}
 
 \item{individual_id}{Character identifier for the specimen. This value is
 copied into the output tables.}
@@ -43,6 +49,26 @@ anatomical gonion and measurements that depend on it are computed. If
 \code{FALSE}, \code{LM9} is treated as a placeholder used only to preserve the input
 structure, and measurements depending on \code{LM9} are returned as
 non-computable.}
+
+\item{lm_coord_system}{Coordinate system of the input landmark coordinates.
+The default is \code{"LPS"}, matching the Avizo/Amira-like internal convention.
+Use \code{"RAS"} for coordinates taken directly from Slicer world coordinates.
+This argument controls the spatial interpretation of the numbers only; it
+does not depend on whether the text was pasted as plain XYZ coordinates or
+as a Slicer Markups table.}
+
+\item{SLICER}{Logical. If \code{FALSE} (default), generate Avizo/Amira TCL command
+blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.}
+
+\item{slicer_landmarks_str}{Deprecated alias for \code{landmarks_str}, retained so
+older scripts continue to run with the updated parser and coordinate logic.}
+
+\item{landmark_coordinate_system}{Deprecated alias for \code{lm_coord_system},
+retained for backward compatibility.}
+
+\item{volume_name}{Optional scalar volume node name used by the generated
+Slicer Python block. If omitted, the active background volume in the chosen
+slice view is used, falling back to the first scalar volume in the scene.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
@@ -67,15 +93,18 @@ vectors used for plane orientation.
 estimated, computed, or non-computable.
 \item \code{manual_orientation}: Table arranged for manual verification of ARP and
 section orientation in Avizo/Amira.
-\item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3}.
+\item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3},
+when \code{SLICER = FALSE}.
+\item \code{slicer_py}: Named list with 3D Slicer Python blocks for \code{CS1}, \code{CS2},
+and \code{CS3}, when \code{SLICER = TRUE}.
 }
 }
 \description{
 \code{orient_mandible()} implements the mandibular orientation workflow used by
 OrientCSG. It receives the coordinates of the mandibular landmarks defined in
 the protocol, reconstructs the geometric reference system, computes the three
-planned cross-sections, and returns both tabular results and Avizo TCL command
-blocks for automatic orientation of the relevant objects in Avizo.
+planned cross-sections, and returns tabular results plus software-specific
+command blocks for automatic orientation in Avizo/Amira or 3D Slicer.
 }
 \section{Landmark order and preservation modes}{
 
@@ -122,13 +151,17 @@ retained internally for TCL and camera generation, but are not included in the
 compact summary table.
 }
 
-\section{Avizo requirements}{
+\section{Avizo/Amira and 3D Slicer backends}{
 
-The generated TCL code assumes that the Avizo project contains objects with
-specific names. For mandibular workflows, the relevant objects are typically
+With the default \code{SLICER = FALSE}, the function returns Avizo/Amira TCL blocks.
+The generated TCL code assumes that the Avizo project contains objects named
 \code{ARP} and \code{Slice}. An optional object named \code{OrthogonalView} can be used as a
 visual check plane, but the TCL code is written so that it will still run if
 this object does not exist.
+
+With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These blocks
+orient the selected Slicer slice view to the same anatomical planes, using RAS
+coordinates in the Python interactor.
 }
 
 \examples{
@@ -157,6 +190,16 @@ res <- orient_mandible(
 res$summary
 res$measurements
 cat(get_tcl(res, section = "CS1"))
+
+res_slicer <- orient_mandible(
+  landmarks_str = landmarks_str,
+  individual_id = "MANDIBLE_001",
+  lm_coord_system = "LPS",
+  SLICER = TRUE,
+  volume_name = "MANDIBLE_VOLUME"
+)
+
+cat(get_slicer_py(res_slicer, section = "CS1"))
 }
 
 }

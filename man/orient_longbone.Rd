@@ -14,9 +14,10 @@ orient_longbone(
   SOLID = FALSE,
   SLICER = FALSE,
   mesh_file = NULL,
+  lm_coord_system = "LPS",
   slicer_landmarks_str = NULL,
   model_name = NULL,
-  landmark_coordinate_system = "LPS"
+  landmark_coordinate_system = NULL
 )
 }
 \arguments{
@@ -28,8 +29,8 @@ eigenvector matrix. Required when \code{SOLID = FALSE}. The first column is
 interpreted as the longitudinal vector.}
 
 \item{landmarks_str}{Character string containing landmark coordinates. The
-expected number and interpretation of landmarks depend on \code{mode}. Required
-unless landmarks are supplied with \code{slicer_landmarks_str}.}
+expected number and interpretation of landmarks depend on \code{mode}. Plain XYZ
+coordinates and Slicer Markups-style rows are both accepted.}
 
 \item{section_loc}{Numeric vector of section locations expressed as
 percentages of biomechanical length.}
@@ -53,16 +54,21 @@ supported for Slicer output.}
 \item{mesh_file}{Optional path to a watertight closed surface mesh (\code{.ply},
 \code{.stl}, or \code{.obj}) used when \code{SOLID = TRUE}.}
 
-\item{slicer_landmarks_str}{Optional text block copied from a 3D Slicer
-Markups table. Landmark recognition is positional and depends on \code{mode}.
-Currently implemented for \code{TIBIA} and \code{HUMERUS}.}
+\item{lm_coord_system}{Coordinate system of the input landmark coordinates.
+The default is \code{"LPS"}, matching the Avizo/Amira-like internal convention.
+Use \code{"RAS"} for coordinates taken directly from Slicer world coordinates.
+This argument controls the spatial interpretation of the numbers only; it
+does not depend on whether the text was pasted as plain XYZ coordinates or
+as a Slicer Markups table.}
+
+\item{slicer_landmarks_str}{Deprecated alias for \code{landmarks_str}, retained so
+older scripts continue to run with the updated parser and coordinate logic.}
 
 \item{model_name}{Optional model node name used by the generated Slicer Python
 block. If omitted, the basename of \code{mesh_file} is used when available.}
 
-\item{landmark_coordinate_system}{Coordinate system of \code{slicer_landmarks_str}.
-Use \code{"LPS"} for coordinates exported in the mesh/external convention and
-\code{"RAS"} for coordinates taken directly from Slicer world coordinates.}
+\item{landmark_coordinate_system}{Deprecated alias for \code{lm_coord_system},
+retained for backward compatibility.}
 }
 \value{
 An object of class \code{orientcsg_longbone} and
@@ -176,8 +182,10 @@ improved compatibility across Amira/Avizo versions.
 When \code{SLICER = TRUE}, the generated Python code assumes that the corresponding
 model is loaded in 3D Slicer. If \code{model_name} is omitted, the function uses the
 basename of \code{mesh_file} when available. Landmarks copied from a Slicer Markups
-table can be supplied through \code{slicer_landmarks_str}; their coordinate system
-is controlled by \code{landmark_coordinate_system}.
+table can be supplied through \code{landmarks_str}; their coordinate system is
+controlled explicitly by \code{lm_coord_system}. The older arguments
+\code{slicer_landmarks_str} and \code{landmark_coordinate_system} are retained as
+aliases for backward compatibility.
 }
 
 \examples{

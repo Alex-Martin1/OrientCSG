@@ -5,7 +5,7 @@ OrientCSG is an R package for reproducible orientation of mandibular and long-bo
 The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports two broad types of workflows:
 
 1. classic CT-derived workflows using BoneJ-derived principal axes and Amira/Avizo TCL output; and
-2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output.
+2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and mandibular volume workflows with either Avizo/Amira TCL or 3D Slicer Python output.
 
 OrientCSG computes section locations, anatomical vectors, camera/view parameters, summary tables, manual-orientation tables, Amira/Avizo TCL command blocks, and, where requested, 3D Slicer Python blocks.
 
@@ -38,7 +38,7 @@ Depending on the workflow, it can:
 - compute long-bone longitudinal axes from either a BoneJ eigenvector matrix or a closed surface mesh;
 - return summary tables and manual-orientation tables;
 - generate Amira/Avizo TCL command blocks;
-- generate 3D Slicer Python blocks for solid mesh workflows;
+- generate 3D Slicer Python blocks for supported Slicer workflows;
 - copy generated command blocks to the clipboard.
 
 ## What OrientCSG does not do
@@ -62,7 +62,7 @@ It currently:
 - defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line`;
 - computes `CS1`, `CS2`, and `CS3` following the mandibular landmark protocol;
 - supports 9-, 11-, and 12-landmark inputs to accommodate different preservation states;
-- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one Amira/Avizo TCL block per section.
+- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one software command block per section. By default these are Amira/Avizo TCL blocks; with `SLICER = TRUE`, they are 3D Slicer Python blocks that orient the selected slice view to CS1, CS2, or CS3.
 
 ### Long-bone cross-sections
 
@@ -89,7 +89,7 @@ It is intentionally not implemented for `HUMERUS_TABLE`, because that mode depen
 
 The classic Amira/Avizo workflow generally uses the external mesh/Avizo coordinate convention used in the input data.
 
-3D Slicer works internally in RAS coordinates. When landmarks are copied from a 3D Slicer Markups table, use the coordinates as exported by Slicer and set `landmark_coordinate_system = "RAS"` if the values are in RAS.
+3D Slicer works internally in RAS coordinates. When landmarks are copied from a 3D Slicer Markups table, use the coordinates as exported by Slicer and set `lm_coord_system = "RAS"` if the values are in RAS. The text format and the coordinate system are handled separately: Slicer-style rows are parsed as tables, but the spatial interpretation still comes only from `lm_coord_system`.
 
 If coordinates were obtained from Amira/Avizo or another LPS-like mesh convention and then manually converted into Slicer-table style, remember that RAS and LPS differ by the sign of X and Y:
 
@@ -107,7 +107,7 @@ For mandibles, the workflow can be applied to fragmented specimens if the anatom
 
 ## Basic mandibular workflow
 
-The mandibular workflow accepts 9, 11, or 12 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export or another coordinate source.
+The mandibular workflow accepts 9, 11, or 12 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export, a 3D Slicer Markups table, or another coordinate source. The coordinate system is declared separately with `lm_coord_system`, whose default is `"LPS"`.
 
 ```r
 library(OrientCSG)
@@ -144,6 +144,21 @@ Retrieve or copy an Amira/Avizo TCL block:
 cat(get_tcl(res, section = "CS1"))
 copy_tcl(res, section = "CS1")
 write_tcl(res, file = "MANDIBLE_001_CS1.tcl", section = "CS1")
+```
+
+For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmarks were copied directly from Slicer, set `lm_coord_system = "RAS"`; if they come from the existing Avizo/Amira-like workflow, leave the default `lm_coord_system = "LPS"`.
+
+```r
+res_slicer <- orient_mandible(
+  landmarks_str = landmarks_str,
+  individual_id = "MANDIBLE_001",
+  lm_coord_system = "LPS",
+  SLICER = TRUE,
+  volume_name = "MANDIBLE_VOLUME"
+)
+
+cat(get_slicer_py(res_slicer, section = "CS1"))
+copy_slicer_py(res_slicer, section = "CS1")
 ```
 
 ### Mandibular preservation options
@@ -250,7 +265,7 @@ library(OrientCSG)
 
 mesh_file_tibia <- "C:/Users/Alex/Desktop/T108_solid.ply"
 
-slicer_landmarks_str_tibia <- "
+landmarks_str_slicer_tibia <- "
 1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
 2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
 3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
@@ -259,7 +274,8 @@ slicer_landmarks_str_tibia <- "
 res_tibia_solid_slicer <- orient_longbone(
   mode = "TIBIA",
   mesh_file = mesh_file_tibia,
-  slicer_landmarks_str = slicer_landmarks_str_tibia,
+  landmarks_str = landmarks_str_slicer_tibia,
+  lm_coord_system = "RAS",
   section_loc = 50,
   individual_id = "T108",
   model_name = "T108_solid",
@@ -289,7 +305,7 @@ library(OrientCSG)
 
 mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_solid.ply"
 
-slicer_landmarks_str_humerus <- "
+landmarks_str_slicer_humerus <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
 2 186.393386840820 -15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
 3 182.241800000000  -6.976971000000 -59.921390000000 0 0 0 1 1 1 0 F-3 2 0
@@ -299,7 +315,8 @@ slicer_landmarks_str_humerus <- "
 res_humerus_solid_slicer <- orient_longbone(
   mode = "HUMERUS",
   mesh_file = mesh_file_humerus,
-  slicer_landmarks_str = slicer_landmarks_str_humerus,
+  landmarks_str = landmarks_str_slicer_humerus,
+  lm_coord_system = "RAS",
   section_loc = c(35, 50),
   individual_id = "H108",
   model_name = "H108_solid",
@@ -330,26 +347,27 @@ row 4 = ProximalHead
 
 When `SLICER = TRUE`, the generated Python blocks are stored in `res$slicer_py`.
 
-Valid section names follow the requested section percentages:
+For long-bone results, section names follow the requested section percentages, such as `"SECTION_35"` or `"SECTION_50"`. For mandibular results, section names are `"CS1"`, `"CS2"`, and `"CS3"`.
 
 ```r
 names(res$slicer_py)
-```
 
-Retrieve or copy a Slicer Python block:
-
-```r
+# Long-bone example
 get_slicer_py(res, section = "SECTION_50")
 copy_slicer_py(res, section = "SECTION_50")
+
+# Mandibular example
+get_slicer_py(res, section = "CS1")
+copy_slicer_py(res, section = "CS1")
 ```
 
-Paste the copied block into the 3D Slicer Python Interactor. The generated script creates the oriented section and defines a helper function:
+Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks cut the loaded model, create the oriented section, set the 3D view, and define this helper function:
 
 ```python
 restore_orientcsg_camera_state()
 ```
 
-Run this function in the Slicer Python Interactor to restore the generated view.
+Run this function in the Slicer Python Interactor to restore the generated long-bone view. Mandibular Slicer blocks instead orient the selected slice view to the requested anatomical section of the loaded scalar volume.
 
 ## Installed examples
 

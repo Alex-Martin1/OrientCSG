@@ -79,3 +79,25 @@ mandible_landmarks_str_12 <- "
 -47.784660  12.426559 -201.179794
 -55.000000 -20.000000 -166.000000
 "
+
+matrix_from_xyz_string <- function(txt, ncol = 3) {
+  nums <- scan(text = gsub("[|,;]", " ", txt), quiet = TRUE)
+  matrix(nums, ncol = ncol, byrow = TRUE)
+}
+
+flip_xyz_matrix <- function(mat) {
+  out <- mat
+  out[, 1] <- -out[, 1]
+  out[, 2] <- -out[, 2]
+  out
+}
+
+make_slicer_markup_table <- function(mat) {
+  lines <- vapply(seq_len(nrow(mat)), function(i) {
+    sprintf(
+      "%d %.12f %.12f %.12f 0 0 0 1 1 1 0 F-%d 2 0",
+      i, mat[i, 1], mat[i, 2], mat[i, 3], i
+    )
+  }, character(1))
+  paste(lines, collapse = "\n")
+}

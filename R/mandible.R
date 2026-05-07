@@ -3,8 +3,8 @@
 #' `orient_mandible()` implements the mandibular orientation workflow used by
 #' OrientCSG. It receives the coordinates of the mandibular landmarks defined in
 #' the protocol, reconstructs the geometric reference system, computes the three
-#' planned cross-sections, and returns both tabular results and Avizo TCL command
-#' blocks for automatic orientation of the relevant objects in Avizo.
+#' planned cross-sections, and returns tabular results plus software-specific
+#' command blocks for automatic orientation in Avizo/Amira or 3D Slicer.
 #'
 #' @section Landmark order and preservation modes:
 #' The function accepts 9, 11, or 12 landmarks, pasted as a single coordinate
@@ -45,16 +45,21 @@
 #' retained internally for TCL and camera generation, but are not included in the
 #' compact summary table.
 #'
-#' @section Avizo requirements:
-#' The generated TCL code assumes that the Avizo project contains objects with
-#' specific names. For mandibular workflows, the relevant objects are typically
+#' @section Avizo/Amira and 3D Slicer backends:
+#' With the default `SLICER = FALSE`, the function returns Avizo/Amira TCL blocks.
+#' The generated TCL code assumes that the Avizo project contains objects named
 #' `ARP` and `Slice`. An optional object named `OrthogonalView` can be used as a
 #' visual check plane, but the TCL code is written so that it will still run if
 #' this object does not exist.
 #'
+#' With `SLICER = TRUE`, the function returns 3D Slicer Python blocks. These blocks
+#' orient the selected Slicer slice view to the same anatomical planes, using RAS
+#' coordinates in the Python interactor.
+#'
 #' @param landmarks_str Character string containing the coordinates of 9, 11, or
-#'   12 mandibular landmarks in the fixed protocol order. Values may be separated
-#'   by spaces, tabs, commas, semicolons, or vertical bars.
+#'   12 mandibular landmarks in the fixed protocol order. Plain XYZ coordinates
+#'   and Slicer Markups-style rows are both accepted. Values may be separated by
+#'   spaces, tabs, commas, semicolons, or vertical bars.
 #' @param individual_id Character identifier for the specimen. This value is
 #'   copied into the output tables.
 #' @param camera_distance_mm Numeric value giving the approximate camera distance
@@ -74,6 +79,21 @@
 #'   `FALSE`, `LM9` is treated as a placeholder used only to preserve the input
 #'   structure, and measurements depending on `LM9` are returned as
 #'   non-computable.
+#' @param lm_coord_system Coordinate system of the input landmark coordinates.
+#'   The default is `"LPS"`, matching the Avizo/Amira-like internal convention.
+#'   Use `"RAS"` for coordinates taken directly from Slicer world coordinates.
+#'   This argument controls the spatial interpretation of the numbers only; it
+#'   does not depend on whether the text was pasted as plain XYZ coordinates or
+#'   as a Slicer Markups table.
+#' @param SLICER Logical. If `FALSE` (default), generate Avizo/Amira TCL command
+#'   blocks. If `TRUE`, generate 3D Slicer Python command blocks.
+#' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
+#'   older scripts continue to run with the updated parser and coordinate logic.
+#' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
+#'   retained for backward compatibility.
+#' @param volume_name Optional scalar volume node name used by the generated
+#'   Slicer Python block. If omitted, the active background volume in the chosen
+#'   slice view is used, falling back to the first scalar volume in the scene.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -97,7 +117,10 @@
 #'     estimated, computed, or non-computable.
 #'   - `manual_orientation`: Table arranged for manual verification of ARP and
 #'     section orientation in Avizo/Amira.
-#'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`.
+#'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`,
+#'     when `SLICER = FALSE`.
+#'   - `slicer_py`: Named list with 3D Slicer Python blocks for `CS1`, `CS2`,
+#'     and `CS3`, when `SLICER = TRUE`.
 #'
 #' @examples
 #' \dontrun{
@@ -125,23 +148,51 @@
 #' res$summary
 #' res$measurements
 #' cat(get_tcl(res, section = "CS1"))
+#'
+#' res_slicer <- orient_mandible(
+#'   landmarks_str = landmarks_str,
+#'   individual_id = "MANDIBLE_001",
+#'   lm_coord_system = "LPS",
+#'   SLICER = TRUE,
+#'   volume_name = "MANDIBLE_VOLUME"
+#' )
+#'
+#' cat(get_slicer_py(res_slicer, section = "CS1"))
 #' }
 #'
 #' @export
 #'
-orient_mandible <- function(landmarks_str,
+orient_mandible <- function(landmarks_str = NULL,
                             individual_id = "MANDIBLE_001",
                             camera_distance_mm = 300,
                             cs3_camera_side = c("RIGHT", "LEFT"),
                             complete_arch = FALSE,
                             estimate_lm10 = FALSE,
-                            lm9_valid = TRUE) {
+                            lm9_valid = TRUE,
+                            lm_coord_system = "LPS",
+                            SLICER = FALSE,
+                            slicer_landmarks_str = NULL,
+                            landmark_coordinate_system = NULL,
+                            volume_name = NULL) {
+  lm_coord_system_missing <- missing(lm_coord_system)
   cs3_camera_side <- match.arg(toupper(cs3_camera_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
+  SLICER <- assert_logical_scalar(SLICER, "SLICER")
+  lm_coord_system <- resolve_lm_coord_system(
+    lm_coord_system = lm_coord_system,
+    landmark_coordinate_system = landmark_coordinate_system,
+    lm_coord_system_missing = lm_coord_system_missing
+  )
+
+  landmarks_str <- resolve_landmarks_str(
+    landmarks_str = landmarks_str,
+    slicer_landmarks_str = slicer_landmarks_str
+  )
 
   mat_pts <- parse_mandible_landmarks(landmarks_str)
+  mat_pts <- normalize_lm_coordinates(mat_pts, lm_coord_system = lm_coord_system)
   landmark_count <- nrow(mat_pts)
 
   if (estimate_lm10 && landmark_count < 11) {
@@ -340,11 +391,23 @@ orient_mandible <- function(landmarks_str,
     measurements = measurements,
     manual_orientation = manual_orientation,
     camera_distance_mm = camera_distance_mm,
-    cs3_camera_side = cs3_camera_side
+    cs3_camera_side = cs3_camera_side,
+    lm_coord_system = lm_coord_system,
+    internal_coord_system = "LPS",
+    SLICER = SLICER,
+    volume_name = volume_name
   )
   class(res) <- c("orientcsg_mandible", "orientcsg_orientation")
 
-  res$avizo_tcl <- avizo_tcl_mandible(res)
+  if (isTRUE(SLICER)) {
+    res$slicer_py <- lapply(c("CS1", "CS2", "CS3"), function(sec) {
+      emit_slicer_mandible_python(res, section = sec)
+    })
+    names(res$slicer_py) <- c("CS1", "CS2", "CS3")
+  } else {
+    res$avizo_tcl <- avizo_tcl_mandible(res)
+  }
+
   res
 }
 
@@ -353,23 +416,40 @@ orient_mandible <- function(landmarks_str,
 # Accept exactly the preservation patterns supported by the mandibular workflow:
 # 9 landmarks (LM1-LM9), 11 landmarks (LM1-LM11), or 12 landmarks (LM1-LM12).
 parse_mandible_landmarks <- function(landmarks_str) {
-  nums <- extract_nums(landmarks_str)
-  allowed_landmarks <- c(9, 11, 12)
-  allowed_values <- allowed_landmarks * 3
+  allowed_landmarks <- c(9L, 11L, 12L)
+  lines <- clean_landmark_lines(landmarks_str)
+  token_list <- lapply(lines, extract_numeric_tokens)
+  token_lengths <- vapply(token_list, length, integer(1))
 
-  if (!(length(nums) %in% allowed_values)) {
-    stop(
-      sprintf(
-        "MANDIBLE requires 27, 33, or 36 numeric values: 9, 11, or 12 landmarks x 3 coordinates. Detected %d numeric values.",
-        length(nums)
-      ),
-      call. = FALSE
-    )
+  linewise_n <- if (length(lines) %in% allowed_landmarks &&
+                    all(token_lengths >= 3L) &&
+                    (all(token_lengths == 3L) || all(token_lengths >= 4L))) {
+    length(lines)
+  } else {
+    NA_integer_
   }
 
-  n_landmarks <- length(nums) / 3
-  out <- matrix(nums, ncol = 3, byrow = TRUE)
-  rownames(out) <- paste0("LM", seq_len(n_landmarks))
+  if (!is.na(linewise_n)) {
+    out <- parse_landmarks(landmarks_str, n_landmarks = linewise_n, context = "MANDIBLE")
+  } else {
+    nums <- extract_numeric_tokens(landmarks_str)
+    allowed_values <- allowed_landmarks * 3L
+
+    if (!(length(nums) %in% allowed_values)) {
+      stop(
+        sprintf(
+          "MANDIBLE requires 27, 33, or 36 numeric values: 9, 11, or 12 landmarks x 3 coordinates. Detected %d numeric values.",
+          length(nums)
+        ),
+        call. = FALSE
+      )
+    }
+
+    out <- matrix(nums, ncol = 3, byrow = TRUE)
+  }
+
+  rownames(out) <- paste0("LM", seq_len(nrow(out)))
+  colnames(out) <- c("x", "y", "z")
   out
 }
 

@@ -7,22 +7,29 @@
 get_slicer_py(res, section = NULL)
 }
 \arguments{
-\item{res}{An orientation result returned by \code{\link[=orient_longbone]{orient_longbone()}}.}
+\item{res}{An orientation result returned by \code{\link[=orient_longbone]{orient_longbone()}} or
+\code{\link[=orient_mandible]{orient_mandible()}}.}
 
-\item{section}{Optional section name, usually in the format \code{"SECTION_50"}.}
+\item{section}{Optional section name. For long-bone results this is usually
+in the format \code{"SECTION_50"}; for mandibular results use \code{"CS1"},
+\code{"CS2"}, or \code{"CS3"}.}
 }
 \value{
 A character scalar containing one or more 3D Slicer Python blocks.
 }
 \description{
 \code{get_slicer_py()} extracts one or more generated Python command blocks from a
-result created with \code{orient_longbone(..., SLICER = TRUE)}. The returned block
-is intended to be pasted into the 3D Slicer Python Interactor.
+result created with \code{orient_longbone(..., SLICER = TRUE)} or
+\code{orient_mandible(..., SLICER = TRUE)}. The returned block is intended to be
+pasted into the 3D Slicer Python Interactor.
 }
 \examples{
 \dontrun{
 py <- get_slicer_py(res, section = "SECTION_50")
 cat(py)
+
+py_cs1 <- get_slicer_py(res_mandible, section = "CS1")
+cat(py_cs1)
 }
 
 }

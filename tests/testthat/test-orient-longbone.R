@@ -152,3 +152,48 @@ test_that("orient_longbone() validates malformed input", {
     "requires 9 numeric values"
   )
 })
+
+test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
+  humerus_lps <- matrix_from_xyz_string(humerus_landmarks_str)
+  humerus_ras_slicer <- make_slicer_markup_table(flip_xyz_matrix(humerus_lps))
+
+  res_plain <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    landmarks_str = humerus_landmarks_str,
+    section_loc = c(35, 50),
+    lm_coord_system = "LPS"
+  )
+  res_slicer <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    landmarks_str = humerus_ras_slicer,
+    section_loc = c(35, 50),
+    lm_coord_system = "RAS"
+  )
+
+  expect_equal(res_slicer$lm_coord_system, "RAS")
+  expect_equal(res_slicer$internal_coord_system, "LPS")
+  expect_equal(res_slicer$landmarks, res_plain$landmarks, tolerance = 1e-6)
+  expect_equal(res_slicer$summary, res_plain$summary, tolerance = 1e-6)
+})
+
+test_that("orient_longbone() keeps legacy coordinate and landmark aliases", {
+  res_new <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    landmarks_str = humerus_landmarks_str,
+    section_loc = 50,
+    lm_coord_system = "LPS"
+  )
+  res_old <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    slicer_landmarks_str = humerus_landmarks_str,
+    section_loc = 50,
+    landmark_coordinate_system = "LPS"
+  )
+
+  expect_equal(res_old$landmarks, res_new$landmarks, tolerance = 1e-6)
+  expect_equal(res_old$summary, res_new$summary, tolerance = 1e-6)
+})

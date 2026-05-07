@@ -84,11 +84,15 @@ copy_tcl <- function(res, section = NULL) {
 #' Get 3D Slicer Python commands from an orientation object
 #'
 #' `get_slicer_py()` extracts one or more generated Python command blocks from a
-#' result created with `orient_longbone(..., SLICER = TRUE)`. The returned block
-#' is intended to be pasted into the 3D Slicer Python Interactor.
+#' result created with `orient_longbone(..., SLICER = TRUE)` or
+#' `orient_mandible(..., SLICER = TRUE)`. The returned block is intended to be
+#' pasted into the 3D Slicer Python Interactor.
 #'
-#' @param res An orientation result returned by [orient_longbone()].
-#' @param section Optional section name, usually in the format `"SECTION_50"`.
+#' @param res An orientation result returned by [orient_longbone()] or
+#'   [orient_mandible()].
+#' @param section Optional section name. For long-bone results this is usually
+#'   in the format `"SECTION_50"`; for mandibular results use `"CS1"`,
+#'   `"CS2"`, or `"CS3"`.
 #'
 #' @return A character scalar containing one or more 3D Slicer Python blocks.
 #'
@@ -96,6 +100,9 @@ copy_tcl <- function(res, section = NULL) {
 #' \dontrun{
 #' py <- get_slicer_py(res, section = "SECTION_50")
 #' cat(py)
+#'
+#' py_cs1 <- get_slicer_py(res_mandible, section = "CS1")
+#' cat(py_cs1)
 #' }
 #'
 #' @export
@@ -132,7 +139,8 @@ get_slicer_py <- function(res, section = NULL) {
 #' `copy_slicer_py()` copies one or more generated 3D Slicer Python command
 #' blocks from an orientation result to the system clipboard.
 #'
-#' @param res An orientation result returned by [orient_longbone()].
+#' @param res An orientation result returned by [orient_longbone()] or
+#'   [orient_mandible()].
 #' @param section Optional section name. If `NULL`, all available blocks are
 #'   copied.
 #'
@@ -143,6 +151,7 @@ get_slicer_py <- function(res, section = NULL) {
 #' @examples
 #' \dontrun{
 #' copy_slicer_py(res, section = "SECTION_50")
+#' copy_slicer_py(res_mandible, section = "CS1")
 #' }
 #'
 #' @export
