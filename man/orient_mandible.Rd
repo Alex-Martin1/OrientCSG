@@ -67,8 +67,10 @@ older scripts continue to run with the updated parser and coordinate logic.}
 retained for backward compatibility.}
 
 \item{volume_name}{Optional scalar volume node name used by the generated
-Slicer Python block. If omitted, the active background volume in the chosen
-slice view is used, falling back to the first scalar volume in the scene.}
+Slicer Python block. If omitted, the block uses the active background volume
+in the chosen slice view when possible, falling back to the only scalar
+volume in the scene. If multiple scalar volumes are loaded, provide
+\code{volume_name} explicitly.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
@@ -96,7 +98,10 @@ section orientation in Avizo/Amira.
 \item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3},
 when \code{SLICER = FALSE}.
 \item \code{slicer_py}: Named list with 3D Slicer Python blocks for \code{CS1}, \code{CS2},
-and \code{CS3}, when \code{SLICER = TRUE}.
+and \code{CS3}, when \code{SLICER = TRUE}. These blocks orient the Red slice view,
+create the ARP, \code{LM1_Line}, and scale-bar verification objects, configure
+volume rendering and a 3D verification view, and define \code{restore_view()}
+and \code{refresh_orientcsg_scale()}.
 }
 }
 \description{
@@ -159,9 +164,13 @@ The generated TCL code assumes that the Avizo project contains objects named
 visual check plane, but the TCL code is written so that it will still run if
 this object does not exist.
 
-With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These blocks
-orient the selected Slicer slice view to the same anatomical planes, using RAS
-coordinates in the Python interactor.
+With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These
+blocks orient the Red slice view to the requested mandibular section, use RAS
+coordinates in the Python interactor, activate volume rendering with the
+\code{CT-AAA2} preset when available, create the ARP and \code{LM1_Line} verification
+objects, add a 10 mm scale bar, and configure a 3D verification view. The
+generated block also defines \code{restore_view()} and
+\code{refresh_orientcsg_scale()} helper commands.
 }
 
 \examples{

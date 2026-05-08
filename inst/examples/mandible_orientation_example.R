@@ -110,3 +110,11 @@ cat(get_slicer_py(res_slicer, section = "CS2"))
 cat(get_slicer_py(res_slicer, section = "CS3"))
 
 copy_slicer_py(res_slicer, section = "CS1")
+copy_slicer_py(res_slicer, section = "CS2")
+copy_slicer_py(res_slicer, section = "CS3")
+
+# After pasting a mandibular Slicer block into the Python Interactor, two helper
+# commands are available in Slicer:
+#
+# restore_view()
+# refresh_orientcsg_scale()

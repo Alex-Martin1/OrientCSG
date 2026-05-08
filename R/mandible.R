@@ -52,9 +52,13 @@
 #' visual check plane, but the TCL code is written so that it will still run if
 #' this object does not exist.
 #'
-#' With `SLICER = TRUE`, the function returns 3D Slicer Python blocks. These blocks
-#' orient the selected Slicer slice view to the same anatomical planes, using RAS
-#' coordinates in the Python interactor.
+#' With `SLICER = TRUE`, the function returns 3D Slicer Python blocks. These
+#' blocks orient the Red slice view to the requested mandibular section, use RAS
+#' coordinates in the Python interactor, activate volume rendering with the
+#' `CT-AAA2` preset when available, create the ARP and `LM1_Line` verification
+#' objects, add a 10 mm scale bar, and configure a 3D verification view. The
+#' generated block also defines `restore_view()` and
+#' `refresh_orientcsg_scale()` helper commands.
 #'
 #' @param landmarks_str Character string containing the coordinates of 9, 11, or
 #'   12 mandibular landmarks in the fixed protocol order. Plain XYZ coordinates
@@ -92,8 +96,10 @@
 #' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
 #'   retained for backward compatibility.
 #' @param volume_name Optional scalar volume node name used by the generated
-#'   Slicer Python block. If omitted, the active background volume in the chosen
-#'   slice view is used, falling back to the first scalar volume in the scene.
+#'   Slicer Python block. If omitted, the block uses the active background volume
+#'   in the chosen slice view when possible, falling back to the only scalar
+#'   volume in the scene. If multiple scalar volumes are loaded, provide
+#'   `volume_name` explicitly.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -120,7 +126,10 @@
 #'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`,
 #'     when `SLICER = FALSE`.
 #'   - `slicer_py`: Named list with 3D Slicer Python blocks for `CS1`, `CS2`,
-#'     and `CS3`, when `SLICER = TRUE`.
+#'     and `CS3`, when `SLICER = TRUE`. These blocks orient the Red slice view,
+#'     create the ARP, `LM1_Line`, and scale-bar verification objects, configure
+#'     volume rendering and a 3D verification view, and define `restore_view()`
+#'     and `refresh_orientcsg_scale()`.
 #'
 #' @examples
 #' \dontrun{

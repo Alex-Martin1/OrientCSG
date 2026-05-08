@@ -20,7 +20,9 @@ issues a warning and invisibly returns \code{FALSE}.
 }
 \description{
 \code{copy_slicer_py()} copies one or more generated 3D Slicer Python command
-blocks from an orientation result to the system clipboard.
+blocks from an orientation result to the system clipboard. For mandibular
+Slicer output, the copied block can be pasted into the Slicer Python
+Interactor to orient the Red slice view and create the verification objects.
 }
 \examples{
 \dontrun{

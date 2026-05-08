@@ -4,8 +4,9 @@ OrientCSG is an R package for reproducible orientation of mandibular and long-bo
 
 The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports two broad types of workflows:
 
-1. classic CT-derived workflows using BoneJ-derived principal axes and Amira/Avizo TCL output; and
-2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and mandibular volume workflows with either Avizo/Amira TCL or 3D Slicer Python output.
+1. classic CT-derived workflows using BoneJ-derived principal axes and Amira/Avizo TCL output;
+2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and
+3. mandibular volume workflows with either Avizo/Amira TCL or 3D Slicer Python output.
 
 OrientCSG computes section locations, anatomical vectors, camera/view parameters, summary tables, manual-orientation tables, Amira/Avizo TCL command blocks, and, where requested, 3D Slicer Python blocks.
 
@@ -62,7 +63,7 @@ It currently:
 - defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line`;
 - computes `CS1`, `CS2`, and `CS3` following the mandibular landmark protocol;
 - supports 9-, 11-, and 12-landmark inputs to accommodate different preservation states;
-- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one software command block per section. By default these are Amira/Avizo TCL blocks; with `SLICER = TRUE`, they are 3D Slicer Python blocks that orient the selected slice view to CS1, CS2, or CS3.
+- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one software command block per section. By default these are Amira/Avizo TCL blocks; with `SLICER = TRUE`, they are 3D Slicer Python blocks that orient the selected slice view to CS1, CS2, or CS3, activate a CT volume-rendering preset, create ARP and `LM1_Line` verification objects, add a 10 mm scale bar, and configure a 3D verification view.
 
 ### Long-bone cross-sections
 
@@ -146,7 +147,7 @@ copy_tcl(res, section = "CS1")
 write_tcl(res, file = "MANDIBLE_001_CS1.tcl", section = "CS1")
 ```
 
-For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmarks were copied directly from Slicer, set `lm_coord_system = "RAS"`; if they come from the existing Avizo/Amira-like workflow, leave the default `lm_coord_system = "LPS"`.
+For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmarks were copied directly from Slicer, set `lm_coord_system = "RAS"`; if they come from the existing Avizo/Amira-like workflow, leave the default `lm_coord_system = "LPS"`. Set `volume_name` to the scalar volume node name in Slicer when more than one volume may be loaded.
 
 ```r
 res_slicer <- orient_mandible(
@@ -367,7 +368,16 @@ Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer bl
 restore_orientcsg_camera_state()
 ```
 
-Run this function in the Slicer Python Interactor to restore the generated long-bone view. Mandibular Slicer blocks instead orient the selected slice view to the requested anatomical section of the loaded scalar volume.
+Run this function in the Slicer Python Interactor to restore the generated long-bone view.
+
+Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines these helper commands:
+
+```python
+restore_view()
+refresh_orientcsg_scale()
+```
+
+Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
 
 ## Installed examples
 
@@ -437,7 +447,9 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 0.2.0 adds the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
+Version 0.3.0 adds the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+
+Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 
 Version 0.1.4 introduced the first solid mesh + Slicer workflow for tibial sections. Version 0.1.2 updated mandibular TCL generation so that CS1, CS2, and CS3 are emitted as normal-and-point Slice definitions, improving compatibility across Amira/Avizo versions while preserving the same orientation geometry. Version 0.1.1 introduced Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows, including 9-, 11-, and 12-landmark mandibular inputs and explicit measurement status/method metadata.
 
