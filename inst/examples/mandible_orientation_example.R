@@ -90,14 +90,14 @@ landmarks_str_slicer_mandible <- "
 # lm_coord_system = "RAS"
 
 res_slicer <- orient_mandible(
-  landmarks_str = landmarks_str,
+  landmarks_str = landmarks_str_slicer_mandible,
   individual_id = "MANDIBLE_EXAMPLE",
   camera_distance_mm = 300,
   cs3_camera_side = "RIGHT",
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
   lm9_valid = TRUE,
-  lm_coord_system = "LPS",
+  lm_coord_system = "RAS",
   SLICER = TRUE,
   volume_name = "MANDIBLE_VOLUME"
 )
