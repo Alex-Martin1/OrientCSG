@@ -117,7 +117,11 @@
 #'     when computed.
 #'   - `vectors`: Computed orientation vectors.
 #'   - `summary`: Compact summary table for key landmarks, computed points, and
-#'     vectors used for plane orientation.
+#'     vectors used for plane orientation. Coordinates are emitted in the
+#'     software-specific output coordinate system: LPS-like for Amira/Avizo when
+#'     `SLICER = FALSE`, and RAS for 3D Slicer when `SLICER = TRUE`.
+#'   - `summary_coord_system`: Coordinate system used by `summary`.
+#'   - `output_coord_system`: Coordinate system used by software-specific outputs.
 #'   - `measurements`: Linear mandibular measurements. The table includes
 #'     `status` and `method` columns indicating whether each value is direct,
 #'     estimated, computed, or non-computable.
@@ -327,6 +331,14 @@ orient_mandible <- function(landmarks_str = NULL,
 
   summary_tbl <- make_xyz_summary(summary_entries, individual_id)
 
+  summary_coord_system <- if (isTRUE(SLICER)) "RAS" else "LPS"
+  if (isTRUE(SLICER)) {
+    summary_coords <- as.matrix(summary_tbl[, c("x", "y", "z"), drop = FALSE])
+    summary_coords <- flip_xy_matrix(summary_coords)
+    summary_tbl[, c("x", "y", "z")] <- round(summary_coords, 6)
+  }
+  attr(summary_tbl, "coord_system") <- summary_coord_system
+
   measurements <- build_mandible_measurements(
     individual_id = individual_id,
     LM1 = LM1,
@@ -400,11 +412,13 @@ orient_mandible <- function(landmarks_str = NULL,
     points = points,
     vectors = vectors,
     summary = summary_tbl,
+    summary_coord_system = summary_coord_system,
     measurements = measurements,
     camera_distance_mm = camera_distance_mm,
     cs3_camera_side = cs3_camera_side,
     lm_coord_system = lm_coord_system,
     internal_coord_system = "LPS",
+    output_coord_system = summary_coord_system,
     SLICER = SLICER,
     volume_name = volume_name
   )

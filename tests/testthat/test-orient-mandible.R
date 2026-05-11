@@ -13,6 +13,8 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_equal(res$individual_id, "MANDIBLE_TEST")
   expect_equal(res$cs3_camera_side, "RIGHT")
   expect_equal(res$landmark_count, 11)
+  expect_equal(res$summary_coord_system, "LPS")
+  expect_equal(res$output_coord_system, "LPS")
   expect_false(res$complete_arch)
   expect_false(res$estimate_lm10)
   expect_true(res$lm9_valid)
@@ -274,6 +276,21 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   )
 
   expect_equal(res$SLICER, TRUE)
+  expect_equal(res$summary_coord_system, "RAS")
+  expect_equal(res$output_coord_system, "RAS")
+  expect_equal(attr(res$summary, "coord_system"), "RAS")
+
+  lm1_summary <- res$summary[res$summary$metric == "LM1", c("x", "y", "z")]
+  expected_lm1_ras <- c(
+    -res$landmarks["LM1", "x"],
+    -res$landmarks["LM1", "y"],
+     res$landmarks["LM1", "z"]
+  )
+  expect_equal(
+    unname(unlist(lm1_summary, use.names = FALSE)),
+    unname(as.numeric(expected_lm1_ras)),
+    tolerance = 1e-6
+  )
   expect_null(res$avizo_tcl)
   expect_null(res$manual_orientation)
   expect_equal(names(res$slicer_py), c("CS1", "CS2", "CS3"))

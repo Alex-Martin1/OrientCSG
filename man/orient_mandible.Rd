@@ -89,7 +89,11 @@ components:
 when computed.
 \item \code{vectors}: Computed orientation vectors.
 \item \code{summary}: Compact summary table for key landmarks, computed points, and
-vectors used for plane orientation.
+vectors used for plane orientation. Coordinates are emitted in the
+software-specific output coordinate system: LPS-like for Amira/Avizo when
+\code{SLICER = FALSE}, and RAS for 3D Slicer when \code{SLICER = TRUE}.
+\item \code{summary_coord_system}: Coordinate system used by \code{summary}.
+\item \code{output_coord_system}: Coordinate system used by software-specific outputs.
 \item \code{measurements}: Linear mandibular measurements. The table includes
 \code{status} and \code{method} columns indicating whether each value is direct,
 estimated, computed, or non-computable.
