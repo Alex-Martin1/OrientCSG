@@ -122,7 +122,7 @@
 #'     `status` and `method` columns indicating whether each value is direct,
 #'     estimated, computed, or non-computable.
 #'   - `manual_orientation`: Table arranged for manual verification of ARP and
-#'     section orientation in Avizo/Amira.
+#'     section orientation in Avizo/Amira, when `SLICER = FALSE`.
 #'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`,
 #'     when `SLICER = FALSE`.
 #'   - `slicer_py`: Named list with 3D Slicer Python blocks for `CS1`, `CS2`,
@@ -347,23 +347,26 @@ orient_mandible <- function(landmarks_str = NULL,
     reflection_method = reflection_method
   )
 
-  # This table mirrors the logic of the protocol and is meant for checking or
-  # reproducing the orientation manually in Avizo if needed.
-  manual_orientation <- rbind(
-    data.frame(section = "ARP", role = "Origin", object = "ARP", value = "ARP_Origin", x = ARP_Origin[1], y = ARP_Origin[2], z = ARP_Origin[3]),
-    data.frame(section = "ARP", role = "Normal", object = "ARP", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),
-    data.frame(section = "CS1", role = "Plane point", object = "Slice", value = "CS1B/LM5", x = CS1B[1], y = CS1B[2], z = CS1B[3]),
-    data.frame(section = "CS1", role = "Normal", object = "Slice", value = "Vec_CS1_Normal", x = Vec_CS1_Normal[1], y = Vec_CS1_Normal[2], z = Vec_CS1_Normal[3]),
-    data.frame(section = "CS1", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS1", x = Vec_CS1[1], y = Vec_CS1[2], z = Vec_CS1[3]),
-    data.frame(section = "CS2", role = "Plane point", object = "Slice", value = "CS2B/LM7", x = CS2B[1], y = CS2B[2], z = CS2B[3]),
-    data.frame(section = "CS2", role = "Normal", object = "Slice", value = "Vec_CS2_Normal", x = Vec_CS2_Normal[1], y = Vec_CS2_Normal[2], z = Vec_CS2_Normal[3]),
-    data.frame(section = "CS2", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS2", x = Vec_CS2[1], y = Vec_CS2[2], z = Vec_CS2[3]),
-    data.frame(section = "CS3", role = "Plane point", object = "Slice", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
-    data.frame(section = "CS3", role = "Normal", object = "Slice", value = "Vec_1_1Line", x = Vec_1_1Line[1], y = Vec_1_1Line[2], z = Vec_1_1Line[3]),
-    data.frame(section = "CS3", role = "Screen-horizontal reference", object = "Camera", value = "Vec_0_2", x = Vec_0_2[1], y = Vec_0_2[2], z = Vec_0_2[3])
-  )
-  numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
-  manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
+  if (!isTRUE(SLICER)) {
+    # This table mirrors the logic of the protocol and is meant for checking or
+    # reproducing the orientation manually in Avizo if needed.
+    manual_orientation <- rbind(
+      data.frame(section = "ARP", role = "Origin", object = "ARP", value = "ARP_Origin", x = ARP_Origin[1], y = ARP_Origin[2], z = ARP_Origin[3]),
+      data.frame(section = "ARP", role = "Normal", object = "ARP", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),
+      data.frame(section = "CS1", role = "Plane point", object = "Slice", value = "CS1B/LM5", x = CS1B[1], y = CS1B[2], z = CS1B[3]),
+      data.frame(section = "CS1", role = "Normal", object = "Slice", value = "Vec_CS1_Normal", x = Vec_CS1_Normal[1], y = Vec_CS1_Normal[2], z = Vec_CS1_Normal[3]),
+      data.frame(section = "CS1", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS1", x = Vec_CS1[1], y = Vec_CS1[2], z = Vec_CS1[3]),
+      data.frame(section = "CS2", role = "Plane point", object = "Slice", value = "CS2B/LM7", x = CS2B[1], y = CS2B[2], z = CS2B[3]),
+      data.frame(section = "CS2", role = "Normal", object = "Slice", value = "Vec_CS2_Normal", x = Vec_CS2_Normal[1], y = Vec_CS2_Normal[2], z = Vec_CS2_Normal[3]),
+      data.frame(section = "CS2", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS2", x = Vec_CS2[1], y = Vec_CS2[2], z = Vec_CS2[3]),
+      data.frame(section = "CS3", role = "Plane point", object = "Slice", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
+      data.frame(section = "CS3", role = "Normal", object = "Slice", value = "Vec_1_1Line", x = Vec_1_1Line[1], y = Vec_1_1Line[2], z = Vec_1_1Line[3]),
+      data.frame(section = "CS3", role = "Screen-horizontal reference", object = "Camera", value = "Vec_0_2", x = Vec_0_2[1], y = Vec_0_2[2], z = Vec_0_2[3])
+    )
+    numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
+    manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
+  
+  }
 
   vectors <- list(
     Vec_1_1Line = Vec_1_1Line,
@@ -398,7 +401,6 @@ orient_mandible <- function(landmarks_str = NULL,
     vectors = vectors,
     summary = summary_tbl,
     measurements = measurements,
-    manual_orientation = manual_orientation,
     camera_distance_mm = camera_distance_mm,
     cs3_camera_side = cs3_camera_side,
     lm_coord_system = lm_coord_system,
@@ -406,6 +408,10 @@ orient_mandible <- function(landmarks_str = NULL,
     SLICER = SLICER,
     volume_name = volume_name
   )
+  if (!isTRUE(SLICER)) {
+    res$manual_orientation <- manual_orientation
+  }
+
   class(res) <- c("orientcsg_mandible", "orientcsg_orientation")
 
   if (isTRUE(SLICER)) {

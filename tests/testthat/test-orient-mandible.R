@@ -275,6 +275,7 @@ test_that("orient_mandible() generates Slicer Python blocks", {
 
   expect_equal(res$SLICER, TRUE)
   expect_null(res$avizo_tcl)
+  expect_null(res$manual_orientation)
   expect_equal(names(res$slicer_py), c("CS1", "CS2", "CS3"))
 
   py_cs1 <- get_slicer_py(res, section = "CS1")

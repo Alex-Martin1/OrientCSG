@@ -94,7 +94,7 @@ vectors used for plane orientation.
 \code{status} and \code{method} columns indicating whether each value is direct,
 estimated, computed, or non-computable.
 \item \code{manual_orientation}: Table arranged for manual verification of ARP and
-section orientation in Avizo/Amira.
+section orientation in Avizo/Amira, when \code{SLICER = FALSE}.
 \item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3},
 when \code{SLICER = FALSE}.
 \item \code{slicer_py}: Named list with 3D Slicer Python blocks for \code{CS1}, \code{CS2},
