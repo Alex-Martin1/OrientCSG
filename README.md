@@ -447,7 +447,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 0.3.0 adds the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
 
 Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 

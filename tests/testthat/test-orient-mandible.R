@@ -307,6 +307,9 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs1, "restore_view()")
   expect_contains_fixed(py_cs1, "refresh_orientcsg_scale()")
   expect_contains_fixed(py_cs1, "PSEC, Slicer RAS")
+  expect_contains_fixed(py_cs1, "Y screen axis: anatomical vertical in the section view")
+  expect_contains_fixed(py_cs1, "This forces the ARP to appear horizontal in the captured slice")
+  expect_contains_fixed(py_cs1, "x_ref = np.asarray(x_reference, dtype=float)")
 
   expect_contains_fixed(py_cs2, "SECTION_LABEL = \"CS2\"")
   expect_contains_fixed(py_cs2, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
