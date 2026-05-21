@@ -12,6 +12,9 @@ mandible_landmarks_str <- "
 -47.784660  12.426559 -201.179794
 "
 
+dicom_iop_legacy_flip_xy <- "0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0"
+dicom_iop_carcavilla <- "0020,0037 Image Orientation (Patient): 1\\0\\0\\0\\-1\\0"
+
 longitudinal_matrix_str_tibia <- "
 ||0.008|-0.758|-0.653||
 ||0.017|-0.652|0.758||
@@ -40,6 +43,19 @@ humerus_landmarks_str <- "
 humerus_table_landmarks_str <- "
 182.2418 -6.976971 -59.92139
 182.7214  8.127365 -345.48276
+"
+
+longitudinal_matrix_str_carcavilla_humerus <- "
+||0.000|0.993|-0.121||
+||-0.044|0.121|0.992||
+||0.999|0.005|0.044||
+"
+
+carcavilla_humerus_landmarks_str <- "
+5.620707035064697e+000 1.628324508666992e+001 -9.453842163085938e+001
+3.611394882202148e+001 8.228038787841797e+000 -9.815258789062500e+001
+2.633381462097168e+001 1.139232277870178e+000 -8.943778991699219e+001
+1.172114372253418e+001 9.181549072265625e+000 -4.082433776855469e+002
 "
 
 expect_unit_vector <- function(x, tolerance = 1e-6) {

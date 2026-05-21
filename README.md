@@ -75,7 +75,7 @@ It currently supports:
 - `HUMERUS`;
 - `HUMERUS_TABLE`.
 
-For classic CT-derived workflows, `orient_longbone()` uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis, after applying the BoneJ-to-Avizo coordinate correction `(x, y, z) -> (-x, -y, z)`.
+For classic CT-derived workflows, `orient_longbone()` uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis. The BoneJ matrix is now transformed using the DICOM Image Orientation (Patient) line (`0020,0037`) from the same image stack used in BoneJ. This avoids assuming a single fixed BoneJ-to-Avizo correction for all DICOM series.
 
 For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
 
@@ -99,6 +99,8 @@ x_RAS = -x_LPS
 y_RAS = -y_LPS
 z_RAS =  z_LPS
 ```
+
+For classic BoneJ workflows, the landmark coordinate system and the BoneJ matrix transformation are separate issues. `lm_coord_system` only controls the landmarks. The BoneJ eigenvectors are transformed with `dicom_iop` by default. For example, a DICOM line such as `-1\0\0\0\-1\0` reproduces the previous `(-x, -y, z)` correction, whereas `1\0\0\0\-1\0` gives a different transformation. The result object stores this information in `res$bonej` and reports a simple longitudinal-axis check in `res$longitudinal_axis_check`.
 
 ## Preservation requirements
 
@@ -194,11 +196,16 @@ If `LM9` cannot be placed on a real anatomical gonion and a placeholder is used 
 
 The classic long-bone workflow requires:
 
-1. a BoneJ Moments of Inertia eigenvector matrix; and
-2. the anatomical landmarks required by the selected mode.
+1. the DICOM Image Orientation (Patient) line, copied from the same image stack used in BoneJ;
+2. a BoneJ Moments of Inertia eigenvector matrix; and
+3. the anatomical landmarks required by the selected mode.
+
+Use a raw R string, `r"(...)"`, when pasting the DICOM line so that the backslashes are read literally.
 
 ```r
 library(OrientCSG)
+
+dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 
 longitudinal_matrix_str <- "
 ||0.008|-0.758|-0.653||
@@ -215,6 +222,7 @@ tibia_landmarks_str <- "
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
+  dicom_iop = dicom_iop_str,
   landmarks_str = tibia_landmarks_str,
   section_loc = 50,
   individual_id = "TIBIA_001",
@@ -239,6 +247,7 @@ Multiple section locations can be requested at once:
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
+  dicom_iop = dicom_iop_str,
   landmarks_str = tibia_landmarks_str,
   section_loc = c(35, 50, 65),
   individual_id = "TIBIA_001"
@@ -424,6 +433,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, or `lm9_valid`);
 - the wrong number of mandibular landmarks was supplied;
 - the BoneJ eigenvector matrix was copied incorrectly;
+- the wrong DICOM Image Orientation (Patient) line was supplied, or it came from a different stack than the one processed in BoneJ;
 - the wrong long-bone mode was selected;
 - `SOLID = TRUE` was requested but the mesh is not closed or cannot be read by `Rvcg`;
 - the wrong coordinate convention was used for Slicer landmarks;

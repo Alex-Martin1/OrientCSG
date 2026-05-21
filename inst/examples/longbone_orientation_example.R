@@ -23,6 +23,12 @@ library(OrientCSG)
 #   LM1 = tibial plateau landmark 1
 #   LM2 = tibial plateau landmark 2
 #   LM3 = tibio-talar landmark
+#
+# Paste the DICOM Image Orientation (Patient) line from the same image stack
+# that was processed in BoneJ. Use a raw R string r"(...)" so that backslashes
+# can be pasted directly from the DICOM metadata.
+
+dicom_iop_str_tibia <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 
 longitudinal_matrix_str_tibia <- "
 ||0.011|-0.780|-0.626||
@@ -39,6 +45,7 @@ tibia_landmarks_str <- "
 res_tibia <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+  dicom_iop = dicom_iop_str_tibia,
   landmarks_str = tibia_landmarks_str,
   section_loc = c(50),
   individual_id = "TIBIA_EXAMPLE",
@@ -69,6 +76,10 @@ copy_tcl(res_tibia, section = "SECTION_50")
 #
 # This mode should be used when the mediolateral anatomical direction is reconstructed from manually placed landmarks.
 
+# Paste the DICOM Image Orientation (Patient) line from the same image stack
+# that was processed in BoneJ.
+dicom_iop_str_humerus <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+
 longitudinal_matrix_str_humerus <- "
 ||0.023|0.973|0.231||
 ||0.022|-0.232|0.972||
@@ -85,6 +96,7 @@ humerus_landmarks_str <- "
 res_humerus <- orient_longbone(
   mode = "HUMERUS",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+  dicom_iop = dicom_iop_str_humerus,
   landmarks_str = humerus_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_EXAMPLE",
@@ -123,6 +135,7 @@ humerus_table_landmarks_str <- "
 res_humerus_table <- orient_longbone(
   mode = "HUMERUS_TABLE",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+  dicom_iop = dicom_iop_str_humerus,
   landmarks_str = humerus_table_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_TABLE_EXAMPLE",

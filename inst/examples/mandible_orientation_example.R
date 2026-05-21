@@ -99,7 +99,7 @@ res_slicer <- orient_mandible(
   lm9_valid = TRUE,
   lm_coord_system = "RAS",
   SLICER = TRUE,
-  volume_name = "MANDIBLE_VOLUME"
+  volume_name = "MANDIBLE_EXAMPLE"
 )
 
 res_slicer$summary

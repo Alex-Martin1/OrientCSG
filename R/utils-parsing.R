@@ -224,6 +224,136 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   matrix(nums[1:9], nrow = 3, byrow = TRUE)
 }
 
+# Internal DICOM helper ------------------------------------------------------
+#
+# Parse the DICOM Image Orientation (Patient) field (0020,0037). The input can
+# be either a numeric vector with six values or a pasted DICOM line such as
+# "0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0". If a full
+# DICOM line is supplied, the tag numbers are ignored and the last six numeric
+# values are interpreted as the row and column direction cosines.
+parse_dicom_iop <- function(dicom_iop) {
+  if (is.numeric(dicom_iop)) {
+    if (length(dicom_iop) != 6L || any(!is.finite(dicom_iop))) {
+      stop("`dicom_iop` must contain six finite numeric values.", call. = FALSE)
+    }
+    return(as.numeric(dicom_iop))
+  }
+
+  if (!is.character(dicom_iop) || length(dicom_iop) != 1L || !nzchar(trimws(dicom_iop))) {
+    stop(
+      "`dicom_iop` must be a numeric vector of length 6 or a pasted DICOM Image Orientation (Patient) line.",
+      call. = FALSE
+    )
+  }
+
+  nums <- extract_numeric_tokens(dicom_iop)
+  if (length(nums) >= 6L) {
+    nums <- utils::tail(nums, 6L)
+  }
+
+  if (length(nums) != 6L || any(!is.finite(nums))) {
+    stop("Could not parse six finite values from `dicom_iop`.", call. = FALSE)
+  }
+
+  as.numeric(nums)
+}
+
+# Internal DICOM helper ------------------------------------------------------
+#
+# Build the vector transformation from the ImageJ/BoneJ stack basis to the
+# DICOM patient basis used internally by the classic Avizo/Amira workflow. The
+# first IOP triplet gives the direction of the image-row axis, the second gives
+# the image-column axis, and their cross product gives the slice-normal axis.
+dicom_iop_to_bonej_transform <- function(dicom_iop) {
+  iop <- parse_dicom_iop(dicom_iop)
+
+  row_axis <- nrm(iop[1:3])
+  col_axis <- nrm(iop[4:6])
+
+  dot_rc <- dot3(row_axis, col_axis)
+  if (abs(dot_rc) > 1e-4) {
+    warning(
+      "The DICOM row and column direction cosines are not orthogonal; the column axis was re-orthogonalized.",
+      call. = FALSE
+    )
+  }
+
+  col_axis <- col_axis - dot3(col_axis, row_axis) * row_axis
+  if (sqrt(sum(col_axis^2)) < 1e-12) {
+    stop("The DICOM row and column direction cosines are collinear.", call. = FALSE)
+  }
+  col_axis <- nrm(col_axis)
+  slice_axis <- nrm(cross3(row_axis, col_axis))
+
+  out <- cbind(row_axis, col_axis, slice_axis)
+  rownames(out) <- c("x", "y", "z")
+  colnames(out) <- c("stack_x", "stack_y", "stack_z")
+  attr(out, "dicom_iop") <- iop
+  out
+}
+
+# Internal argument helper ---------------------------------------------------
+#
+# Resolve how the BoneJ eigenvector matrix is transferred into the package's
+# internal LPS/DICOM coordinate convention. The default uses DICOM Image
+# Orientation (Patient). `legacy_flip_xy` is retained to reproduce workflows
+# developed before this DICOM-aware conversion was added.
+resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
+                                    dicom_iop = NULL,
+                                    bonej_transform_matrix = NULL) {
+  if (is.null(bonej_coord_transform) || length(bonej_coord_transform) != 1L || is.na(bonej_coord_transform)) {
+    stop("`bonej_coord_transform` must be a single character value.", call. = FALSE)
+  }
+
+  transform_name <- tolower(trimws(bonej_coord_transform))
+  if (identical(transform_name, "flip_xy")) transform_name <- "legacy_flip_xy"
+
+  if (identical(transform_name, "dicom_iop")) {
+    if (is.null(dicom_iop)) {
+      stop(
+        paste0(
+          "`dicom_iop` is required when `SOLID = FALSE` and ",
+          "`bonej_coord_transform = 'dicom_iop'`. Paste the DICOM ",
+          "Image Orientation (Patient) line, for example: ",
+          "dicom_iop = r\"(0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0)\"."
+        ),
+        call. = FALSE
+      )
+    }
+    transform_matrix <- dicom_iop_to_bonej_transform(dicom_iop)
+    parsed_iop <- attr(transform_matrix, "dicom_iop")
+  } else if (identical(transform_name, "legacy_flip_xy")) {
+    transform_matrix <- diag(c(-1, -1, 1))
+    parsed_iop <- NULL
+  } else if (identical(transform_name, "none")) {
+    transform_matrix <- diag(c(1, 1, 1))
+    parsed_iop <- NULL
+  } else if (identical(transform_name, "manual")) {
+    if (is.null(bonej_transform_matrix)) {
+      stop("`bonej_transform_matrix` is required when `bonej_coord_transform = 'manual'`.", call. = FALSE)
+    }
+    transform_matrix <- as.matrix(bonej_transform_matrix)
+    if (!identical(dim(transform_matrix), c(3L, 3L)) || any(!is.finite(transform_matrix))) {
+      stop("`bonej_transform_matrix` must be a finite 3 x 3 numeric matrix.", call. = FALSE)
+    }
+    parsed_iop <- NULL
+  } else {
+    stop(
+      '`bonej_coord_transform` must be one of "dicom_iop", "legacy_flip_xy", "none", or "manual".',
+      call. = FALSE
+    )
+  }
+
+  rownames(transform_matrix) <- c("x", "y", "z")
+  colnames(transform_matrix) <- c("stack_x", "stack_y", "stack_z")
+
+  list(
+    name = transform_name,
+    matrix = transform_matrix,
+    dicom_iop = parsed_iop
+  )
+}
+
 # Internal parsing helper ----------------------------------------------------
 #
 # Backward-compatible wrapper for older internal code paths. This function no

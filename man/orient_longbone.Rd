@@ -7,6 +7,7 @@
 orient_longbone(
   mode,
   longitudinal_matrix_str = NULL,
+  dicom_iop = NULL,
   landmarks_str = NULL,
   section_loc = 50,
   individual_id = "LONG_BONE_001",
@@ -17,7 +18,9 @@ orient_longbone(
   lm_coord_system = "LPS",
   slicer_landmarks_str = NULL,
   model_name = NULL,
-  landmark_coordinate_system = NULL
+  landmark_coordinate_system = NULL,
+  bonej_coord_transform = "dicom_iop",
+  bonej_transform_matrix = NULL
 )
 }
 \arguments{
@@ -27,6 +30,12 @@ orient_longbone(
 \item{longitudinal_matrix_str}{Character string containing the 3 x 3 BoneJ
 eigenvector matrix. Required when \code{SOLID = FALSE}. The first column is
 interpreted as the longitudinal vector.}
+
+\item{dicom_iop}{Optional DICOM Image Orientation (Patient) information for
+the stack used in BoneJ. Usually this is pasted directly as the full DICOM
+line, for example
+\code{r"(0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0)"}.
+Required by default when \code{SOLID = FALSE}.}
 
 \item{landmarks_str}{Character string containing landmark coordinates. The
 expected number and interpretation of landmarks depend on \code{mode}. Plain XYZ
@@ -69,6 +78,15 @@ block. If omitted, the basename of \code{mesh_file} is used when available.}
 
 \item{landmark_coordinate_system}{Deprecated alias for \code{lm_coord_system},
 retained for backward compatibility.}
+
+\item{bonej_coord_transform}{Advanced character argument controlling how the
+BoneJ eigenvector matrix is transformed before use. The default,
+\code{"dicom_iop"}, derives the transformation from \code{dicom_iop}. The values
+\code{"legacy_flip_xy"}, \code{"none"}, and \code{"manual"} are retained for diagnostic
+or backward-compatible workflows.}
+
+\item{bonej_transform_matrix}{Optional 3 x 3 matrix used only when
+\code{bonej_coord_transform = "manual"}.}
 }
 \value{
 An object of class \code{orientcsg_longbone} and
@@ -89,6 +107,10 @@ anatomical planes and transverse section orientation in Avizo/Amira.
 \item \code{slicer_py}: Named list of 3D Slicer Python command blocks, when
 \code{SLICER = TRUE}.
 \item \code{mesh_axes}: Mesh-derived inertia information, when \code{SOLID = TRUE}.
+\item \code{bonej}: BoneJ eigenvector and coordinate-transform information, when
+\code{SOLID = FALSE}.
+\item \code{longitudinal_axis_check}: Axial angle between the transformed
+longitudinal vector and the anatomical distal-proximal reference.
 }
 }
 \description{
@@ -106,8 +128,11 @@ The \code{SOLID} argument controls how the longitudinal axis is obtained.
 \itemize{
 \item \code{SOLID = FALSE} implements the classic DICOM/CT workflow. In this mode,
 \code{longitudinal_matrix_str} must contain the 3 x 3 BoneJ Moments of Inertia
-eigenvector matrix, and the first column is interpreted as the longitudinal
-axis after applying the BoneJ-to-Avizo/Amira coordinate correction.
+eigenvector matrix, and \code{dicom_iop} should contain the DICOM Image
+Orientation (Patient) field for the image stack used in BoneJ. The first
+column of the BoneJ matrix is interpreted as the longitudinal axis after
+conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
+convention.
 \item \code{SOLID = TRUE} implements the solid-mesh workflow. In this mode, \code{mesh_file}
 must point to a watertight \code{.ply}, \code{.stl}, or \code{.obj} surface mesh. The mesh
 is treated as a homogeneous closed solid, and the eigenvector associated
@@ -152,12 +177,13 @@ available for Avizo/Amira TCL output.
 
 When \code{SOLID = FALSE}, the function expects the 3 x 3 eigenvector matrix
 returned by BoneJ. Following the long-bone protocol, the first column is
-treated as the longitudinal axis. A coordinate-system correction is then
-applied to transfer this direction to the Avizo/Amira convention used by the
-TCL commands. When \code{SOLID = TRUE}, the longitudinal axis is estimated directly
-from the closed mesh by volumetric inertia. In both cases, the sign of the
-longitudinal vector is adjusted when anatomical landmarks provide a distal to
-proximal reference.
+treated as the longitudinal axis. By default, the BoneJ matrix is transformed
+using the DICOM Image Orientation (Patient) field supplied through
+\code{dicom_iop}; this replaces the earlier fixed \verb{(-x, -y, z)} correction and
+supports stacks with different DICOM orientations. When \code{SOLID = TRUE}, the
+longitudinal axis is estimated directly from the closed mesh by volumetric
+inertia. In both cases, the sign of the longitudinal vector is adjusted when
+anatomical landmarks provide a distal to proximal reference.
 }
 
 \section{Section locations}{
@@ -190,6 +216,8 @@ aliases for backward compatibility.
 
 \examples{
 \dontrun{
+dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+
 longitudinal_matrix_str <- "
 ||0.008|-0.758|-0.653||
 ||0.017|-0.652|0.758||
@@ -205,6 +233,7 @@ tibia_landmarks_str <- "
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
+  dicom_iop = dicom_iop_str,
   landmarks_str = tibia_landmarks_str,
   section_loc = 50,
   individual_id = "TIBIA_001"

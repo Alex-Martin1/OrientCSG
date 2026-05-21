@@ -13,8 +13,11 @@
 #'
 #' - `SOLID = FALSE` implements the classic DICOM/CT workflow. In this mode,
 #'   `longitudinal_matrix_str` must contain the 3 x 3 BoneJ Moments of Inertia
-#'   eigenvector matrix, and the first column is interpreted as the longitudinal
-#'   axis after applying the BoneJ-to-Avizo/Amira coordinate correction.
+#'   eigenvector matrix, and `dicom_iop` should contain the DICOM Image
+#'   Orientation (Patient) field for the image stack used in BoneJ. The first
+#'   column of the BoneJ matrix is interpreted as the longitudinal axis after
+#'   conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
+#'   convention.
 #' - `SOLID = TRUE` implements the solid-mesh workflow. In this mode, `mesh_file`
 #'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
 #'   is treated as a homogeneous closed solid, and the eigenvector associated
@@ -50,12 +53,13 @@
 #' @section Longitudinal axis:
 #' When `SOLID = FALSE`, the function expects the 3 x 3 eigenvector matrix
 #' returned by BoneJ. Following the long-bone protocol, the first column is
-#' treated as the longitudinal axis. A coordinate-system correction is then
-#' applied to transfer this direction to the Avizo/Amira convention used by the
-#' TCL commands. When `SOLID = TRUE`, the longitudinal axis is estimated directly
-#' from the closed mesh by volumetric inertia. In both cases, the sign of the
-#' longitudinal vector is adjusted when anatomical landmarks provide a distal to
-#' proximal reference.
+#' treated as the longitudinal axis. By default, the BoneJ matrix is transformed
+#' using the DICOM Image Orientation (Patient) field supplied through
+#' `dicom_iop`; this replaces the earlier fixed `(-x, -y, z)` correction and
+#' supports stacks with different DICOM orientations. When `SOLID = TRUE`, the
+#' longitudinal axis is estimated directly from the closed mesh by volumetric
+#' inertia. In both cases, the sign of the longitudinal vector is adjusted when
+#' anatomical landmarks provide a distal to proximal reference.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
@@ -84,6 +88,11 @@
 #' @param longitudinal_matrix_str Character string containing the 3 x 3 BoneJ
 #'   eigenvector matrix. Required when `SOLID = FALSE`. The first column is
 #'   interpreted as the longitudinal vector.
+#' @param dicom_iop Optional DICOM Image Orientation (Patient) information for
+#'   the stack used in BoneJ. Usually this is pasted directly as the full DICOM
+#'   line, for example
+#'   `r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"`.
+#'   Required by default when `SOLID = FALSE`.
 #' @param landmarks_str Character string containing landmark coordinates. The
 #'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
 #'   coordinates and Slicer Markups-style rows are both accepted.
@@ -115,6 +124,13 @@
 #'   block. If omitted, the basename of `mesh_file` is used when available.
 #' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
 #'   retained for backward compatibility.
+#' @param bonej_coord_transform Advanced character argument controlling how the
+#'   BoneJ eigenvector matrix is transformed before use. The default,
+#'   `"dicom_iop"`, derives the transformation from `dicom_iop`. The values
+#'   `"legacy_flip_xy"`, `"none"`, and `"manual"` are retained for diagnostic
+#'   or backward-compatible workflows.
+#' @param bonej_transform_matrix Optional 3 x 3 matrix used only when
+#'   `bonej_coord_transform = "manual"`.
 #'
 #' @return An object of class `orientcsg_longbone` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -134,9 +150,15 @@
 #'   - `slicer_py`: Named list of 3D Slicer Python command blocks, when
 #'     `SLICER = TRUE`.
 #'   - `mesh_axes`: Mesh-derived inertia information, when `SOLID = TRUE`.
+#'   - `bonej`: BoneJ eigenvector and coordinate-transform information, when
+#'     `SOLID = FALSE`.
+#'   - `longitudinal_axis_check`: Axial angle between the transformed
+#'     longitudinal vector and the anatomical distal-proximal reference.
 #'
 #' @examples
 #' \dontrun{
+#' dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+#'
 #' longitudinal_matrix_str <- "
 #' ||0.008|-0.758|-0.653||
 #' ||0.017|-0.652|0.758||
@@ -152,6 +174,7 @@
 #' res <- orient_longbone(
 #'   mode = "TIBIA",
 #'   longitudinal_matrix_str = longitudinal_matrix_str,
+#'   dicom_iop = dicom_iop_str,
 #'   landmarks_str = tibia_landmarks_str,
 #'   section_loc = 50,
 #'   individual_id = "TIBIA_001"
@@ -165,6 +188,7 @@
 #'
 orient_longbone <- function(mode,
                             longitudinal_matrix_str = NULL,
+                            dicom_iop = NULL,
                             landmarks_str = NULL,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
@@ -175,7 +199,9 @@ orient_longbone <- function(mode,
                             lm_coord_system = "LPS",
                             slicer_landmarks_str = NULL,
                             model_name = NULL,
-                            landmark_coordinate_system = NULL) {
+                            landmark_coordinate_system = NULL,
+                            bonej_coord_transform = "dicom_iop",
+                            bonej_transform_matrix = NULL) {
   lm_coord_system_missing <- missing(lm_coord_system)
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
@@ -223,13 +249,19 @@ orient_longbone <- function(mode,
       stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
     }
 
-    # BoneJ and Avizo/Amira use different coordinate conventions in this workflow.
-    # The diagonal transformation below reproduces the correction used in the
-    # original protocol: (x, y, z) -> (-x, -y, z).
+    # BoneJ returns vectors in the ImageJ stack basis. For DICOM-derived stacks,
+    # this basis is not always related to the Avizo/Amira/DICOM patient basis by
+    # the same fixed sign change. By default, the transformation is derived from
+    # DICOM Image Orientation (Patient), while legacy and manual options remain
+    # available for reproducibility and diagnostics.
     M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
-    T_bonej_to_avizo <- diag(c(-1, -1, 1))
-    M_avizo <- T_bonej_to_avizo %*% M_bonej
-    L <- M_avizo[, 1]
+    bonej_transform <- resolve_bonej_transform(
+      bonej_coord_transform = bonej_coord_transform,
+      dicom_iop = dicom_iop,
+      bonej_transform_matrix = bonej_transform_matrix
+    )
+    M_internal <- bonej_transform$matrix %*% M_bonej
+    L <- M_internal[, 1]
   }
 
   n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
@@ -265,6 +297,20 @@ orient_longbone <- function(mode,
       stop("The distal and proximal landmarks coincide; projected length cannot be defined.", call. = FALSE)
     }
     if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+  }
+
+  longitudinal_axis_check <- longbone_axis_check(mode, mat_pts, Lh)
+  if (!is.null(longitudinal_axis_check) &&
+      is.finite(longitudinal_axis_check$angle_deg) &&
+      longitudinal_axis_check$angle_deg > longitudinal_axis_check$warning_threshold_deg) {
+    warning(
+      sprintf(
+        "The transformed BoneJ longitudinal axis is %.2f degrees away from the anatomical %s reference. Check `dicom_iop`, slice order, or `bonej_coord_transform`.",
+        longitudinal_axis_check$angle_deg,
+        longitudinal_axis_check$reference
+      ),
+      call. = FALSE
+    )
   }
 
   # Define the mediolateral and anteroposterior axes. For TIBIA and HUMERUS, the
@@ -401,6 +447,14 @@ orient_longbone <- function(mode,
     mesh_file = mesh_file,
     model_name = model_name,
     mesh_axes = mesh_axes,
+    bonej = if (isTRUE(SOLID)) NULL else list(
+      coord_transform = bonej_transform$name,
+      dicom_iop = bonej_transform$dicom_iop,
+      transform_matrix = bonej_transform$matrix,
+      eigenvectors = M_bonej,
+      transformed_eigenvectors = M_internal
+    ),
+    longitudinal_axis_check = longitudinal_axis_check,
     projected = projected
   )
   class(res) <- c("orientcsg_longbone", "orientcsg_orientation")
@@ -415,6 +469,43 @@ orient_longbone <- function(mode,
   }
 
   res
+}
+
+# Internal long-bone diagnostic helpers -------------------------------------
+#
+# Compare the transformed BoneJ longitudinal axis with an anatomical long-axis
+# reference derived from the supplied landmarks. The comparison is axial, so the
+# sign of the eigenvector is ignored.
+axis_angle_deg <- function(a, b) {
+  a <- nrm(a)
+  b <- nrm(b)
+  d <- abs(dot3(a, b))
+  d <- max(-1, min(1, d))
+  acos(d) * 180 / pi
+}
+
+longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
+  if (mode == "TIBIA") {
+    ref <- ((mat_pts[1, ] + mat_pts[2, ]) / 2) - mat_pts[3, ]
+    ref_label <- "tibio-talar to plateau-midpoint"
+  } else if (mode == "HUMERUS") {
+    ref <- mat_pts[4, ] - mat_pts[3, ]
+    ref_label <- "distal-to-proximal humeral"
+  } else if (mode == "HUMERUS_TABLE") {
+    ref <- mat_pts[2, ] - mat_pts[1, ]
+    ref_label <- "distal-to-proximal humeral-table"
+  } else {
+    return(NULL)
+  }
+
+  if (sqrt(sum(ref^2)) < 1e-12) return(NULL)
+
+  list(
+    reference = ref_label,
+    reference_vector = nrm(ref),
+    angle_deg = axis_angle_deg(L, ref),
+    warning_threshold_deg = warning_threshold_deg
+  )
 }
 
 # Internal long-bone camera helper ------------------------------------------
