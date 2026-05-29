@@ -43,7 +43,12 @@
 #' `Vec_CS2_Normal`, because these elements are needed for manual verification,
 #' image orientation, and size-related measurements. `Vec_CS1` and `Vec_CS2` are
 #' retained internally for TCL and camera generation, but are not included in the
-#' compact summary table.
+#' compact summary table. The sign of `Vec_Penp` is selected anatomically so
+#' that it points from inferior toward superior. The priority is: real `LM9` when
+#' `lm9_valid = TRUE`; `LM3`/`LM4` as inferior references when suitable for the
+#' selected protocol; and an orientation-only `LM9` placeholder when `lm9_valid =
+#' FALSE`. This same signed vector controls the screen-vertical orientation in
+#' both Avizo/Amira and 3D Slicer outputs.
 #'
 #' @section Avizo/Amira and 3D Slicer backends:
 #' With the default `SLICER = FALSE`, the function returns Avizo/Amira TCL blocks.
@@ -53,7 +58,7 @@
 #' this object does not exist.
 #'
 #' With `SLICER = TRUE`, the function returns 3D Slicer Python blocks. These
-#' blocks orient the Red slice view to the requested mandibular section, use RAS
+#' blocks orient the Red slice view to the requested mandibular section, emit RAS
 #' coordinates in the Python interactor, activate volume rendering with the
 #' `CT-AAA2` preset when available, create the ARP and `LM1_Line` verification
 #' objects, add a 10 mm scale bar, and configure a 3D verification view. The
@@ -69,8 +74,10 @@
 #' @param camera_distance_mm Numeric value giving the approximate camera distance
 #'   used in the generated Avizo TCL commands. The default is `300`, which is a
 #'   practical value for the current image-capture workflow.
-#' @param cs3_camera_side Character value indicating the side from which CS3
-#'   should be viewed. Allowed values are `"RIGHT"` and `"LEFT"`.
+#' @param lm1_side Character value indicating the anatomical side on which `LM1`
+#'   was placed. Allowed values are `"RIGHT"` and `"LEFT"`. This argument
+#'   controls the side from which CS1 and CS2 are viewed and the anatomical
+#'   interpretation of the transverse axis used for CS3.
 #' @param complete_arch Logical. If `FALSE` (default), `LM1_Line` is estimated by
 #'   reflection across the plane defined by `LM2`, `LM3`, and `LM4`. If `TRUE`,
 #'   `LM4` is interpreted as the physically preserved `LM1_Line`/`A_Line` point.
@@ -83,12 +90,15 @@
 #'   `FALSE`, `LM9` is treated as a placeholder used only to preserve the input
 #'   structure, and measurements depending on `LM9` are returned as
 #'   non-computable.
-#' @param lm_coord_system Coordinate system of the input landmark coordinates.
-#'   The default is `"LPS"`, matching the Avizo/Amira-like internal convention.
-#'   Use `"RAS"` for coordinates taken directly from Slicer world coordinates.
-#'   This argument controls the spatial interpretation of the numbers only; it
-#'   does not depend on whether the text was pasted as plain XYZ coordinates or
-#'   as a Slicer Markups table.
+#' @param lm_coord_system Coordinate system of the numeric landmark values pasted
+#'   into R. The default is `"LPS"`, matching the Avizo/Amira-like internal
+#'   convention. Coordinates copied or exported from 3D Slicer Markups may paste
+#'   as LPS even when the Slicer table displays R/A/S columns; in that case keep
+#'   `lm_coord_system = "LPS"`. Use `"RAS"` only for values that are actually RAS,
+#'   such as coordinates extracted from Slicer with
+#'   `GetNthControlPointPositionWorld()`. This argument controls the spatial
+#'   interpretation of the numbers only; it does not depend on whether the text
+#'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param SLICER Logical. If `FALSE` (default), generate Avizo/Amira TCL command
 #'   blocks. If `TRUE`, generate 3D Slicer Python command blocks.
 #' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
@@ -112,6 +122,9 @@
 #'   - `complete_arch`: Whether complete-arch mode was used.
 #'   - `estimate_lm10`: Whether `LM10` was reflected for mandibular length.
 #'   - `lm9_valid`: Whether `LM9` was treated as a real anatomical gonion.
+#'   - `lm1_side`: Anatomical side on which `LM1` was placed.
+#'   - `superoinferior_reference`: Reference point and vector used to orient
+#'     `Vec_Penp` from inferior toward superior.
 #'   - `points`: Computed points, including `LM1_Line`, `LM0`,
 #'     `ARP_Origin`, `CS1B`, and `CS2B`; `LM9_Line` and `LM10_Line` are included
 #'     when computed.
@@ -155,7 +168,7 @@
 #'   landmarks_str = landmarks_str,
 #'   individual_id = "MANDIBLE_001",
 #'   camera_distance_mm = 300,
-#'   cs3_camera_side = "RIGHT"
+#'   lm1_side = "RIGHT"
 #' )
 #'
 #' res$summary
@@ -178,7 +191,7 @@
 orient_mandible <- function(landmarks_str = NULL,
                             individual_id = "MANDIBLE_001",
                             camera_distance_mm = 300,
-                            cs3_camera_side = c("RIGHT", "LEFT"),
+                            lm1_side = c("RIGHT", "LEFT"),
                             complete_arch = FALSE,
                             estimate_lm10 = FALSE,
                             lm9_valid = TRUE,
@@ -188,7 +201,7 @@ orient_mandible <- function(landmarks_str = NULL,
                             landmark_coordinate_system = NULL,
                             volume_name = NULL) {
   lm_coord_system_missing <- missing(lm_coord_system)
-  cs3_camera_side <- match.arg(toupper(cs3_camera_side), c("RIGHT", "LEFT"))
+  lm1_side <- match.arg(toupper(lm1_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
@@ -237,6 +250,19 @@ orient_mandible <- function(landmarks_str = NULL,
     stop("LM1 and LM1_Line coincide; Vec_1_1Line cannot be defined.", call. = FALSE)
   }
 
+  # Build anatomical side vectors that do not depend on whether LM1 was placed
+  # on the right or left mandibular side. Vec_RightToLeft always points from the
+  # anatomical right side toward the anatomical left side. Vec_LandmarkedSide
+  # points toward the side where LM1 was actually placed and is used to select
+  # the viewing side for CS1 and CS2.
+  Vec_RightToLeft <- if (identical(lm1_side, "RIGHT")) {
+    nrm(Vec_1_1Line)
+  } else {
+    nrm(-Vec_1_1Line)
+  }
+  Vec_LeftToRight <- -Vec_RightToLeft
+  Vec_LandmarkedSide <- if (identical(lm1_side, "RIGHT")) Vec_LeftToRight else Vec_RightToLeft
+
   # LM0 is the orthogonal projection of LM2 onto the LM1--LM1_Line axis. It is
   # used to define Vec_0_2, an anterior reference direction within the ARP.
   LM0 <- project_point_to_line(LM2, LM1, LM1_Line)
@@ -249,8 +275,23 @@ orient_mandible <- function(landmarks_str = NULL,
   }
 
   # Vec_Penp is the normal to the ARP. The name follows the original protocol,
-  # where the vector was used to enforce perpendicularity of CS1 and CS2.
+  # where the vector was used to enforce perpendicularity of CS1 and CS2. Its
+  # sign is oriented anatomically from inferior toward superior so that the
+  # screen-vertical direction is consistent in both Avizo/Amira and Slicer
+  # outputs.
   Vec_Penp <- nrm(cross3(Vec_0_2, Vec_1_1Line))
+  si_reference <- select_mandible_si_reference(
+    Vec_Penp = Vec_Penp,
+    LM2 = LM2,
+    LM3 = LM3,
+    LM4 = LM4,
+    LM9 = LM9,
+    lm9_valid = lm9_valid,
+    complete_arch = complete_arch
+  )
+  if (dot3(Vec_Penp, si_reference$reference_vector) < 0) {
+    Vec_Penp <- -Vec_Penp
+  }
 
   # The ARP is emitted to Amira/Avizo as origin + normal. The origin is the
   # centroid of the three points that conceptually define the ARP.
@@ -302,11 +343,11 @@ orient_mandible <- function(landmarks_str = NULL,
     LM2 = LM2,
     LM3 = LM3
   )
-  
+
   if (!complete_arch) {
     summary_entries$LM4 <- LM4
   }
-  
+
   summary_entries <- c(
     summary_entries,
     list(
@@ -372,12 +413,12 @@ orient_mandible <- function(landmarks_str = NULL,
       data.frame(section = "CS2", role = "Normal", object = "Slice", value = "Vec_CS2_Normal", x = Vec_CS2_Normal[1], y = Vec_CS2_Normal[2], z = Vec_CS2_Normal[3]),
       data.frame(section = "CS2", role = "Screen-horizontal reference", object = "Camera", value = "Vec_CS2", x = Vec_CS2[1], y = Vec_CS2[2], z = Vec_CS2[3]),
       data.frame(section = "CS3", role = "Plane point", object = "Slice", value = "LM2", x = LM2[1], y = LM2[2], z = LM2[3]),
-      data.frame(section = "CS3", role = "Normal", object = "Slice", value = "Vec_1_1Line", x = Vec_1_1Line[1], y = Vec_1_1Line[2], z = Vec_1_1Line[3]),
+      data.frame(section = "CS3", role = "Normal", object = "Slice", value = "Vec_RightToLeft", x = Vec_RightToLeft[1], y = Vec_RightToLeft[2], z = Vec_RightToLeft[3]),
       data.frame(section = "CS3", role = "Screen-horizontal reference", object = "Camera", value = "Vec_0_2", x = Vec_0_2[1], y = Vec_0_2[2], z = Vec_0_2[3])
     )
     numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
     manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
-  
+
   }
 
   vectors <- list(
@@ -388,7 +429,11 @@ orient_mandible <- function(landmarks_str = NULL,
     Vec_CS1_Normal = Vec_CS1_Normal,
     Vec_CS2 = Vec_CS2,
     Vec_CS2_Normal = Vec_CS2_Normal,
-    Anterior_ref = Anterior_ref
+    Anterior_ref = Anterior_ref,
+    Vec_RightToLeft = Vec_RightToLeft,
+    Vec_LeftToRight = Vec_LeftToRight,
+    Vec_LandmarkedSide = Vec_LandmarkedSide,
+    Superoinferior_ref = si_reference$reference_vector
   )
   points <- list(
     LM1_Line = LM1_Line,
@@ -409,13 +454,14 @@ orient_mandible <- function(landmarks_str = NULL,
     estimate_lm10 = estimate_lm10,
     lm9_valid = lm9_valid,
     reflection_method = reflection_method,
+    superoinferior_reference = si_reference,
     points = points,
     vectors = vectors,
     summary = summary_tbl,
     summary_coord_system = summary_coord_system,
     measurements = measurements,
     camera_distance_mm = camera_distance_mm,
-    cs3_camera_side = cs3_camera_side,
+    lm1_side = lm1_side,
     lm_coord_system = lm_coord_system,
     internal_coord_system = "LPS",
     output_coord_system = summary_coord_system,
@@ -488,6 +534,63 @@ assert_logical_scalar <- function(x, arg) {
     stop(sprintf("%s must be TRUE or FALSE.", arg), call. = FALSE)
   }
   x
+}
+
+# Internal mandibular orientation helper --------------------------------------
+#
+# Select the anatomical reference used to choose the sign of Vec_Penp. The
+# returned vector points from an inferior landmark or placeholder toward LM2, so
+# Vec_Penp can be forced to point inferior-to-superior. This sign is then used
+# consistently by both the Avizo/Amira camera backend and the 3D Slicer backend.
+select_mandible_si_reference <- function(Vec_Penp, LM2, LM3, LM4, LM9,
+                                         lm9_valid, complete_arch) {
+  candidate <- NULL
+  source <- NULL
+
+  if (isTRUE(lm9_valid)) {
+    candidate <- LM9
+    source <- "LM9_real_gonion"
+  } else {
+    # In standard incomplete-arch workflows LM3 and LM4 are part of the
+    # inferior reference geometry used to define the reflection plane. In
+    # complete-arch workflows LM4 is the real LM1_Line/A_Line point, so LM3 is
+    # preferred as the non-gonial inferior reference.
+    candidates <- if (isTRUE(complete_arch)) {
+      list(LM3 = LM3)
+    } else {
+      list(LM3 = LM3, LM4 = LM4)
+    }
+
+    offsets <- vapply(
+      candidates,
+      function(p) abs(dot3(Vec_Penp, LM2 - p)),
+      numeric(1)
+    )
+
+    if (length(offsets) > 0 && max(offsets, na.rm = TRUE) > 1e-8) {
+      idx <- which.max(offsets)
+      candidate <- candidates[[idx]]
+      source <- paste0(names(candidates)[idx], "_inferior_reference")
+    } else {
+      candidate <- LM9
+      source <- "LM9_orientation_only"
+    }
+  }
+
+  ref <- LM2 - candidate
+  if (sqrt(sum(ref^2)) < 1e-12) {
+    stop(
+      "The selected mandibular superoinferior reference coincides with LM2; Vec_Penp sign cannot be defined.",
+      call. = FALSE
+    )
+  }
+
+  list(
+    source = source,
+    inferior_point = candidate,
+    superior_point = LM2,
+    reference_vector = nrm(ref)
+  )
 }
 
 # Internal summary helper -----------------------------------------------------
@@ -639,6 +742,8 @@ avizo_tcl_mandible <- function(res) {
   Vec_0_2 <- res$vectors$Vec_0_2
   Vec_1_1Line <- res$vectors$Vec_1_1Line
   Anterior_ref <- res$vectors$Anterior_ref
+  Vec_LandmarkedSide <- res$vectors$Vec_LandmarkedSide
+  Vec_RightToLeft <- res$vectors$Vec_RightToLeft
   camdist <- res$camera_distance_mm
 
   arp_block <- function() {
@@ -660,10 +765,10 @@ avizo_tcl_mandible <- function(res) {
     Z_slice <- nrm(cross3(Vec_CS, Vec_Penp))
 
     # The camera direction is perpendicular to both the screen-horizontal section
-    # vector and the ARP normal. Its sign is selected so that the section is shown
-    # from the anterior side whenever this can be defined from Vec_0_2.
+    # vector and the ARP normal. Its sign is selected so that CS1 and CS2 are
+    # viewed from the side on which LM1 was placed.
     Z_camera <- nrm(cross3(X_screen, Vec_Penp))
-    if (dot3(Z_camera, Anterior_ref) < 0) Z_camera <- -Z_camera
+    if (dot3(Z_camera, Vec_LandmarkedSide) < 0) Z_camera <- -Z_camera
 
     c(
       "# ============================================================",
@@ -678,15 +783,14 @@ avizo_tcl_mandible <- function(res) {
       "",
       paste(emit_optional_orthogonal_view(Psec, X_screen, section_label), collapse = "\n"),
       "",
-      "# Camera: slice parallel to screen; ARP horizontal; anterior view when applicable",
+      "# Camera: slice parallel to screen; ARP horizontal; view from LM1 side",
       paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
     )
   }
 
   cs3_block <- function() {
     Psec <- LM2
-    Z_camera <- nrm(Vec_1_1Line)
-    if (identical(res$cs3_camera_side, "RIGHT")) Z_camera <- -Z_camera
+    Z_camera <- nrm(Vec_LandmarkedSide)
     X_screen <- nrm(Vec_0_2)
 
     c(
@@ -698,11 +802,11 @@ avizo_tcl_mandible <- function(res) {
       paste(arp_block(), collapse = "\n"),
       "",
       "# Slice object: normal & point for CS3",
-      paste(emit_slice_normal_point("Slice", Psec, Vec_1_1Line), collapse = "\n"),
+      paste(emit_slice_normal_point("Slice", Psec, Vec_RightToLeft), collapse = "\n"),
       "",
       paste(emit_optional_orthogonal_view(Psec, X_screen, "CS3"), collapse = "\n"),
       "",
-      sprintf("# Camera: slice parallel to screen; ARP horizontal; CS3 side = %s", res$cs3_camera_side),
+      sprintf("# Camera: slice parallel to screen; ARP horizontal; LM1 side = %s", res$lm1_side),
       paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
     )
   }

@@ -6,28 +6,28 @@ test_that("get_tcl() returns selected and combined TCL blocks", {
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
-  
+
   selected <- get_tcl(res, section = "SECTION_50")
   combined <- get_tcl(res)
-  
+
   expect_type(selected, "character")
   expect_length(selected, 1)
-  
+
   expect_type(combined, "character")
   expect_length(combined, 1)
-  
+
   expect_contains_fixed(selected, "# SECTION 50%")
   expect_contains_fixed(combined, "# SECTION 50%")
 })
 
 test_that("get_tcl() errors for missing or invalid TCL blocks", {
   res <- orient_mandible(landmarks_str = mandible_landmarks_str)
-  
+
   expect_error(
     get_tcl(list()),
     "does not contain"
   )
-  
+
   expect_error(
     get_tcl(res, section = "CS4"),
     "Available sections"
@@ -42,21 +42,21 @@ test_that("write_tcl() writes a selected TCL block to disk", {
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
-  
+
   path <- tempfile(fileext = ".tcl")
-  
+
   returned_path <- write_tcl(
     res,
     file = path,
     section = "SECTION_50"
   )
-  
+
   expect_equal(returned_path, path)
   expect_true(file.exists(path))
-  
+
   written <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expected <- get_tcl(res, section = "SECTION_50")
-  
+
   expect_equal(written, expected)
 })
 test_that("get_slicer_py() returns selected and combined Slicer blocks", {
@@ -110,6 +110,32 @@ test_that("orient_longbone() generates Slicer Python for HUMERUS mode", {
   expect_contains_fixed(py, "L_AXIS_FULL_LENGTH = True")
   expect_contains_fixed(py, "restore_orientcsg_camera_state()")
   expect_false(grepl("press OrientCSG Home", py, fixed = TRUE))
+})
+
+test_that("orient_longbone() generates proximal-view Slicer Python for TIBIA mode", {
+  tibia_slicer_landmarks_str <- make_slicer_markup_table(matrix_from_xyz_string(tibia_landmarks_str))
+
+  res <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_iop = dicom_iop_legacy_flip_xy,
+    landmarks_str = tibia_slicer_landmarks_str,
+    lm_coord_system = "LPS",
+    section_loc = 50,
+    model_name = "T108_solid",
+    SLICER = TRUE
+  )
+
+  distal_to_proximal_ref <- ((res$landmarks["P1", ] + res$landmarks["P2", ]) / 2) -
+    res$landmarks["P3", ]
+
+  expect_gt(dot3(res$vectors$L, distal_to_proximal_ref), 0)
+
+  py <- get_slicer_py(res, section = "SECTION_50")
+  expect_contains_fixed(py, "MODEL_NAME = \"T108_solid\"")
+  expect_contains_fixed(py, "VIEW_FROM_PROXIMAL = True")
+  expect_contains_fixed(py, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py, "A proximal view places the camera on the proximal side")
 })
 
 test_that("SLICER output is intentionally not implemented for HUMERUS_TABLE", {

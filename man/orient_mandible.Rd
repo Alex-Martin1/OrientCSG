@@ -8,7 +8,7 @@ orient_mandible(
   landmarks_str = NULL,
   individual_id = "MANDIBLE_001",
   camera_distance_mm = 300,
-  cs3_camera_side = c("RIGHT", "LEFT"),
+  lm1_side = c("RIGHT", "LEFT"),
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
   lm9_valid = TRUE,
@@ -32,8 +32,10 @@ copied into the output tables.}
 used in the generated Avizo TCL commands. The default is \code{300}, which is a
 practical value for the current image-capture workflow.}
 
-\item{cs3_camera_side}{Character value indicating the side from which CS3
-should be viewed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}.}
+\item{lm1_side}{Character value indicating the anatomical side on which \code{LM1}
+was placed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}. This argument
+controls the side from which CS1 and CS2 are viewed and the anatomical
+interpretation of the transverse axis used for CS3.}
 
 \item{complete_arch}{Logical. If \code{FALSE} (default), \code{LM1_Line} is estimated by
 reflection across the plane defined by \code{LM2}, \code{LM3}, and \code{LM4}. If \code{TRUE},
@@ -50,12 +52,15 @@ anatomical gonion and measurements that depend on it are computed. If
 structure, and measurements depending on \code{LM9} are returned as
 non-computable.}
 
-\item{lm_coord_system}{Coordinate system of the input landmark coordinates.
-The default is \code{"LPS"}, matching the Avizo/Amira-like internal convention.
-Use \code{"RAS"} for coordinates taken directly from Slicer world coordinates.
-This argument controls the spatial interpretation of the numbers only; it
-does not depend on whether the text was pasted as plain XYZ coordinates or
-as a Slicer Markups table.}
+\item{lm_coord_system}{Coordinate system of the numeric landmark values pasted
+into R. The default is \code{"LPS"}, matching the Avizo/Amira-like internal
+convention. Coordinates copied or exported from 3D Slicer Markups may paste
+as LPS even when the Slicer table displays R/A/S columns; in that case keep
+\code{lm_coord_system = "LPS"}. Use \code{"RAS"} only for values that are actually RAS,
+such as coordinates extracted from Slicer with
+\code{GetNthControlPointPositionWorld()}. This argument controls the spatial
+interpretation of the numbers only; it does not depend on whether the text
+was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{SLICER}{Logical. If \code{FALSE} (default), generate Avizo/Amira TCL command
 blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.}
@@ -84,6 +89,9 @@ components:
 \item \code{complete_arch}: Whether complete-arch mode was used.
 \item \code{estimate_lm10}: Whether \code{LM10} was reflected for mandibular length.
 \item \code{lm9_valid}: Whether \code{LM9} was treated as a real anatomical gonion.
+\item \code{lm1_side}: Anatomical side on which \code{LM1} was placed.
+\item \code{superoinferior_reference}: Reference point and vector used to orient
+\code{Vec_Penp} from inferior toward superior.
 \item \code{points}: Computed points, including \code{LM1_Line}, \code{LM0},
 \code{ARP_Origin}, \code{CS1B}, and \code{CS2B}; \code{LM9_Line} and \code{LM10_Line} are included
 when computed.
@@ -157,7 +165,11 @@ The function also computes auxiliary points and vectors, including \code{LM0},
 \code{Vec_CS2_Normal}, because these elements are needed for manual verification,
 image orientation, and size-related measurements. \code{Vec_CS1} and \code{Vec_CS2} are
 retained internally for TCL and camera generation, but are not included in the
-compact summary table.
+compact summary table. The sign of \code{Vec_Penp} is selected anatomically so
+that it points from inferior toward superior. The priority is: real \code{LM9} when
+\code{lm9_valid = TRUE}; \code{LM3}/\code{LM4} as inferior references when suitable for the
+selected protocol; and an orientation-only \code{LM9} placeholder when \code{lm9_valid = FALSE}. This same signed vector controls the screen-vertical orientation in
+both Avizo/Amira and 3D Slicer outputs.
 }
 
 \section{Avizo/Amira and 3D Slicer backends}{
@@ -169,7 +181,7 @@ visual check plane, but the TCL code is written so that it will still run if
 this object does not exist.
 
 With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These
-blocks orient the Red slice view to the requested mandibular section, use RAS
+blocks orient the Red slice view to the requested mandibular section, emit RAS
 coordinates in the Python interactor, activate volume rendering with the
 \code{CT-AAA2} preset when available, create the ARP and \code{LM1_Line} verification
 objects, add a 10 mm scale bar, and configure a 3D verification view. The
@@ -197,7 +209,7 @@ res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
   camera_distance_mm = 300,
-  cs3_camera_side = "RIGHT"
+  lm1_side = "RIGHT"
 )
 
 res$summary

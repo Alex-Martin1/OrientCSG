@@ -59,7 +59,9 @@
 #' supports stacks with different DICOM orientations. When `SOLID = TRUE`, the
 #' longitudinal axis is estimated directly from the closed mesh by volumetric
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
-#' anatomical landmarks provide a distal to proximal reference.
+#' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
+#' reference is defined from the tibio-talar landmark to the midpoint of the two
+#' plateau landmarks.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
@@ -77,9 +79,15 @@
 #' @section 3D Slicer requirements:
 #' When `SLICER = TRUE`, the generated Python code assumes that the corresponding
 #' model is loaded in 3D Slicer. If `model_name` is omitted, the function uses the
-#' basename of `mesh_file` when available. Landmarks copied from a Slicer Markups
-#' table can be supplied through `landmarks_str`; their coordinate system is
-#' controlled explicitly by `lm_coord_system`. The older arguments
+#' basename of `mesh_file` when available. Landmark rows copied from a Slicer
+#' Markups table can be supplied through `landmarks_str`; however, the coordinate
+#' system must describe the numeric values that are actually pasted into R. In
+#' common Slicer Markups table/export workflows these pasted values may be LPS,
+#' even though the Slicer interface displays R/A/S columns. Use
+#' `lm_coord_system = "LPS"` for such copied/exported text. Use
+#' `lm_coord_system = "RAS"` only for values that are confirmed to be true Slicer
+#' world RAS coordinates, for example values extracted with
+#' `GetNthControlPointPositionWorld()`. The older arguments
 #' `slicer_landmarks_str` and `landmark_coordinate_system` are retained as
 #' aliases for backward compatibility.
 #'
@@ -112,12 +120,15 @@
 #'   supported for Slicer output.
 #' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
 #'   `.stl`, or `.obj`) used when `SOLID = TRUE`.
-#' @param lm_coord_system Coordinate system of the input landmark coordinates.
-#'   The default is `"LPS"`, matching the Avizo/Amira-like internal convention.
-#'   Use `"RAS"` for coordinates taken directly from Slicer world coordinates.
-#'   This argument controls the spatial interpretation of the numbers only; it
-#'   does not depend on whether the text was pasted as plain XYZ coordinates or
-#'   as a Slicer Markups table.
+#' @param lm_coord_system Coordinate system of the numeric landmark values pasted
+#'   into R. The default is `"LPS"`, matching the Avizo/Amira-like internal
+#'   convention. Coordinates copied or exported from 3D Slicer Markups may paste
+#'   as LPS even when the Slicer table displays R/A/S columns; in that case keep
+#'   `lm_coord_system = "LPS"`. Use `"RAS"` only for values that are actually RAS,
+#'   such as coordinates extracted from Slicer with
+#'   `GetNthControlPointPositionWorld()`. This argument controls the spatial
+#'   interpretation of the numbers only; it does not depend on whether the text
+#'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
 #'   older scripts continue to run with the updated parser and coordinate logic.
 #' @param model_name Optional model node name used by the generated Slicer Python
@@ -285,7 +296,13 @@ orient_longbone <- function(mode,
   # Use the available anatomical landmarks to ensure that the longitudinal axis
   # points in the expected distal-to-proximal direction whenever this can be
   # checked from the data.
-  if (mode == "HUMERUS") {
+  if (mode == "TIBIA") {
+    long_ref <- ((P1 + P2) / 2) - P3
+    if (sqrt(sum(long_ref^2)) < 1e-12) {
+      stop("The tibio-talar landmark and plateau midpoint coincide; the tibial longitudinal direction cannot be defined.", call. = FALSE)
+    }
+    if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+  } else if (mode == "HUMERUS") {
     long_ref <- P4 - P3
     if (sqrt(sum(long_ref^2)) < 1e-12) {
       stop("LM3 and LM4 coincide; the humeral longitudinal direction cannot be defined.", call. = FALSE)

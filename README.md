@@ -90,14 +90,30 @@ It is intentionally not implemented for `HUMERUS_TABLE`, because that mode depen
 
 The classic Amira/Avizo workflow generally uses the external mesh/Avizo coordinate convention used in the input data.
 
-3D Slicer works internally in RAS coordinates. When landmarks are copied from a 3D Slicer Markups table, use the coordinates as exported by Slicer and set `lm_coord_system = "RAS"` if the values are in RAS. The text format and the coordinate system are handled separately: Slicer-style rows are parsed as tables, but the spatial interpretation still comes only from `lm_coord_system`.
+3D Slicer works internally in RAS coordinates, but Markups coordinates that are copied from the table or exported to common Markups files may paste/write as LPS. This can happen even when the Slicer table displays R/A/S column labels. In OrientCSG, `lm_coord_system` must describe the numeric values that actually arrive in R, not the coordinate labels visible in the Slicer interface.
 
-If coordinates were obtained from Amira/Avizo or another LPS-like mesh convention and then manually converted into Slicer-table style, remember that RAS and LPS differ by the sign of X and Y:
+Practical rule:
+
+- coordinates copied manually from a Slicer Markups table, or exported from Slicer Markups without verifying the header, should usually be treated as `lm_coord_system = "LPS"`;
+- coordinates extracted explicitly as Slicer world coordinates with Python, for example with `GetNthControlPointPositionWorld()`, should be treated as `lm_coord_system = "RAS"`.
+
+The text format and the coordinate system are handled separately. Slicer-style rows are parsed as tables, but the spatial interpretation still comes only from `lm_coord_system`. RAS and LPS differ by the sign of X and Y:
 
 ```text
 x_RAS = -x_LPS
 y_RAS = -y_LPS
 z_RAS =  z_LPS
+```
+
+If true Slicer world RAS coordinates are required, extract them from the Slicer Python Interactor instead of using manual table copy. For example:
+
+```python
+markupsNode = slicer.util.getNode("NAME_OF_MARKUPS_NODE")
+for i in range(markupsNode.GetNumberOfControlPoints()):
+    p = [0.0, 0.0, 0.0]
+    markupsNode.GetNthControlPointPositionWorld(i, p)
+    label = markupsNode.GetNthControlPointLabel(i)
+    print(i + 1, label, p[0], p[1], p[2])
 ```
 
 For classic BoneJ workflows, the landmark coordinate system and the BoneJ matrix transformation are separate issues. `lm_coord_system` only controls the landmarks. The BoneJ eigenvectors are transformed with `dicom_iop` by default. For example, a DICOM line such as `-1\0\0\0\-1\0` reproduces the previous `(-x, -y, z)` correction, whereas `1\0\0\0\-1\0` gives a different transformation. The result object stores this information in `res$bonej` and reports a simple longitudinal-axis check in `res$longitudinal_axis_check`.
@@ -111,6 +127,10 @@ For mandibles, the workflow can be applied to fragmented specimens if the anatom
 ## Basic mandibular workflow
 
 The mandibular workflow accepts 9, 11, or 12 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export, a 3D Slicer Markups table, or another coordinate source. The coordinate system is declared separately with `lm_coord_system`, whose default is `"LPS"`.
+
+`orient_mandible()` uses the landmarks to fix both the cross-section planes and the viewing orientation. The ARP normal (`Vec_Penp`) is signed anatomically from inferior toward superior. The priority is: real `LM9` when the gonion is preserved and `lm9_valid = TRUE`; `LM3`/`LM4` when they provide the appropriate inferior reference for the selected protocol; and an orientation-only `LM9` placeholder when the real gonion is not preserved and `lm9_valid = FALSE`. This same signed vector is used for both Avizo/Amira TCL and 3D Slicer Python outputs.
+
+Use `lm1_side` to declare the anatomical side on which `LM1` was placed. The default is `"RIGHT"`. If the right corpus is poorly preserved and `LM1` is placed on the left side, set `lm1_side = "LEFT"`; OrientCSG then uses the left-side convention for CS1/CS2 viewing and for the anatomical transverse direction used by CS3 in both Avizo/Amira and 3D Slicer outputs.
 
 ```r
 library(OrientCSG)
@@ -133,7 +153,7 @@ res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
   camera_distance_mm = 300,
-  cs3_camera_side = "RIGHT"
+  lm1_side = "RIGHT"
 )
 
 res$summary
@@ -149,12 +169,13 @@ copy_tcl(res, section = "CS1")
 write_tcl(res, file = "MANDIBLE_001_CS1.tcl", section = "CS1")
 ```
 
-For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmarks were copied directly from Slicer, set `lm_coord_system = "RAS"`; if they come from the existing Avizo/Amira-like workflow, leave the default `lm_coord_system = "LPS"`. Set `volume_name` to the scalar volume node name in Slicer when more than one volume may be loaded.
+For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmark text was copied from a Slicer Markups table or exported from Slicer in the usual Markups workflow, keep `lm_coord_system = "LPS"` unless you have verified that the copied text is true RAS. Use `lm_coord_system = "RAS"` only for coordinates extracted explicitly as Slicer world RAS, for example with `GetNthControlPointPositionWorld()`. Set `volume_name` to the scalar volume node name in Slicer when more than one volume may be loaded.
 
 ```r
 res_slicer <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
+  lm1_side = "RIGHT",
   lm_coord_system = "LPS",
   SLICER = TRUE,
   volume_name = "MANDIBLE_VOLUME"
@@ -266,7 +287,7 @@ This workflow is activated with:
 SOLID = TRUE
 ```
 
-If `SLICER = TRUE`, OrientCSG also generates a Python block for 3D Slicer. The block can be pasted into the 3D Slicer Python Interactor to create the oriented section, set the 3D view, display the axes, and configure the view for capture.
+If `SLICER = TRUE`, OrientCSG also generates a Python block for 3D Slicer. The block can be pasted into the 3D Slicer Python Interactor to create the oriented section, set the 3D view, display the axes, and configure the view for capture. The generated output is emitted to Slicer in RAS world coordinates; therefore OrientCSG converts from its internal LPS/file-space convention to RAS only at this output step.
 
 ### Tibia example
 
@@ -285,7 +306,7 @@ res_tibia_solid_slicer <- orient_longbone(
   mode = "TIBIA",
   mesh_file = mesh_file_tibia,
   landmarks_str = landmarks_str_slicer_tibia,
-  lm_coord_system = "RAS",
+  lm_coord_system = "LPS",
   section_loc = 50,
   individual_id = "T108",
   model_name = "T108_solid",
@@ -300,7 +321,7 @@ cat(get_slicer_py(res_tibia_solid_slicer, "SECTION_50"))
 copy_slicer_py(res_tibia_solid_slicer, "SECTION_50")
 ```
 
-The current tibia/Slicer parser expects Slicer landmark rows in this fixed order:
+The current tibia/Slicer parser expects Slicer Markups-style rows in this fixed order. If these rows were copied from the Slicer table, use `lm_coord_system = "LPS"` unless the copied text has been verified as true RAS:
 
 ```text
 row 1 = Plateau2
@@ -326,7 +347,7 @@ res_humerus_solid_slicer <- orient_longbone(
   mode = "HUMERUS",
   mesh_file = mesh_file_humerus,
   landmarks_str = landmarks_str_slicer_humerus,
-  lm_coord_system = "RAS",
+  lm_coord_system = "LPS",
   section_loc = c(35, 50),
   individual_id = "H108",
   model_name = "H108_solid",
@@ -344,7 +365,7 @@ copy_slicer_py(res_humerus_solid_slicer, "SECTION_35")
 copy_slicer_py(res_humerus_solid_slicer, "SECTION_50")
 ```
 
-The current humerus/Slicer parser expects Slicer landmark rows in this fixed order:
+The current humerus/Slicer parser expects Slicer Markups-style rows in this fixed order. If these rows were copied from the Slicer table, use `lm_coord_system = "LPS"` unless the copied text has been verified as true RAS:
 
 ```text
 row 1 = MedialTrocleaAnt
@@ -457,7 +478,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
 
 Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 

@@ -3,47 +3,50 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
     landmarks_str = mandible_landmarks_str,
     individual_id = "MANDIBLE_TEST",
     camera_distance_mm = 300,
-    cs3_camera_side = "RIGHT"
+    lm1_side = "RIGHT"
   )
-  
+
   expect_true(inherits(res, "orientcsg_mandible"))
   expect_true(inherits(res, "orientcsg_orientation"))
-  
+
   expect_equal(res$type, "MANDIBLE")
   expect_equal(res$individual_id, "MANDIBLE_TEST")
-  expect_equal(res$cs3_camera_side, "RIGHT")
+  expect_equal(res$lm1_side, "RIGHT")
   expect_equal(res$landmark_count, 11)
   expect_equal(res$summary_coord_system, "LPS")
   expect_equal(res$output_coord_system, "LPS")
   expect_false(res$complete_arch)
   expect_false(res$estimate_lm10)
   expect_true(res$lm9_valid)
-  
+
   expect_equal(rownames(res$landmarks), paste0("LM", 1:11))
   expect_equal(names(res$avizo_tcl), c("CS1", "CS2", "CS3"))
-  
+
   expect_true(is.data.frame(res$summary))
   expect_true(is.data.frame(res$measurements))
   expect_true(is.data.frame(res$manual_orientation))
-  
+
   expect_equal(nrow(res$summary), 18)
   expect_equal(nrow(res$measurements), 5)
   expect_equal(nrow(res$manual_orientation), 11)
   expect_false(any(res$summary$metric %in% c("Vec_CS1", "Vec_CS2", "Vec_0_2")))
   expect_true(all(c("ARP_Origin", "Vec_CS1_Normal", "Vec_CS2_Normal") %in% res$summary$metric))
   expect_equal(names(res$measurements), c("Individual", "metric", "value_mm", "status", "method"))
-  
+
   expect_unit_vector(res$vectors$Vec_Penp)
   expect_unit_vector(res$vectors$Vec_CS1_Normal)
   expect_unit_vector(res$vectors$Vec_CS2_Normal)
   expect_unit_vector(res$vectors$Anterior_ref)
-  
+  expect_unit_vector(res$vectors$Superoinferior_ref)
+  expect_equal(res$superoinferior_reference$source, "LM9_real_gonion")
+  expect_gt(dot3(res$vectors$Vec_Penp, res$superoinferior_reference$reference_vector), 0)
+
   expect_equal(
     unname(res$points$CS1B),
     unname(res$landmarks["LM5", ]),
     tolerance = 1e-6
   )
-  
+
   expect_equal(
     unname(res$vectors$Vec_CS1),
     unname(res$landmarks["LM6", ] - res$landmarks["LM5", ]),
@@ -51,20 +54,52 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   )
 })
 
+test_that("orient_mandible() uses the same anatomical superoinferior sign for Avizo and Slicer", {
+  res_avizo <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm9_valid = TRUE
+  )
+
+  expect_equal(res_avizo$superoinferior_reference$source, "LM9_real_gonion")
+  expect_gt(dot3(res_avizo$vectors$Vec_Penp, res_avizo$superoinferior_reference$reference_vector), 0)
+  expect_contains_fixed(get_tcl(res_avizo, section = "CS1"), "\"ARP\" normal setCoord 0")
+
+  res_invalid_lm9 <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm9_valid = FALSE
+  )
+
+  expect_false(res_invalid_lm9$superoinferior_reference$source == "LM9_real_gonion")
+  expect_gt(
+    dot3(res_invalid_lm9$vectors$Vec_Penp, res_invalid_lm9$superoinferior_reference$reference_vector),
+    0
+  )
+
+  res_slicer <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    SLICER = TRUE,
+    volume_name = "MANDIBLE_VOLUME"
+  )
+
+  expect_equal(res_slicer$superoinferior_reference$source, "LM9_real_gonion")
+  expect_gt(dot3(res_slicer$vectors$Vec_Penp, res_slicer$superoinferior_reference$reference_vector), 0)
+  expect_contains_fixed(get_slicer_py(res_slicer, section = "CS1"), "Y_PREFERRED =")
+})
+
 test_that("orient_mandible() generates expected TCL blocks", {
   res <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
     individual_id = "MANDIBLE_TEST"
   )
-  
+
   tcl_cs1 <- get_tcl(res, section = "CS1")
   tcl_cs2 <- get_tcl(res, section = "CS2")
   tcl_cs3 <- get_tcl(res, section = "CS3")
-  
+
   expect_contains_fixed(tcl_cs1, "# MANDIBLE - CS1")
   expect_contains_fixed(tcl_cs2, "# MANDIBLE - CS2")
   expect_contains_fixed(tcl_cs3, "# MANDIBLE - CS3")
-  
+
   expect_contains_fixed(tcl_cs1, "\"ARP\" planeDefinition setValue 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" origin setCoord 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" normal setCoord 0")
@@ -80,11 +115,11 @@ test_that("orient_mandible() validates malformed input", {
     orient_mandible("1 2 3"),
     "requires 27, 33, or 36 numeric values"
   )
-  
+
   expect_error(
     orient_mandible(
       landmarks_str = mandible_landmarks_str,
-      cs3_camera_side = "POSTERIOR"
+      lm1_side = "POSTERIOR"
     )
   )
 
@@ -105,13 +140,40 @@ test_that("orient_mandible() validates malformed input", {
   )
 })
 
-test_that("orient_mandible() accepts lowercase CS3 side values", {
+test_that("orient_mandible() accepts lowercase LM1 side values", {
   res <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
-    cs3_camera_side = "left"
+    lm1_side = "left"
   )
-  
-  expect_equal(res$cs3_camera_side, "LEFT")
+
+  expect_equal(res$lm1_side, "LEFT")
+})
+
+
+
+test_that("orient_mandible() changes anatomical side vectors when LM1 is on the left", {
+  res_right <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm1_side = "RIGHT"
+  )
+  res_left <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    lm1_side = "LEFT"
+  )
+
+  expect_equal(res_right$lm1_side, "RIGHT")
+  expect_equal(res_left$lm1_side, "LEFT")
+  expect_equal(
+    unname(res_left$vectors$Vec_RightToLeft),
+    unname(-res_right$vectors$Vec_RightToLeft),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(res_left$vectors$Vec_LandmarkedSide),
+    unname(res_right$vectors$Vec_LandmarkedSide),
+    tolerance = 1e-6
+  )
+  expect_gt(dot3(res_left$vectors$Vec_Penp, res_left$superoinferior_reference$reference_vector), 0)
 })
 
 test_that("orient_mandible() supports 12 landmarks with direct bigonial breadth", {
@@ -219,10 +281,15 @@ test_that("orient_mandible() can estimate LM10 for mandibular length", {
 
 test_that("orient_mandible() separates input format from coordinate system", {
   lps_mat <- matrix_from_xyz_string(mandible_landmarks_str)
+  lps_slicer <- make_slicer_markup_table(lps_mat)
   ras_slicer <- make_slicer_markup_table(flip_xyz_matrix(lps_mat))
 
   res_lps <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
+    lm_coord_system = "LPS"
+  )
+  res_lps_slicer <- orient_mandible(
+    landmarks_str = lps_slicer,
     lm_coord_system = "LPS"
   )
   res_ras <- orient_mandible(
@@ -230,6 +297,7 @@ test_that("orient_mandible() separates input format from coordinate system", {
     lm_coord_system = "RAS"
   )
 
+  expect_equal(res_lps_slicer$landmarks, res_lps$landmarks, tolerance = 1e-6)
   expect_equal(res_ras$lm_coord_system, "RAS")
   expect_equal(res_ras$internal_coord_system, "LPS")
   expect_equal(res_ras$landmarks, res_lps$landmarks, tolerance = 1e-6)
@@ -314,7 +382,7 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs2, "SECTION_LABEL = \"CS2\"")
   expect_contains_fixed(py_cs2, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs3, "SECTION_LABEL = \"CS3\"")
-  expect_contains_fixed(py_cs3, "THREED_VERIFICATION_VIEW_SIDE = \"MINUS\"")
+  expect_contains_fixed(py_cs3, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs3, "Run restore_view()")
   expect_false(grepl("translate_orientcsg_section", py_cs3, fixed = TRUE))
 })

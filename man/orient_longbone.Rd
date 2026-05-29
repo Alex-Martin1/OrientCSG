@@ -63,12 +63,15 @@ supported for Slicer output.}
 \item{mesh_file}{Optional path to a watertight closed surface mesh (\code{.ply},
 \code{.stl}, or \code{.obj}) used when \code{SOLID = TRUE}.}
 
-\item{lm_coord_system}{Coordinate system of the input landmark coordinates.
-The default is \code{"LPS"}, matching the Avizo/Amira-like internal convention.
-Use \code{"RAS"} for coordinates taken directly from Slicer world coordinates.
-This argument controls the spatial interpretation of the numbers only; it
-does not depend on whether the text was pasted as plain XYZ coordinates or
-as a Slicer Markups table.}
+\item{lm_coord_system}{Coordinate system of the numeric landmark values pasted
+into R. The default is \code{"LPS"}, matching the Avizo/Amira-like internal
+convention. Coordinates copied or exported from 3D Slicer Markups may paste
+as LPS even when the Slicer table displays R/A/S columns; in that case keep
+\code{lm_coord_system = "LPS"}. Use \code{"RAS"} only for values that are actually RAS,
+such as coordinates extracted from Slicer with
+\code{GetNthControlPointPositionWorld()}. This argument controls the spatial
+interpretation of the numbers only; it does not depend on whether the text
+was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{slicer_landmarks_str}{Deprecated alias for \code{landmarks_str}, retained so
 older scripts continue to run with the updated parser and coordinate logic.}
@@ -183,7 +186,9 @@ using the DICOM Image Orientation (Patient) field supplied through
 supports stacks with different DICOM orientations. When \code{SOLID = TRUE}, the
 longitudinal axis is estimated directly from the closed mesh by volumetric
 inertia. In both cases, the sign of the longitudinal vector is adjusted when
-anatomical landmarks provide a distal to proximal reference.
+anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
+reference is defined from the tibio-talar landmark to the midpoint of the two
+plateau landmarks.
 }
 
 \section{Section locations}{
@@ -207,9 +212,15 @@ improved compatibility across Amira/Avizo versions.
 
 When \code{SLICER = TRUE}, the generated Python code assumes that the corresponding
 model is loaded in 3D Slicer. If \code{model_name} is omitted, the function uses the
-basename of \code{mesh_file} when available. Landmarks copied from a Slicer Markups
-table can be supplied through \code{landmarks_str}; their coordinate system is
-controlled explicitly by \code{lm_coord_system}. The older arguments
+basename of \code{mesh_file} when available. Landmark rows copied from a Slicer
+Markups table can be supplied through \code{landmarks_str}; however, the coordinate
+system must describe the numeric values that are actually pasted into R. In
+common Slicer Markups table/export workflows these pasted values may be LPS,
+even though the Slicer interface displays R/A/S columns. Use
+\code{lm_coord_system = "LPS"} for such copied/exported text. Use
+\code{lm_coord_system = "RAS"} only for values that are confirmed to be true Slicer
+world RAS coordinates, for example values extracted with
+\code{GetNthControlPointPositionWorld()}. The older arguments
 \code{slicer_landmarks_str} and \code{landmark_coordinate_system} are retained as
 aliases for backward compatibility.
 }

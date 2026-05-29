@@ -13,7 +13,8 @@ extract_nums <- function(txt) {
 #
 # Extract numeric tokens from text that may also contain labels such as F-1.
 # This is used for coordinate tables copied from 3D Slicer Markups, where labels
-# and IDs are mixed with coordinate values.
+# and IDs are mixed with coordinate values. The parser reads the numeric text only;
+# the spatial coordinate system is declared separately with lm_coord_system.
 extract_numeric_tokens <- function(txt) {
   pattern <- "[-+]?(?:\\d*\\.\\d+|\\d+\\.?\\d*)(?:[eE][-+]?\\d+)?"
   matches <- gregexpr(pattern, txt, perl = TRUE)
@@ -109,7 +110,9 @@ resolve_landmarks_str <- function(landmarks_str = NULL, slicer_landmarks_str = N
 #
 # Convert input landmark coordinates to the package's internal LPS/external
 # convention. The textual input format is deliberately handled elsewhere: this
-# function only interprets the spatial coordinate system declared by the user.
+# function only interprets the coordinate system of the numeric values that were
+# actually pasted into R. Coordinates copied/exported from 3D Slicer Markups may
+# paste as LPS even when the Slicer table displays R/A/S columns.
 normalize_lm_coordinates <- function(coords, lm_coord_system = "LPS", arg = "lm_coord_system") {
   lm_coord_system <- toupper(trimws(lm_coord_system))
 

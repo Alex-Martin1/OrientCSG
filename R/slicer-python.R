@@ -29,6 +29,8 @@ emit_slicer_section_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_TibioTalar
     proximal_endpoint <- res$projected$Proj_Midpoint
+    # In the current tibial landmark convention, AP points posterior in the
+    # generated Slicer view; use -AP as screen-up so anterior appears at the top.
     anterior_up_sign <- -1
     ml_right_sign <- 1
   } else if (identical(res$type, "HUMERUS")) {
@@ -41,8 +43,9 @@ emit_slicer_section_python <- function(res, section = NULL) {
     ml_right_sign <- 1
   }
 
-  # The R workflow stores coordinates in the external mesh/LPS convention. Slicer
-  # expects RAS in the Python interactor, so X and Y are inverted here.
+  # OrientCSG stores long-bone geometry internally in the external mesh/LPS-like
+  # convention. Slicer Python expects RAS world coordinates, so X and Y are
+  # inverted only at this output boundary.
   Psec_ras <- flip_xy(res$section_points[[section]])
   L_ras <- flip_xy(res$vectors$L)
   ML_ras <- flip_xy(res$vectors$ML)
@@ -79,6 +82,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     sprintf("PROXIMAL_AXIS_POINT = %s", fmt_py_vec(proximal_ras)),
     "",
     sprintf("CAMERA_DISTANCE_MM = %s", fmt_num_py(res$camera_distance_mm)),
+    "VIEW_FROM_PROXIMAL = True",
     "PARALLEL_SCALE_MARGIN = 0.60",
     "CREATE_FILLED_SECTION = True",
     "CREATE_SECTION_OUTLINE_NODE = False",
@@ -261,8 +265,11 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "        return int(widget.width()), int(widget.height())",
     "",
     "def compute_camera_basis(L, ML, AP):",
+    "    # L is emitted by R as an anatomical distal-to-proximal vector.",
+    "    # A proximal view places the camera on the proximal side of the section,",
+    "    # instead of choosing the side from any global Slicer axis.",
     "    Zcam = nrm(L)",
-    "    if dot3(Zcam, np.array([0.0, 0.0, -1.0])) < 0:",
+    "    if not VIEW_FROM_PROXIMAL:",
     "        Zcam = -Zcam",
     "    desired_up = ANTERIOR_UP_SIGN * AP",
     "    desired_up = desired_up - dot3(desired_up, Zcam) * Zcam",
@@ -426,35 +433,35 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
 
   LM <- res$landmarks
   LM2 <- LM["LM2", ]
-  Anterior_ref <- res$vectors$Anterior_ref
+  Vec_LandmarkedSide <- res$vectors$Vec_LandmarkedSide
 
   if (section == "CS1") {
     Psec <- res$points$CS1B
     normal <- res$vectors$Vec_CS1_Normal
     x_ref <- project_vector_to_plane(res$vectors$Vec_CS1, normal)
-    three_d_side <- "PLUS"
 
-    if (dot3(normal, Anterior_ref) < 0) {
+    if (dot3(normal, Vec_LandmarkedSide) < 0) {
       normal <- -normal
     }
+    three_d_side <- "PLUS"
   } else if (section == "CS2") {
     Psec <- res$points$CS2B
     normal <- res$vectors$Vec_CS2_Normal
     x_ref <- project_vector_to_plane(res$vectors$Vec_CS2, normal)
-    three_d_side <- "PLUS"
 
-    if (dot3(normal, Anterior_ref) < 0) {
+    if (dot3(normal, Vec_LandmarkedSide) < 0) {
       normal <- -normal
     }
+    three_d_side <- "PLUS"
   } else {
     Psec <- LM2
-    normal <- res$vectors$Vec_1_1Line
+    normal <- res$vectors$Vec_RightToLeft
     x_ref <- res$vectors$Vec_0_2
-    three_d_side <- "MINUS"
 
-    if (identical(res$cs3_camera_side, "RIGHT")) {
+    if (dot3(normal, Vec_LandmarkedSide) < 0) {
       normal <- -normal
     }
+    three_d_side <- "PLUS"
   }
 
   if (sqrt(sum(x_ref^2)) < 1e-12) {
@@ -462,7 +469,8 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
   }
 
   # OrientCSG stores mandibular coordinates internally in LPS. 3D Slicer Python
-  # expects RAS world coordinates, so X and Y are inverted before emitting values.
+  # expects RAS world coordinates, so X and Y are inverted only at this output
+  # boundary.
   Psec_ras <- flip_xy(Psec)
   normal_ras <- flip_xy(normal)
   x_ref_ras <- flip_xy(x_ref)
@@ -636,12 +644,15 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
     "",
     "    if np.linalg.norm(x_ref) > 1e-12:",
     "        if dot3(x_axis, nrm(x_ref)) < 0:",
-    "            x_axis = -x_axis",
-    "            y_axis = -y_axis",
+    "            # Preserve anatomical Y-up. Flip the slice normal instead of",
+    "            # flipping Y; this keeps superior at the top while changing the",
+    "            # side from which the section is viewed.",
+    "            z_axis = -z_axis",
+    "            x_axis = nrm(cross3(y_axis, z_axis))",
     "",
-    "    # Defensive re-orthogonalization.",
-    "    y_axis = nrm(cross3(z_axis, x_axis))",
+    "    # Defensive re-orthogonalization that preserves Y as anatomical up.",
     "    x_axis = nrm(cross3(y_axis, z_axis))",
+    "    z_axis = nrm(cross3(x_axis, y_axis))",
     "",
     "    m = vtk.vtkMatrix4x4()",
     "    m.Identity()",

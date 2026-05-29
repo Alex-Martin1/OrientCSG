@@ -172,7 +172,10 @@ copy_tcl(res_humerus_table, section = "SECTION_50")
 mesh_file <- "C:/Users/Alex/Desktop/T108_solid.ply"
 
 
-# Landmarks exported/copied from 3D Slicer.
+# Landmarks copied/exported from the 3D Slicer Markups table. In this workflow
+# the pasted text should usually be treated as LPS, even if the table displays
+# R/A/S labels. Use lm_coord_system = "RAS" only for values explicitly extracted
+# as Slicer world coordinates, for example with GetNthControlPointPositionWorld().
 landmarks_str_slicer <- "
 1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
 2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
@@ -183,7 +186,7 @@ res_solid_slicer <- orient_longbone(
   mode = "TIBIA",
   mesh_file = mesh_file,
   landmarks_str = landmarks_str_slicer,
-  lm_coord_system = "RAS",
+  lm_coord_system = "LPS",
   section_loc = 50,
   individual_id = "T108",
   model_name = "T108_solid",
@@ -204,7 +207,7 @@ copy_slicer_py(res_solid_slicer, "SECTION_50")
 
 # HUMERUS: solid mesh + 3D Slicer workflow=====
 
-# This workflow mirrors the tibial solid mesh + Slicer workflow, but uses mode = "HUMERUS". 
+# This workflow mirrors the tibial solid mesh + Slicer workflow, but uses mode = "HUMERUS".
 
 
 # Replace mesh_file_humerus with the full path to your own humeral mesh file. For example:
@@ -223,7 +226,7 @@ res_humerus_solid_slicer <- orient_longbone(
   mode = "HUMERUS",
   mesh_file = mesh_file_humerus,
   landmarks_str = landmarks_str_slicer_humerus,
-  lm_coord_system = "RAS",
+  lm_coord_system = "LPS",
   section_loc = c(35, 50),
   individual_id = "H108",
   model_name = "H108_solid",
