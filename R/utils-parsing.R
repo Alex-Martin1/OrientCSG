@@ -56,24 +56,8 @@ flip_xy_matrix <- function(mat) {
 
 # Internal argument helper ---------------------------------------------------
 #
-# Resolve the preferred coordinate-system argument and its legacy alias.
-resolve_lm_coord_system <- function(lm_coord_system = "LPS",
-                                    landmark_coordinate_system = NULL,
-                                    lm_coord_system_missing = FALSE) {
-  if (!is.null(landmark_coordinate_system)) {
-    old_value <- toupper(trimws(landmark_coordinate_system))
-    new_value <- toupper(trimws(lm_coord_system))
-
-    if (!lm_coord_system_missing && !identical(new_value, old_value)) {
-      stop(
-        "`lm_coord_system` and `landmark_coordinate_system` were both supplied but differ.",
-        call. = FALSE
-      )
-    }
-
-    lm_coord_system <- landmark_coordinate_system
-  }
-
+# Validate the coordinate-system argument used to interpret landmark values.
+resolve_lm_coord_system <- function(lm_coord_system = "LPS") {
   lm_coord_system <- toupper(trimws(lm_coord_system))
   if (length(lm_coord_system) != 1L || is.na(lm_coord_system) || !lm_coord_system %in% c("LPS", "RAS")) {
     stop('`lm_coord_system` must be "LPS" or "RAS".', call. = FALSE)
@@ -84,21 +68,8 @@ resolve_lm_coord_system <- function(lm_coord_system = "LPS",
 
 # Internal argument helper ---------------------------------------------------
 #
-# Resolve the preferred landmark text argument and its legacy Slicer alias.
-resolve_landmarks_str <- function(landmarks_str = NULL, slicer_landmarks_str = NULL) {
-  if (!is.null(landmarks_str) && !is.null(slicer_landmarks_str)) {
-    if (!identical(trimws(landmarks_str), trimws(slicer_landmarks_str))) {
-      stop(
-        "Both `landmarks_str` and `slicer_landmarks_str` were supplied, but they differ.",
-        call. = FALSE
-      )
-    }
-  }
-
-  if (is.null(landmarks_str)) {
-    landmarks_str <- slicer_landmarks_str
-  }
-
+# Validate the landmark text argument.
+resolve_landmarks_str <- function(landmarks_str = NULL) {
   if (is.null(landmarks_str) || length(landmarks_str) != 1L || !nzchar(trimws(landmarks_str))) {
     stop("`landmarks_str` is required.", call. = FALSE)
   }
@@ -299,8 +270,8 @@ dicom_iop_to_bonej_transform <- function(dicom_iop) {
 #
 # Resolve how the BoneJ eigenvector matrix is transferred into the package's
 # internal LPS/DICOM coordinate convention. The default uses DICOM Image
-# Orientation (Patient). `legacy_flip_xy` is retained to reproduce workflows
-# developed before this DICOM-aware conversion was added.
+# Orientation (Patient). `flip_xy` reproduces workflows developed before this
+# DICOM-aware conversion was added.
 resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
                                     dicom_iop = NULL,
                                     bonej_transform_matrix = NULL) {
@@ -309,7 +280,6 @@ resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
   }
 
   transform_name <- tolower(trimws(bonej_coord_transform))
-  if (identical(transform_name, "flip_xy")) transform_name <- "legacy_flip_xy"
 
   if (identical(transform_name, "dicom_iop")) {
     if (is.null(dicom_iop)) {
@@ -325,7 +295,7 @@ resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
     }
     transform_matrix <- dicom_iop_to_bonej_transform(dicom_iop)
     parsed_iop <- attr(transform_matrix, "dicom_iop")
-  } else if (identical(transform_name, "legacy_flip_xy")) {
+  } else if (identical(transform_name, "flip_xy")) {
     transform_matrix <- diag(c(-1, -1, 1))
     parsed_iop <- NULL
   } else if (identical(transform_name, "none")) {
@@ -342,7 +312,7 @@ resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
     parsed_iop <- NULL
   } else {
     stop(
-      '`bonej_coord_transform` must be one of "dicom_iop", "legacy_flip_xy", "none", or "manual".',
+      '`bonej_coord_transform` must be one of "dicom_iop", "flip_xy", "none", or "manual".',
       call. = FALSE
     )
   }
@@ -355,25 +325,4 @@ resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
     matrix = transform_matrix,
     dicom_iop = parsed_iop
   )
-}
-
-# Internal parsing helper ----------------------------------------------------
-#
-# Backward-compatible wrapper for older internal code paths. This function no
-# longer owns coordinate-system semantics; it delegates textual parsing to the
-# flexible parser and then applies the explicitly declared coordinate system.
-parse_slicer_landmarks <- function(slicer_landmarks_str,
-                                   mode = "TIBIA",
-                                   coordinate_system = "LPS") {
-  mode <- toupper(trimws(mode))
-
-  n_landmarks <- switch(
-    mode,
-    TIBIA = 3L,
-    HUMERUS = 4L,
-    stop('Slicer landmark parsing is implemented only for `mode = "TIBIA"` and `mode = "HUMERUS"`.', call. = FALSE)
-  )
-
-  mat <- parse_landmarks(slicer_landmarks_str, n_landmarks = n_landmarks, context = mode)
-  normalize_lm_coordinates(mat, lm_coord_system = coordinate_system, arg = "landmark_coordinate_system")
 }

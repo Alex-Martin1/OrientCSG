@@ -87,9 +87,7 @@
 #' `lm_coord_system = "LPS"` for such copied/exported text. Use
 #' `lm_coord_system = "RAS"` only for values that are confirmed to be true Slicer
 #' world RAS coordinates, for example values extracted with
-#' `GetNthControlPointPositionWorld()`. The older arguments
-#' `slicer_landmarks_str` and `landmark_coordinate_system` are retained as
-#' aliases for backward compatibility.
+#' `GetNthControlPointPositionWorld()`.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
 #'   `"TIBIA"`, `"HUMERUS"`, or `"HUMERUS_TABLE"`.
@@ -129,17 +127,13 @@
 #'   `GetNthControlPointPositionWorld()`. This argument controls the spatial
 #'   interpretation of the numbers only; it does not depend on whether the text
 #'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
-#' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
-#'   older scripts continue to run with the updated parser and coordinate logic.
 #' @param model_name Optional model node name used by the generated Slicer Python
 #'   block. If omitted, the basename of `mesh_file` is used when available.
-#' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
-#'   retained for backward compatibility.
 #' @param bonej_coord_transform Advanced character argument controlling how the
 #'   BoneJ eigenvector matrix is transformed before use. The default,
 #'   `"dicom_iop"`, derives the transformation from `dicom_iop`. The values
-#'   `"legacy_flip_xy"`, `"none"`, and `"manual"` are retained for diagnostic
-#'   or backward-compatible workflows.
+#'   `"flip_xy"`, `"none"`, and `"manual"` are retained for diagnostic
+#'   workflows.
 #' @param bonej_transform_matrix Optional 3 x 3 matrix used only when
 #'   `bonej_coord_transform = "manual"`.
 #'
@@ -208,12 +202,9 @@ orient_longbone <- function(mode,
                             SLICER = FALSE,
                             mesh_file = NULL,
                             lm_coord_system = "LPS",
-                            slicer_landmarks_str = NULL,
                             model_name = NULL,
-                            landmark_coordinate_system = NULL,
                             bonej_coord_transform = "dicom_iop",
                             bonej_transform_matrix = NULL) {
-  lm_coord_system_missing <- missing(lm_coord_system)
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
     stop('`mode` must be one of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".', call. = FALSE)
@@ -235,11 +226,7 @@ orient_longbone <- function(mode,
     stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"`.', call. = FALSE)
   }
 
-  lm_coord_system <- resolve_lm_coord_system(
-    lm_coord_system = lm_coord_system,
-    landmark_coordinate_system = landmark_coordinate_system,
-    lm_coord_system_missing = lm_coord_system_missing
-  )
+  lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
 
   section_loc <- as.numeric(section_loc)
   if (any(!is.finite(section_loc)) || any(section_loc < 0 | section_loc > 100)) {
@@ -277,10 +264,7 @@ orient_longbone <- function(mode,
 
   n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
 
-  landmarks_str <- resolve_landmarks_str(
-    landmarks_str = landmarks_str,
-    slicer_landmarks_str = slicer_landmarks_str
-  )
+  landmarks_str <- resolve_landmarks_str(landmarks_str = landmarks_str)
 
   mat_pts <- parse_landmarks(landmarks_str, n_landmarks = n_landmarks, context = mode)
   mat_pts <- normalize_lm_coordinates(mat_pts, lm_coord_system = lm_coord_system)

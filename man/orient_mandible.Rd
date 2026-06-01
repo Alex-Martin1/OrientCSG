@@ -14,8 +14,6 @@ orient_mandible(
   lm9_valid = TRUE,
   lm_coord_system = "LPS",
   SLICER = FALSE,
-  slicer_landmarks_str = NULL,
-  landmark_coordinate_system = NULL,
   volume_name = NULL
 )
 }
@@ -64,12 +62,6 @@ was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{SLICER}{Logical. If \code{FALSE} (default), generate Avizo/Amira TCL command
 blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.}
-
-\item{slicer_landmarks_str}{Deprecated alias for \code{landmarks_str}, retained so
-older scripts continue to run with the updated parser and coordinate logic.}
-
-\item{landmark_coordinate_system}{Deprecated alias for \code{lm_coord_system},
-retained for backward compatibility.}
 
 \item{volume_name}{Optional scalar volume node name used by the generated
 Slicer Python block. If omitted, the block uses the active background volume

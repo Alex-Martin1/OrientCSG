@@ -2,7 +2,7 @@ test_that("orient_longbone() works for TIBIA mode", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50,
     individual_id = "TIBIA_TEST"
@@ -37,7 +37,7 @@ test_that("orient_longbone() orients tibial L distal-to-proximal", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -53,7 +53,7 @@ test_that("orient_longbone() works for HUMERUS mode", {
   res <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "HUMERUS_TEST"
@@ -84,7 +84,7 @@ test_that("orient_longbone() works for HUMERUS_TABLE mode", {
   res <- orient_longbone(
     mode = "HUMERUS_TABLE",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_table_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "HUMERUS_TABLE_TEST"
@@ -115,7 +115,7 @@ test_that("orient_longbone() generates expected TCL blocks", {
   res <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50)
   )
@@ -167,7 +167,7 @@ test_that("orient_longbone() validates malformed input", {
     orient_longbone(
       mode = "TIBIA",
       longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-      dicom_iop = dicom_iop_legacy_flip_xy,
+      dicom_iop = dicom_iop_flip_xy,
       landmarks_str = "1 2 3"
     ),
     "requires 9 numeric values"
@@ -191,7 +191,7 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
   res_plain <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50),
     lm_coord_system = "LPS"
@@ -199,7 +199,7 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
   res_lps_slicer <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_lps_slicer,
     section_loc = c(35, 50),
     lm_coord_system = "LPS"
@@ -207,7 +207,7 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
   res_slicer <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_ras_slicer,
     section_loc = c(35, 50),
     lm_coord_system = "RAS"
@@ -220,49 +220,26 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
   expect_equal(res_slicer$summary, res_plain$summary, tolerance = 1e-6)
 })
 
-test_that("orient_longbone() keeps legacy coordinate and landmark aliases", {
-  res_new <- orient_longbone(
-    mode = "HUMERUS",
-    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
-    landmarks_str = humerus_landmarks_str,
-    section_loc = 50,
-    lm_coord_system = "LPS"
-  )
-  res_old <- orient_longbone(
-    mode = "HUMERUS",
-    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
-    slicer_landmarks_str = humerus_landmarks_str,
-    section_loc = 50,
-    landmark_coordinate_system = "LPS"
-  )
-
-  expect_equal(res_old$landmarks, res_new$landmarks, tolerance = 1e-6)
-  expect_equal(res_old$summary, res_new$summary, tolerance = 1e-6)
-})
-
-
 test_that("DICOM Image Orientation Patient controls the BoneJ transform", {
   res_nubia <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = 35
   )
 
-  res_legacy <- orient_longbone(
+  res_flip_xy <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     landmarks_str = humerus_landmarks_str,
     section_loc = 35,
-    bonej_coord_transform = "legacy_flip_xy"
+    bonej_coord_transform = "flip_xy"
   )
 
   expect_equal(res_nubia$bonej$coord_transform, "dicom_iop")
   expect_equal(c(res_nubia$bonej$transform_matrix), c(diag(c(-1, -1, 1))), tolerance = 1e-12)
-  expect_equal(res_nubia$summary, res_legacy$summary, tolerance = 1e-6)
+  expect_equal(res_nubia$summary, res_flip_xy$summary, tolerance = 1e-6)
 
   res_carcavilla <- orient_longbone(
     mode = "HUMERUS",

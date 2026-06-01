@@ -305,37 +305,6 @@ test_that("orient_mandible() separates input format from coordinate system", {
   expect_equal(res_ras$measurements$value_mm, res_lps$measurements$value_mm, tolerance = 1e-6)
 })
 
-test_that("orient_mandible() keeps legacy coordinate and landmark aliases", {
-  res_new <- orient_mandible(
-    landmarks_str = mandible_landmarks_str,
-    lm_coord_system = "LPS"
-  )
-  res_old <- orient_mandible(
-    slicer_landmarks_str = mandible_landmarks_str,
-    landmark_coordinate_system = "LPS"
-  )
-
-  expect_equal(res_old$landmarks, res_new$landmarks, tolerance = 1e-6)
-  expect_equal(res_old$summary, res_new$summary, tolerance = 1e-6)
-
-  expect_error(
-    orient_mandible(
-      landmarks_str = mandible_landmarks_str,
-      slicer_landmarks_str = mandible_landmarks_str_9
-    ),
-    "Both `landmarks_str` and `slicer_landmarks_str` were supplied"
-  )
-
-  expect_error(
-    orient_mandible(
-      landmarks_str = mandible_landmarks_str,
-      lm_coord_system = "RAS",
-      landmark_coordinate_system = "LPS"
-    ),
-    "both supplied but differ"
-  )
-})
-
 test_that("orient_mandible() generates Slicer Python blocks", {
   res <- orient_mandible(
     landmarks_str = mandible_landmarks_str,

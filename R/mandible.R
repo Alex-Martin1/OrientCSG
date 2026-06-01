@@ -101,10 +101,6 @@
 #'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param SLICER Logical. If `FALSE` (default), generate Avizo/Amira TCL command
 #'   blocks. If `TRUE`, generate 3D Slicer Python command blocks.
-#' @param slicer_landmarks_str Deprecated alias for `landmarks_str`, retained so
-#'   older scripts continue to run with the updated parser and coordinate logic.
-#' @param landmark_coordinate_system Deprecated alias for `lm_coord_system`,
-#'   retained for backward compatibility.
 #' @param volume_name Optional scalar volume node name used by the generated
 #'   Slicer Python block. If omitted, the block uses the active background volume
 #'   in the chosen slice view when possible, falling back to the only scalar
@@ -197,25 +193,15 @@ orient_mandible <- function(landmarks_str = NULL,
                             lm9_valid = TRUE,
                             lm_coord_system = "LPS",
                             SLICER = FALSE,
-                            slicer_landmarks_str = NULL,
-                            landmark_coordinate_system = NULL,
                             volume_name = NULL) {
-  lm_coord_system_missing <- missing(lm_coord_system)
   lm1_side <- match.arg(toupper(lm1_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
   SLICER <- assert_logical_scalar(SLICER, "SLICER")
-  lm_coord_system <- resolve_lm_coord_system(
-    lm_coord_system = lm_coord_system,
-    landmark_coordinate_system = landmark_coordinate_system,
-    lm_coord_system_missing = lm_coord_system_missing
-  )
+  lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
 
-  landmarks_str <- resolve_landmarks_str(
-    landmarks_str = landmarks_str,
-    slicer_landmarks_str = slicer_landmarks_str
-  )
+  landmarks_str <- resolve_landmarks_str(landmarks_str = landmarks_str)
 
   mat_pts <- parse_mandible_landmarks(landmarks_str)
   mat_pts <- normalize_lm_coordinates(mat_pts, lm_coord_system = lm_coord_system)

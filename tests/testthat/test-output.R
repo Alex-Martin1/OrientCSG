@@ -2,7 +2,7 @@ test_that("get_tcl() returns selected and combined TCL blocks", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -38,7 +38,7 @@ test_that("write_tcl() writes a selected TCL block to disk", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_legacy_flip_xy,
+    dicom_iop = dicom_iop_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -81,7 +81,7 @@ test_that("get_slicer_py() returns selected and combined Slicer blocks", {
 })
 
 test_that("orient_longbone() generates Slicer Python for HUMERUS mode", {
-  humerus_slicer_landmarks_str <- "
+  humerus_landmarks_table <- "
 1 -164.789749145508 15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
 2 -186.393386840820 15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
 3 -182.241800000000  6.976971000000 -59.921390000000 0 0 0 1 1 1 0 F-3 2 0
@@ -91,9 +91,9 @@ test_that("orient_longbone() generates Slicer Python for HUMERUS mode", {
   res <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_legacy_flip_xy,
-    slicer_landmarks_str = humerus_slicer_landmarks_str,
-    landmark_coordinate_system = "RAS",
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = humerus_landmarks_table,
+    lm_coord_system = "RAS",
     section_loc = c(35, 50),
     model_name = "H108_solid",
     SLICER = TRUE
@@ -113,13 +113,13 @@ test_that("orient_longbone() generates Slicer Python for HUMERUS mode", {
 })
 
 test_that("orient_longbone() generates proximal-view Slicer Python for TIBIA mode", {
-  tibia_slicer_landmarks_str <- make_slicer_markup_table(matrix_from_xyz_string(tibia_landmarks_str))
+  tibia_landmarks_table <- make_slicer_markup_table(matrix_from_xyz_string(tibia_landmarks_str))
 
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_legacy_flip_xy,
-    landmarks_str = tibia_slicer_landmarks_str,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = tibia_landmarks_table,
     lm_coord_system = "LPS",
     section_loc = 50,
     model_name = "T108_solid",

@@ -16,9 +16,7 @@ orient_longbone(
   SLICER = FALSE,
   mesh_file = NULL,
   lm_coord_system = "LPS",
-  slicer_landmarks_str = NULL,
   model_name = NULL,
-  landmark_coordinate_system = NULL,
   bonej_coord_transform = "dicom_iop",
   bonej_transform_matrix = NULL
 )
@@ -73,20 +71,14 @@ such as coordinates extracted from Slicer with
 interpretation of the numbers only; it does not depend on whether the text
 was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
-\item{slicer_landmarks_str}{Deprecated alias for \code{landmarks_str}, retained so
-older scripts continue to run with the updated parser and coordinate logic.}
-
 \item{model_name}{Optional model node name used by the generated Slicer Python
 block. If omitted, the basename of \code{mesh_file} is used when available.}
-
-\item{landmark_coordinate_system}{Deprecated alias for \code{lm_coord_system},
-retained for backward compatibility.}
 
 \item{bonej_coord_transform}{Advanced character argument controlling how the
 BoneJ eigenvector matrix is transformed before use. The default,
 \code{"dicom_iop"}, derives the transformation from \code{dicom_iop}. The values
-\code{"legacy_flip_xy"}, \code{"none"}, and \code{"manual"} are retained for diagnostic
-or backward-compatible workflows.}
+\code{"flip_xy"}, \code{"none"}, and \code{"manual"} are retained for diagnostic
+workflows.}
 
 \item{bonej_transform_matrix}{Optional 3 x 3 matrix used only when
 \code{bonej_coord_transform = "manual"}.}
@@ -220,9 +212,7 @@ even though the Slicer interface displays R/A/S columns. Use
 \code{lm_coord_system = "LPS"} for such copied/exported text. Use
 \code{lm_coord_system = "RAS"} only for values that are confirmed to be true Slicer
 world RAS coordinates, for example values extracted with
-\code{GetNthControlPointPositionWorld()}. The older arguments
-\code{slicer_landmarks_str} and \code{landmark_coordinate_system} are retained as
-aliases for backward compatibility.
+\code{GetNthControlPointPositionWorld()}.
 }
 
 \examples{

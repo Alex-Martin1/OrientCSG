@@ -14,3 +14,4 @@ Config/testthat/edition: 3
 URL: https://github.com/Alex-Martin1/OrientCSG
 BugReports: https://github.com/Alex-Martin1/OrientCSG/issues
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.2

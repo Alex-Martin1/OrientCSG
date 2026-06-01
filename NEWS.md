@@ -1,5 +1,8 @@
 # OrientCSG 0.3.3
 
+* Removed deprecated public aliases `slicer_landmarks_str` and `landmark_coordinate_system`; use `landmarks_str` and `lm_coord_system` instead.
+* Renamed the diagnostic BoneJ transform option `bonej_coord_transform = "legacy_flip_xy"` to `bonej_coord_transform = "flip_xy"`; the old spelling is no longer accepted.
+
 * Clarified coordinate-system handling for 3D Slicer workflows. `lm_coord_system` now explicitly refers to the numeric values that reach R: coordinates copied or exported from Slicer Markups may paste/write as LPS even when the interface displays R/A/S columns, whereas values extracted explicitly with `GetNthControlPointPositionWorld()` should be treated as true Slicer world RAS.
 * Updated README, examples, function documentation, and manual pages to reflect this distinction for mandibular and long-bone workflows.
 * Forced the tibial longitudinal vector in `orient_longbone()` to point from the tibio-talar landmark toward the midpoint of the two plateau landmarks. This stabilizes proximal-view Slicer output for tibial solid-mesh workflows.
