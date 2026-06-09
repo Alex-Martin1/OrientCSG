@@ -496,6 +496,10 @@ Until these publications are available, OrientCSG should be treated as a researc
 
 For questions, contact `almartan@ucm.es`.
 
+## Funding and support.
+
+Development of this package was supported by the FCT R&D research project “ParaFunction” (project reference 2022.07737.PTDC; https://doi.org/10.54499/2022.07737.PTDC).
+
 ## References
 
 Ruff, C. B. (2002). Long bone articular and diaphyseal structure in Old World monkeys and apes. II: Estimation of body mass. *American Journal of Physical Anthropology*, *120*(1), 16–37. https://doi.org/10.1002/ajpa.10118
