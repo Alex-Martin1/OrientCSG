@@ -252,3 +252,48 @@ test_that("DICOM Image Orientation Patient controls the BoneJ transform", {
   expect_equal(c(res_carcavilla$bonej$transform_matrix), c(diag(c(1, -1, -1))), tolerance = 1e-12)
   expect_lt(res_carcavilla$longitudinal_axis_check$angle_deg, 6)
 })
+
+test_that("orient_longbone() supports section-only mode without anatomical planes", {
+  res <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = "150 -15 -250",
+    section_loc = 50,
+    individual_id = "TIBIA_SECTION_ONLY",
+    USE_ANAT_ORIENT = FALSE
+  )
+
+  expect_false(res$USE_ANAT_ORIENT)
+  expect_equal(nrow(res$landmarks), 1)
+  expect_equal(nrow(res$summary), 2)
+  expect_equal(nrow(res$manual_orientation), 1)
+  expect_null(res$vectors$ML)
+  expect_null(res$vectors$AP)
+  expect_unit_vector(res$vectors$L)
+  expect_unit_vector(res$vectors$X_screen)
+  expect_unit_vector(res$vectors$Y_screen)
+  expect_orthogonal(res$vectors$L, res$vectors$X_screen)
+  expect_orthogonal(res$vectors$L, res$vectors$Y_screen)
+
+  tcl <- get_tcl(res, section = "SECTION_50")
+  expect_contains_fixed(tcl, "\"Slice\" planeDefinition setValue 0")
+  expect_contains_fixed(tcl, "Section-only mode: anatomical ML/AP visual planes are not generated")
+  expect_false(grepl("\"ML\" planeDefinition", tcl, fixed = TRUE))
+  expect_false(grepl("\"AP\" planeDefinition", tcl, fixed = TRUE))
+})
+
+test_that("orient_longbone() section-only mode accepts all long-bone modes", {
+  for (m in c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
+    res <- orient_longbone(
+      mode = m,
+      longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+      dicom_iop = dicom_iop_flip_xy,
+      landmarks_str = "150 -15 -250",
+      section_loc = 35,
+      USE_ANAT_ORIENT = FALSE
+    )
+    expect_equal(res$type, m)
+    expect_equal(names(res$avizo_tcl), "SECTION_35")
+  }
+})

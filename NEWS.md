@@ -1,3 +1,10 @@
+# OrientCSG 0.3.4
+
+* Added `USE_ANAT_ORIENT` to `orient_longbone()`.
+* When `USE_ANAT_ORIENT = TRUE`, the function preserves the previous anatomical-orientation workflow.
+* When `USE_ANAT_ORIENT = FALSE`, the function accepts a single landmark as the section point, places the section perpendicular to the longitudinal axis, and omits the anatomical AP and ML reference planes.
+* Implemented this section-only mode for `TIBIA`, `HUMERUS`, and `HUMERUS_TABLE`.
+
 # OrientCSG 0.3.3
 
 * Removed deprecated public aliases `slicer_landmarks_str` and `landmark_coordinate_system`; use `landmarks_str` and `lm_coord_system` instead.

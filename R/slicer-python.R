@@ -4,8 +4,8 @@
 # section. The generated block is intended to be pasted into the 3D Slicer
 # Python Interactor with the corresponding mesh model already loaded.
 emit_slicer_section_python <- function(res, section = NULL) {
-  if (!res$type %in% c("TIBIA", "HUMERUS")) {
-    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"`.", call. = FALSE)
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS")) {
+    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -23,7 +23,17 @@ emit_slicer_section_python <- function(res, section = NULL) {
     )
   }
 
-  if (identical(res$type, "TIBIA")) {
+  if (!isTRUE(res$USE_ANAT_ORIENT)) {
+    if (is.null(res$vectors$X_screen) || is.null(res$vectors$Y_screen)) {
+      stop("Screen-reference vectors are required for section-only Slicer output.", call. = FALSE)
+    }
+    section_point <- res$section_points[[section]]
+    axis_len <- 80
+    distal_endpoint <- section_point - 0.5 * axis_len * res$vectors$L
+    proximal_endpoint <- section_point + 0.5 * axis_len * res$vectors$L
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "TIBIA")) {
     if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
       stop("Projected tibial endpoints are required for Slicer output.", call. = FALSE)
     }
@@ -48,8 +58,13 @@ emit_slicer_section_python <- function(res, section = NULL) {
   # inverted only at this output boundary.
   Psec_ras <- flip_xy(res$section_points[[section]])
   L_ras <- flip_xy(res$vectors$L)
-  ML_ras <- flip_xy(res$vectors$ML)
-  AP_ras <- flip_xy(res$vectors$AP)
+  if (isTRUE(res$USE_ANAT_ORIENT)) {
+    ML_ras <- flip_xy(res$vectors$ML)
+    AP_ras <- flip_xy(res$vectors$AP)
+  } else {
+    ML_ras <- flip_xy(res$vectors$X_screen)
+    AP_ras <- flip_xy(res$vectors$Y_screen)
+  }
   distal_ras <- flip_xy(distal_endpoint)
   proximal_ras <- flip_xy(proximal_endpoint)
 
@@ -74,6 +89,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "AUTO_SELECT_MODEL_IF_UNAMBIGUOUS = True",
     "",
     sprintf("SECTION_PERCENT = %s", fmt_num_py(as.numeric(section_percent))),
+    sprintf("USE_ANATOMICAL_ORIENTATION = %s", if (isTRUE(res$USE_ANAT_ORIENT)) "True" else "False"),
     sprintf("PSEC = %s", fmt_py_vec(Psec_ras)),
     sprintf("L = %s", fmt_py_vec(L_ras)),
     sprintf("ML = %s", fmt_py_vec(ML_ras)),
@@ -86,7 +102,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "PARALLEL_SCALE_MARGIN = 0.60",
     "CREATE_FILLED_SECTION = True",
     "CREATE_SECTION_OUTLINE_NODE = False",
-    "CREATE_AXIS_LINES = True",
+    sprintf("CREATE_AXIS_LINES = %s", if (isTRUE(res$USE_ANAT_ORIENT)) "True" else "False"),
     "L_AXIS_FULL_LENGTH = True",
     "ML_AP_AXIS_LENGTH_MM = 80.0",
     "CAPTURE_MODE = False",
@@ -398,7 +414,10 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "    print(sectionOutlineNode.GetName())",
     "else:",
     "    print('No outline model node was created.')",
-    "print('\\nAxis lines: L green, ML blue, AP red')",
+    "if CREATE_AXIS_LINES:",
+    "    print('\\nAxis lines: L green, ML blue, AP red')",
+    "else:",
+    "    print('\\nSection-only mode: anatomical axis lines were not created.')",
     "print('Ruler visible, requested color enum:', RULER_COLOR)",
     "print('To restore this view later, run: restore_orientcsg_camera_state()')"
   )

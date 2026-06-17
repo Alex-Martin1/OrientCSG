@@ -115,7 +115,14 @@
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
 #'   implemented for tibiae and humeri; `HUMERUS_TABLE` is intentionally not
-#'   supported for Slicer output.
+#'   supported for Slicer output when `USE_ANAT_ORIENT = TRUE`.
+#' @param USE_ANAT_ORIENT Logical. If `TRUE` (default), use the full anatomical
+#'   orientation workflow for the selected `mode`, including the anatomical
+#'   landmark set and the ML/AP reference planes or axes. If `FALSE`, use a
+#'   section-only workflow: `landmarks_str` is interpreted as a single landmark
+#'   giving the section point, the section plane is placed perpendicular to the
+#'   longitudinal axis at that point, and anatomical ML/AP axes are not
+#'   computed or exported.
 #' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
 #'   `.stl`, or `.obj`) used when `SOLID = TRUE`.
 #' @param lm_coord_system Coordinate system of the numeric landmark values pasted
@@ -200,6 +207,7 @@ orient_longbone <- function(mode,
                             camera_distance_mm = 300,
                             SOLID = FALSE,
                             SLICER = FALSE,
+                            USE_ANAT_ORIENT = TRUE,
                             mesh_file = NULL,
                             lm_coord_system = "LPS",
                             model_name = NULL,
@@ -218,12 +226,16 @@ orient_longbone <- function(mode,
     stop("`SLICER` must be TRUE or FALSE.", call. = FALSE)
   }
 
-  if (isTRUE(SLICER) && mode == "HUMERUS_TABLE") {
-    stop('`SLICER = TRUE` is not implemented for `mode = "HUMERUS_TABLE"`.', call. = FALSE)
+  if (!is.logical(USE_ANAT_ORIENT) || length(USE_ANAT_ORIENT) != 1L || is.na(USE_ANAT_ORIENT)) {
+    stop("`USE_ANAT_ORIENT` must be TRUE or FALSE.", call. = FALSE)
   }
 
-  if (isTRUE(SLICER) && !mode %in% c("TIBIA", "HUMERUS")) {
-    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"`.', call. = FALSE)
+  if (isTRUE(SLICER) && mode == "HUMERUS_TABLE" && isTRUE(USE_ANAT_ORIENT)) {
+    stop('`SLICER = TRUE` is not implemented for `mode = "HUMERUS_TABLE"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
+  }
+
+  if (isTRUE(SLICER) && isTRUE(USE_ANAT_ORIENT) && !mode %in% c("TIBIA", "HUMERUS")) {
+    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
   }
 
   lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
@@ -231,6 +243,10 @@ orient_longbone <- function(mode,
   section_loc <- as.numeric(section_loc)
   if (any(!is.finite(section_loc)) || any(section_loc < 0 | section_loc > 100)) {
     stop("`section_loc` must contain numeric percentages between 0 and 100.", call. = FALSE)
+  }
+
+  if (!isTRUE(USE_ANAT_ORIENT) && length(section_loc) != 1L) {
+    stop("`USE_ANAT_ORIENT = FALSE` uses one landmark as the section point and therefore requires a single `section_loc` label.", call. = FALSE)
   }
 
   mesh_axes <- NULL
@@ -262,7 +278,11 @@ orient_longbone <- function(mode,
     L <- M_internal[, 1]
   }
 
-  n_landmarks <- switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
+  n_landmarks <- if (isTRUE(USE_ANAT_ORIENT)) {
+    switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
+  } else {
+    1L
+  }
 
   landmarks_str <- resolve_landmarks_str(landmarks_str = landmarks_str)
 
@@ -271,36 +291,43 @@ orient_longbone <- function(mode,
   rownames(mat_pts) <- paste0("P", seq_len(n_landmarks))
 
   P1 <- mat_pts[1, ]
-  P2 <- mat_pts[2, ]
-  P3 <- if (mode %in% c("TIBIA", "HUMERUS")) mat_pts[3, ] else NULL
-  P4 <- if (mode == "HUMERUS") mat_pts[4, ] else NULL
+  P2 <- if (nrow(mat_pts) >= 2L) mat_pts[2, ] else NULL
+  P3 <- if (nrow(mat_pts) >= 3L && mode %in% c("TIBIA", "HUMERUS")) mat_pts[3, ] else NULL
+  P4 <- if (nrow(mat_pts) >= 4L && mode == "HUMERUS") mat_pts[4, ] else NULL
 
   Lh <- nrm(L)
 
   # Use the available anatomical landmarks to ensure that the longitudinal axis
   # points in the expected distal-to-proximal direction whenever this can be
-  # checked from the data.
-  if (mode == "TIBIA") {
-    long_ref <- ((P1 + P2) / 2) - P3
-    if (sqrt(sum(long_ref^2)) < 1e-12) {
-      stop("The tibio-talar landmark and plateau midpoint coincide; the tibial longitudinal direction cannot be defined.", call. = FALSE)
+  # checked from the data. In section-only mode there is no anatomical endpoint
+  # reference, so the eigenvector sign is left unchanged.
+  if (isTRUE(USE_ANAT_ORIENT)) {
+    if (mode == "TIBIA") {
+      long_ref <- ((P1 + P2) / 2) - P3
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("The tibio-talar landmark and plateau midpoint coincide; the tibial longitudinal direction cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+    } else if (mode == "HUMERUS") {
+      long_ref <- P4 - P3
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("LM3 and LM4 coincide; the humeral longitudinal direction cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+    } else if (mode == "HUMERUS_TABLE") {
+      long_ref <- P2 - P1
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("The distal and proximal landmarks coincide; projected length cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
     }
-    if (dot3(long_ref, Lh) < 0) Lh <- -Lh
-  } else if (mode == "HUMERUS") {
-    long_ref <- P4 - P3
-    if (sqrt(sum(long_ref^2)) < 1e-12) {
-      stop("LM3 and LM4 coincide; the humeral longitudinal direction cannot be defined.", call. = FALSE)
-    }
-    if (dot3(long_ref, Lh) < 0) Lh <- -Lh
-  } else if (mode == "HUMERUS_TABLE") {
-    long_ref <- P2 - P1
-    if (sqrt(sum(long_ref^2)) < 1e-12) {
-      stop("The distal and proximal landmarks coincide; projected length cannot be defined.", call. = FALSE)
-    }
-    if (dot3(long_ref, Lh) < 0) Lh <- -Lh
   }
 
-  longitudinal_axis_check <- longbone_axis_check(mode, mat_pts, Lh)
+  longitudinal_axis_check <- if (isTRUE(USE_ANAT_ORIENT)) {
+    longbone_axis_check(mode, mat_pts, Lh)
+  } else {
+    NULL
+  }
   if (!is.null(longitudinal_axis_check) &&
       is.finite(longitudinal_axis_check$angle_deg) &&
       longitudinal_axis_check$angle_deg > longitudinal_axis_check$warning_threshold_deg) {
@@ -318,8 +345,14 @@ orient_longbone <- function(mode,
   # initial mediolateral direction comes from landmarks. It is then projected onto
   # the plane perpendicular to L so that the final anatomical axes are strictly
   # orthogonal. In HUMERUS_TABLE mode, the mediolateral direction is derived from
-  # the scanner X axis instead.
-  if (mode == "HUMERUS_TABLE") {
+  # the scanner X axis instead. In section-only mode no anatomical ML/AP axes are
+  # computed; generic screen-reference vectors are created only to orient the
+  # camera orthogonally to the section.
+  if (!isTRUE(USE_ANAT_ORIENT)) {
+    fallback_axes <- longbone_section_only_screen_axes(Lh)
+    MLh <- fallback_axes$X_screen
+    APh <- fallback_axes$Y_screen
+  } else if (mode == "HUMERUS_TABLE") {
     X_ref <- c(1, 0, 0)
     ML_proj <- X_ref - dot3(X_ref, Lh) * Lh
     if (sqrt(sum(ML_proj^2)) < 1e-12) {
@@ -348,7 +381,11 @@ orient_longbone <- function(mode,
   # Compute biomechanical length and the origin of each requested section. The
   # distance is always measured parallel to the longitudinal axis, following the
   # logic of the original long-bone protocol.
-  if (mode == "TIBIA") {
+  if (!isTRUE(USE_ANAT_ORIENT)) {
+    Bio_length <- NA_real_
+    point_at_pct <- function(pct) P1
+    projected$Section_Point <- P1
+  } else if (mode == "TIBIA") {
     Midpoint <- (P1 + P2) / 2
     Proj_LM3 <- P3
     Proj_Mid <- P3 + dot3(Midpoint - P3, Lh) * Lh
@@ -370,7 +407,7 @@ orient_longbone <- function(mode,
     point_at_pct <- function(pct) P1 + (pct / 100) * Bio_length * Lh
   }
 
-  if (Bio_length < 1e-12) {
+  if (isTRUE(USE_ANAT_ORIENT) && Bio_length < 1e-12) {
     stop("The projected biomechanical length is near zero.", call. = FALSE)
   }
 
@@ -382,7 +419,12 @@ orient_longbone <- function(mode,
   point_y <- vapply(section_points, function(v) v[2], numeric(1))
   point_z <- vapply(section_points, function(v) v[3], numeric(1))
 
-  if (mode == "TIBIA") {
+  if (!isTRUE(USE_ANAT_ORIENT)) {
+    summary_metrics <- c("Long_Vector", point_metric_names)
+    sx <- c(Lh[1], point_x)
+    sy <- c(Lh[2], point_y)
+    sz <- c(Lh[3], point_z)
+  } else if (mode == "TIBIA") {
     labels <- c("Plateau1", "Plateau2", "TibioTalar")
     summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
     sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], point_x)
@@ -413,13 +455,21 @@ orient_longbone <- function(mode,
     stringsAsFactors = FALSE
   )
 
-  manual_orientation <- rbind(
-    data.frame(plane = "coronal", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3]),
-    data.frame(plane = "coronal", vector = "ML_mediolateral", x = MLh[1], y = MLh[2], z = MLh[3]),
-    data.frame(plane = "sagittal", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3]),
-    data.frame(plane = "sagittal", vector = "AP_anteroposterior", x = APh[1], y = APh[2], z = APh[3]),
-    data.frame(plane = "transverse", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3])
-  )
+  if (isTRUE(USE_ANAT_ORIENT)) {
+    manual_orientation <- rbind(
+      data.frame(plane = "coronal", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3]),
+      data.frame(plane = "coronal", vector = "ML_mediolateral", x = MLh[1], y = MLh[2], z = MLh[3]),
+      data.frame(plane = "sagittal", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3]),
+      data.frame(plane = "sagittal", vector = "AP_anteroposterior", x = APh[1], y = APh[2], z = APh[3]),
+      data.frame(plane = "transverse", vector = "L_longitudinal", x = Lh[1], y = Lh[2], z = Lh[3])
+    )
+  } else {
+    manual_orientation <- data.frame(
+      plane = "transverse",
+      vector = "L_longitudinal",
+      x = Lh[1], y = Lh[2], z = Lh[3]
+    )
+  }
   numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
   manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
 
@@ -435,7 +485,11 @@ orient_longbone <- function(mode,
     type = mode,
     individual_id = individual_id,
     landmarks = mat_pts,
-    vectors = list(L = Lh, ML = MLh, AP = APh),
+    vectors = if (isTRUE(USE_ANAT_ORIENT)) {
+      list(L = Lh, ML = MLh, AP = APh)
+    } else {
+      list(L = Lh, ML = NULL, AP = NULL, X_screen = MLh, Y_screen = APh)
+    },
     section_loc = section_loc,
     section_points = section_points,
     summary = summary_tbl,
@@ -445,6 +499,7 @@ orient_longbone <- function(mode,
     internal_coord_system = "LPS",
     SOLID = SOLID,
     SLICER = SLICER,
+    USE_ANAT_ORIENT = USE_ANAT_ORIENT,
     mesh_file = mesh_file,
     model_name = model_name,
     mesh_axes = mesh_axes,
@@ -470,6 +525,29 @@ orient_longbone <- function(mode,
   }
 
   res
+}
+
+# Internal long-bone section-only helper -------------------------------------
+#
+# Build stable, non-anatomical screen-reference axes for section-only long-bone
+# workflows. These vectors are not exported as ML/AP anatomical directions; they
+# are used only to orient the camera when USE_ANAT_ORIENT = FALSE.
+longbone_section_only_screen_axes <- function(L) {
+  Lh <- nrm(L)
+  candidates <- list(c(1, 0, 0), c(0, 1, 0), c(0, 0, 1))
+  dots <- vapply(candidates, function(v) abs(dot3(v, Lh)), numeric(1))
+  X_ref <- candidates[[which.min(dots)]]
+  X_screen <- X_ref - dot3(X_ref, Lh) * Lh
+
+  if (sqrt(sum(X_screen^2)) < 1e-12) {
+    stop("Could not define a screen-horizontal reference for section-only orientation.", call. = FALSE)
+  }
+
+  X_screen <- nrm(X_screen)
+  Y_screen <- nrm(cross3(Lh, X_screen))
+  X_screen <- nrm(cross3(Y_screen, Lh))
+
+  list(X_screen = X_screen, Y_screen = Y_screen)
 }
 
 # Internal long-bone diagnostic helpers -------------------------------------
@@ -549,8 +627,13 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camDist = 300) {
 # across Amira/Avizo versions.
 avizo_tcl_longbone <- function(res) {
   Lh <- res$vectors$L
-  MLh <- res$vectors$ML
-  APh <- res$vectors$AP
+  if (isTRUE(res$USE_ANAT_ORIENT)) {
+    MLh <- res$vectors$ML
+    APh <- res$vectors$AP
+  } else {
+    MLh <- res$vectors$X_screen
+    APh <- res$vectors$Y_screen
+  }
   out <- list()
 
   for (i in seq_along(res$section_points)) {
@@ -565,16 +648,33 @@ avizo_tcl_longbone <- function(res) {
       sprintf("# SECTION %s%%", label),
       "# ============================================================",
       "",
-      paste(emit_normal_point_plane("Slice", Psec, Lh), collapse = "\n"),
-      "",
-      "# ML visual plane: normal & point",
-      paste(emit_normal_point_plane("ML", Psec, ML_normal, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
-      "",
-      "# AP visual plane: normal & point",
-      paste(emit_normal_point_plane("AP", Psec, AP_normal, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n"),
-      "",
-      paste(emit_longbone_camera(Psec, Lh, MLh, APh, mode = res$type, camDist = res$camera_distance_mm), collapse = "\n")
+      paste(emit_normal_point_plane("Slice", Psec, Lh), collapse = "\n")
     )
+
+    if (isTRUE(res$USE_ANAT_ORIENT)) {
+      block <- c(
+        block,
+        "",
+        "# ML visual plane: normal & point",
+        paste(emit_normal_point_plane("ML", Psec, ML_normal, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
+        "",
+        "# AP visual plane: normal & point",
+        paste(emit_normal_point_plane("AP", Psec, AP_normal, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n")
+      )
+    } else {
+      block <- c(
+        block,
+        "",
+        "# Section-only mode: anatomical ML/AP visual planes are not generated."
+      )
+    }
+
+    block <- c(
+      block,
+      "",
+      paste(emit_longbone_camera(Psec, Lh, MLh, APh, mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY", camDist = res$camera_distance_mm), collapse = "\n")
+    )
+
     out[[key]] <- paste(block, collapse = "\n")
   }
 

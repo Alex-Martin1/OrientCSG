@@ -14,6 +14,7 @@ orient_longbone(
   camera_distance_mm = 300,
   SOLID = FALSE,
   SLICER = FALSE,
+  USE_ANAT_ORIENT = TRUE,
   mesh_file = NULL,
   lm_coord_system = "LPS",
   model_name = NULL,
@@ -56,7 +57,15 @@ homogeneous solid. If \code{FALSE}, the longitudinal axis is read from
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
 implemented for tibiae and humeri; \code{HUMERUS_TABLE} is intentionally not
-supported for Slicer output.}
+supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.}
+
+\item{USE_ANAT_ORIENT}{Logical. If \code{TRUE} (default), use the full anatomical
+orientation workflow for the selected \code{mode}, including the anatomical
+landmark set and the ML/AP reference planes or axes. If \code{FALSE}, use a
+section-only workflow: \code{landmarks_str} is interpreted as a single landmark
+giving the section point, the section plane is placed perpendicular to the
+longitudinal axis at that point, and anatomical ML/AP axes are not
+computed or exported.}
 
 \item{mesh_file}{Optional path to a watertight closed surface mesh (\code{.ply},
 \code{.stl}, or \code{.obj}) used when \code{SOLID = TRUE}.}
