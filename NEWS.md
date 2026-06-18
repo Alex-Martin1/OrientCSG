@@ -1,5 +1,6 @@
 # OrientCSG 0.3.4
 
+* Added support for BoneJ Results-table row input in `longitudinal_matrix_str`; the legacy 3 x 3 eigenvector matrix is still accepted.
 * Added `USE_ANAT_ORIENT` to `orient_longbone()`.
 * When `USE_ANAT_ORIENT = TRUE`, the function preserves the previous anatomical-orientation workflow.
 * When `USE_ANAT_ORIENT = FALSE`, the function accepts a single landmark as the section point, places the section perpendicular to the longitudinal axis, and omits the anatomical AP and ML reference planes.

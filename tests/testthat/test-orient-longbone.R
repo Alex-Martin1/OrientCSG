@@ -134,6 +134,30 @@ test_that("orient_longbone() generates expected TCL blocks", {
   expect_contains_fixed(tcl_35, "viewer 0 setCameraType orthographic")
 })
 
+
+
+test_that("orient_longbone() accepts BoneJ Results-table row input", {
+  res <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = bonej_results_row_tibia,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50,
+    individual_id = "TIBIA_RESULTS_ROW"
+  )
+
+  expect_equal(
+    unname(res$bonej$eigenvectors[, 1]),
+    c(
+      -7.308923363019568E-4,
+      0.019683244291018333,
+      0.9998059990270977
+    ),
+    tolerance = 1e-12
+  )
+  expect_unit_vector(res$vectors$L)
+})
+
 test_that("orient_longbone() validates malformed input", {
   expect_error(
     orient_longbone(

@@ -185,17 +185,45 @@ parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
 
 # Internal parsing helper ----------------------------------------------------
 #
-# Read the 3 x 3 eigenvector matrix returned by BoneJ's Moments of Inertia
-# module. The orientation workflow uses the first column as the longitudinal
-# direction, following the established long-bone protocol.
+# Read BoneJ Moments of Inertia eigenvectors. Two input formats are accepted:
+#   1. The legacy 3 x 3 eigenvector matrix copied from the Log window.
+#   2. A full BoneJ Results-table row containing the unit-vector columns.
+#
+# For the Results-table row format, the final nine numeric fields are interpreted
+# as vector0{x, y, z}, vector1{x, y, z}, and vector2{x, y, z}. The orientation
+# workflow uses the first vector as the longitudinal direction, following the
+# established long-bone protocol. Numeric fields are parsed token by token rather
+# than with a broad regex so that specimen IDs such as AAM_T-181_tibia are not
+# misread as measurements.
 parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
-  nums <- extract_nums(longitudinal_matrix_str)
-
-  if (length(nums) < 9) {
-    stop("The longitudinal matrix must contain at least 9 numeric values (3 x 3).", call. = FALSE)
+  if (is.null(longitudinal_matrix_str) ||
+      length(longitudinal_matrix_str) != 1L ||
+      !nzchar(trimws(longitudinal_matrix_str))) {
+    stop("`longitudinal_matrix_str` is required.", call. = FALSE)
   }
 
-  matrix(nums[1:9], nrow = 3, byrow = TRUE)
+  clean <- gsub("[|,;]", " ", longitudinal_matrix_str)
+  fields <- unlist(strsplit(trimws(clean), "\\s+", perl = TRUE), use.names = FALSE)
+  nums <- suppressWarnings(as.numeric(fields))
+  nums <- nums[is.finite(nums)]
+
+  if (length(nums) < 9L) {
+    stop(
+      "The longitudinal matrix must contain at least 9 numeric values: either a 3 x 3 BoneJ eigenvector matrix or a full BoneJ Results-table row with unit-vector columns.",
+      call. = FALSE
+    )
+  }
+
+  if (length(nums) == 9L) {
+    return(matrix(nums[1:9], nrow = 3, byrow = TRUE))
+  }
+
+  eig <- utils::tail(nums, 9L)
+  cbind(
+    eig[1:3],
+    eig[4:6],
+    eig[7:9]
+  )
 }
 
 # Internal DICOM helper ------------------------------------------------------
