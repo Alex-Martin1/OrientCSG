@@ -2,7 +2,8 @@
 #
 # Convert a long-bone orientation result into one Python block per requested
 # section. The generated block is intended to be pasted into the 3D Slicer
-# Python Interactor with the corresponding mesh model already loaded.
+# Python Interactor with the corresponding scalar volume or mesh model already
+# loaded.
 emit_slicer_section_python <- function(res, section = NULL) {
   if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS")) {
     stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
@@ -21,6 +22,10 @@ emit_slicer_section_python <- function(res, section = NULL) {
       ),
       call. = FALSE
     )
+  }
+
+  if (!isTRUE(res$SOLID)) {
+    return(emit_slicer_longbone_volume_python(res, section = section))
   }
 
   if (!isTRUE(res$USE_ANAT_ORIENT)) {
@@ -420,6 +425,443 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "    print('\\nSection-only mode: anatomical axis lines were not created.')",
     "print('Ruler visible, requested color enum:', RULER_COLOR)",
     "print('To restore this view later, run: restore_orientcsg_camera_state()')"
+  )
+
+  paste(code, collapse = "\n")
+}
+
+
+# Internal 3D Slicer Python generator for CT-derived long-bone volumes --------
+#
+# Convert a long-bone orientation result into one Python block per requested
+# section. This route is used when SLICER = TRUE and SOLID = FALSE. It orients
+# a Slicer slice view on a scalar volume node, rather than cutting a model node.
+emit_slicer_longbone_volume_python <- function(res, section = NULL) {
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS")) {
+    stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
+  }
+
+  if (is.null(section)) {
+    section <- names(res$section_points)[1]
+  }
+
+  if (!section %in% names(res$section_points)) {
+    stop(
+      sprintf(
+        "Section '%s' does not exist. Available sections: %s",
+        section,
+        paste(names(res$section_points), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (!isTRUE(res$USE_ANAT_ORIENT)) {
+    if (is.null(res$vectors$X_screen) || is.null(res$vectors$Y_screen)) {
+      stop("Screen-reference vectors are required for section-only Slicer volume output.", call. = FALSE)
+    }
+    section_point <- res$section_points[[section]]
+    axis_len <- 80
+    distal_endpoint <- section_point - 0.5 * axis_len * res$vectors$L
+    proximal_endpoint <- section_point + 0.5 * axis_len * res$vectors$L
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "TIBIA")) {
+    if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
+      stop("Projected tibial endpoints are required for Slicer volume output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_TibioTalar
+    proximal_endpoint <- res$projected$Proj_Midpoint
+    # Match the existing Slicer long-bone camera convention: use -AP as
+    # screen-up so that the anterior aspect is displayed at the top for the
+    # current tibial landmark convention.
+    anterior_up_sign <- -1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "HUMERUS")) {
+    if (is.null(res$projected$Proj_LM3) || is.null(res$projected$Proj_LM4)) {
+      stop("Projected humeral endpoints are required for Slicer volume output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_LM3
+    proximal_endpoint <- res$projected$Proj_LM4
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  }
+
+  # OrientCSG stores long-bone geometry internally in the external LPS-like
+  # convention. Slicer Python expects RAS world coordinates, so X and Y are
+  # inverted only at this output boundary.
+  Psec_ras <- flip_xy(res$section_points[[section]])
+  L_ras <- flip_xy(res$vectors$L)
+  if (isTRUE(res$USE_ANAT_ORIENT)) {
+    ML_ras <- flip_xy(res$vectors$ML)
+    AP_ras <- flip_xy(res$vectors$AP)
+  } else {
+    ML_ras <- flip_xy(res$vectors$X_screen)
+    AP_ras <- flip_xy(res$vectors$Y_screen)
+  }
+  distal_ras <- flip_xy(distal_endpoint)
+  proximal_ras <- flip_xy(proximal_endpoint)
+
+  section_percent <- sub("^SECTION_", "", section)
+
+  volume_name <- res$volume_name
+  if (is.null(volume_name) || length(volume_name) != 1L || is.na(volume_name) || !nzchar(volume_name)) {
+    volume_name <- ""
+  }
+
+  x_screen_reference <- ml_right_sign * ML_ras
+  y_preferred <- anterior_up_sign * AP_ras
+
+  code <- c(
+    "import slicer",
+    "import vtk",
+    "import numpy as np",
+    "",
+    "# ============================================================",
+    "# OrientCSG / Long bone / Slicer TRUE volume block generated from R",
+    "# Coordinates emitted in Slicer RAS world space",
+    "# ============================================================",
+    "",
+    sprintf("VOLUME_NAME = %s", py_quote(volume_name)),
+    sprintf("SECTION_LABEL = %s", py_quote(section)),
+    "SLICE_VIEW_NAME = \"Red\"",
+    "",
+    "# Display controls",
+    "FIELD_OF_VIEW_MM = 85.0",
+    sprintf("CAMERA_DISTANCE_MM = %s", fmt_num_py(res$camera_distance_mm)),
+    "VOLUME_RENDERING_PRESET = \"CT-AAA2\"",
+    "ENABLE_VOLUME_RENDERING = False",
+    "CREATE_SCALE_BAR = True",
+    "SCALE_BAR_LENGTH_MM = 10.0",
+    "SCALE_BAR_MARGIN_MM = 3.0",
+    "LOCK_RED_SLICE_BROWSING = True",
+    "SHOW_SLICE_IN_3D = True",
+    "",
+    sprintf("SECTION_PERCENT = %s", fmt_num_py(as.numeric(section_percent))),
+    sprintf("USE_ANATOMICAL_ORIENTATION = %s", if (isTRUE(res$USE_ANAT_ORIENT)) "True" else "False"),
+    sprintf("PSEC = %s", fmt_py_vec(Psec_ras)),
+    sprintf("NORMAL = %s", fmt_py_vec(L_ras)),
+    sprintf("X_SCREEN_REFERENCE = %s", fmt_py_vec(x_screen_reference)),
+    sprintf("Y_PREFERRED = %s", fmt_py_vec(y_preferred)),
+    sprintf("L = %s", fmt_py_vec(L_ras)),
+    sprintf("ML = %s", fmt_py_vec(ML_ras)),
+    sprintf("AP = %s", fmt_py_vec(AP_ras)),
+    sprintf("DISTAL_AXIS_POINT = %s", fmt_py_vec(distal_ras)),
+    sprintf("PROXIMAL_AXIS_POINT = %s", fmt_py_vec(proximal_ras)),
+    "",
+    "def nrm(v):",
+    "    v = np.asarray(v, dtype=float)",
+    "    s = np.linalg.norm(v)",
+    "    if s < 1e-12:",
+    "        raise ValueError(\"Near-zero vector cannot be normalized.\")",
+    "    return v / s",
+    "",
+    "def dot3(a, b):",
+    "    return float(np.dot(a, b))",
+    "",
+    "def cross3(a, b):",
+    "    return np.cross(a, b)",
+    "",
+    "def find_volume_node(name):",
+    "    candidates = slicer.util.getNodesByClass(\"vtkMRMLScalarVolumeNode\")",
+    "",
+    "    if name:",
+    "        exact = [node for node in candidates if node.GetName() == name]",
+    "        if len(exact) == 1:",
+    "            return exact[0]",
+    "",
+    "        partial = [node for node in candidates if name.lower() in node.GetName().lower()]",
+    "        if len(partial) == 1:",
+    "            print(f'Using partial volume-name match: \"{partial[0].GetName()}\"')",
+    "            return partial[0]",
+    "",
+    "        print(\"Available scalar volumes:\")",
+    "        for node in candidates:",
+    "            print(\"  \", node.GetName())",
+    "",
+    "        if len(exact) > 1 or len(partial) > 1:",
+    "            raise ValueError(f'More than one volume matches \"{name}\". Use the exact Slicer node name.')",
+    "        raise ValueError(f'Could not find a scalar volume named \"{name}\".')",
+    "",
+    "    lm = slicer.app.layoutManager()",
+    "    sliceWidget = lm.sliceWidget(SLICE_VIEW_NAME)",
+    "    if sliceWidget is not None:",
+    "        comp = sliceWidget.sliceLogic().GetSliceCompositeNode()",
+    "        if comp is not None and comp.GetBackgroundVolumeID():",
+    "            node = slicer.mrmlScene.GetNodeByID(comp.GetBackgroundVolumeID())",
+    "            if node is not None:",
+    "                return node",
+    "",
+    "    if len(candidates) == 1:",
+    "        return candidates[0]",
+    "",
+    "    print(\"Available scalar volumes:\")",
+    "    for node in candidates:",
+    "        print(\"  \", node.GetName())",
+    "    raise ValueError(\"Set VOLUME_NAME explicitly when zero or multiple scalar volumes are loaded.\")",
+    "",
+    "def remove_old_orientcsg_nodes():",
+    "    prefixes = [\"OrientCSG_longbone_\", \"OrientCSG_scale\", f\"{SECTION_LABEL}_\"]",
+    "    to_remove = []",
+    "    for cls in [\"vtkMRMLMarkupsFiducialNode\", \"vtkMRMLMarkupsLineNode\", \"vtkMRMLMarkupsPlaneNode\"]:",
+    "        for node in slicer.util.getNodesByClass(cls):",
+    "            if any(node.GetName().startswith(prefix) for prefix in prefixes):",
+    "                to_remove.append(node)",
+    "    for node in to_remove:",
+    "        slicer.mrmlScene.RemoveNode(node)",
+    "",
+    "def remove_old_scale_nodes():",
+    "    to_remove = []",
+    "    for cls in [\"vtkMRMLMarkupsFiducialNode\", \"vtkMRMLMarkupsLineNode\"]:",
+    "        for node in slicer.util.getNodesByClass(cls):",
+    "            if node.GetName().startswith(\"OrientCSG_scale\"):",
+    "                to_remove.append(node)",
+    "    for node in to_remove:",
+    "        slicer.mrmlScene.RemoveNode(node)",
+    "",
+    "def make_slice_to_ras(point, z_axis, x_reference, y_preferred):",
+    "    point = np.asarray(point, dtype=float)",
+    "    z_axis = nrm(z_axis)",
+    "",
+    "    y_axis = np.asarray(y_preferred, dtype=float)",
+    "    y_axis = y_axis - dot3(y_axis, z_axis) * z_axis",
+    "    if np.linalg.norm(y_axis) < 1e-12:",
+    "        raise ValueError(\"Cannot construct slice axes: y_preferred is collinear with the section normal.\")",
+    "    y_axis = nrm(y_axis)",
+    "",
+    "    x_axis = nrm(cross3(y_axis, z_axis))",
+    "    x_ref = np.asarray(x_reference, dtype=float)",
+    "    x_ref = x_ref - dot3(x_ref, z_axis) * z_axis",
+    "    if np.linalg.norm(x_ref) > 1e-12:",
+    "        if dot3(x_axis, nrm(x_ref)) < 0:",
+    "            z_axis = -z_axis",
+    "            x_axis = nrm(cross3(y_axis, z_axis))",
+    "",
+    "    x_axis = nrm(cross3(y_axis, z_axis))",
+    "    z_axis = nrm(cross3(x_axis, y_axis))",
+    "",
+    "    m = vtk.vtkMatrix4x4()",
+    "    m.Identity()",
+    "    for i in range(3):",
+    "        m.SetElement(i, 0, float(x_axis[i]))",
+    "        m.SetElement(i, 1, float(y_axis[i]))",
+    "        m.SetElement(i, 2, float(z_axis[i]))",
+    "        m.SetElement(i, 3, float(point[i]))",
+    "    return m, x_axis, y_axis, z_axis",
+    "",
+    "def get_slice_node_and_widget():",
+    "    lm = slicer.app.layoutManager()",
+    "    sliceWidget = lm.sliceWidget(SLICE_VIEW_NAME)",
+    "    if sliceWidget is None:",
+    "        raise ValueError(f'Could not find slice view \"{SLICE_VIEW_NAME}\".')",
+    "    sliceLogic = sliceWidget.sliceLogic()",
+    "    sliceNode = sliceLogic.GetSliceNode()",
+    "    return sliceWidget, sliceLogic, sliceNode",
+    "",
+    "def get_current_slice_axes():",
+    "    sliceWidget, sliceLogic, sliceNode = get_slice_node_and_widget()",
+    "    m = sliceNode.GetSliceToRAS()",
+    "    x_axis = np.array([m.GetElement(0, 0), m.GetElement(1, 0), m.GetElement(2, 0)], dtype=float)",
+    "    y_axis = np.array([m.GetElement(0, 1), m.GetElement(1, 1), m.GetElement(2, 1)], dtype=float)",
+    "    z_axis = np.array([m.GetElement(0, 2), m.GetElement(1, 2), m.GetElement(2, 2)], dtype=float)",
+    "    point = np.array([m.GetElement(0, 3), m.GetElement(1, 3), m.GetElement(2, 3)], dtype=float)",
+    "    return point, nrm(x_axis), nrm(y_axis), nrm(z_axis)",
+    "",
+    "def copy_vtk_matrix(m):",
+    "    out = vtk.vtkMatrix4x4()",
+    "    out.DeepCopy(m)",
+    "    return out",
+    "",
+    "def apply_slice_to_ras_matrix(sliceToRAS):",
+    "    sliceWidget, sliceLogic, sliceNode = get_slice_node_and_widget()",
+    "    sliceNode.GetSliceToRAS().DeepCopy(sliceToRAS)",
+    "    sliceNode.UpdateMatrices()",
+    "    sliceNode.Modified()",
+    "    try:",
+    "        sliceNode.SetFieldOfView(float(FIELD_OF_VIEW_MM), float(FIELD_OF_VIEW_MM), 1.0)",
+    "    except Exception as e:",
+    "        print(\"Could not set field of view:\", e)",
+    "    try:",
+    "        sliceNode.SetSliceVisible(True)",
+    "        sliceNode.SetWidgetVisible(True)",
+    "    except Exception:",
+    "        pass",
+    "    try:",
+    "        sliceNode.SetSliceEdgeVisibility3D(bool(SHOW_SLICE_IN_3D))",
+    "    except Exception:",
+    "        pass",
+    "    try:",
+    "        sliceWidget.sliceView().scheduleRender()",
+    "    except Exception:",
+    "        pass",
+    "    return sliceWidget, sliceLogic, sliceNode",
+    "",
+    "def lock_red_slice_browsing(sliceWidget):",
+    "    if not LOCK_RED_SLICE_BROWSING:",
+    "        return",
+    "    try:",
+    "        sliceView = sliceWidget.sliceView()",
+    "        observer = None",
+    "        if hasattr(sliceView, \"interactorObserver\"):",
+    "            try:",
+    "                observer = sliceView.interactorObserver()",
+    "            except Exception:",
+    "                observer = None",
+    "        if observer is not None:",
+    "            try:",
+    "                browse_slice_action = observer.BrowseSlice",
+    "                observer.SetActionEnabled(browse_slice_action, False)",
+    "                print(\"Disabled BrowseSlice via interactorObserver.\")",
+    "                return",
+    "            except Exception:",
+    "                pass",
+    "        if hasattr(sliceView, \"sliceViewInteractorStyle\"):",
+    "            interactorStyle = sliceView.sliceViewInteractorStyle()",
+    "            try:",
+    "                interactorStyle.SetActionEnabled(interactorStyle.BrowseSlice, False)",
+    "                print(\"Disabled BrowseSlice via sliceViewInteractorStyle fallback.\")",
+    "                return",
+    "            except Exception:",
+    "                pass",
+    "        print(\"Could not disable BrowseSlice: no compatible slice interactor API was available.\")",
+    "    except Exception as e:",
+    "        print(\"Could not lock Red slice browsing:\", e)",
+    "",
+    "def setup_slice_view(volumeNode, sliceToRAS):",
+    "    sliceWidget, sliceLogic, sliceNode = get_slice_node_and_widget()",
+    "    compositeNode = sliceLogic.GetSliceCompositeNode()",
+    "    if compositeNode is not None:",
+    "        compositeNode.SetBackgroundVolumeID(volumeNode.GetID())",
+    "        compositeNode.SetForegroundOpacity(0.0)",
+    "    sliceWidget, sliceLogic, sliceNode = apply_slice_to_ras_matrix(sliceToRAS)",
+    "    lock_red_slice_browsing(sliceWidget)",
+    "    return sliceWidget, sliceLogic, sliceNode",
+    "",
+    "def setup_volume_rendering(volumeNode):",
+    "    if not ENABLE_VOLUME_RENDERING:",
+    "        return None",
+    "    try:",
+    "        vrLogic = slicer.modules.volumerendering.logic()",
+    "    except Exception:",
+    "        print(\"Volume rendering logic not available.\")",
+    "        return None",
+    "    try:",
+    "        displayNode = vrLogic.GetFirstVolumeRenderingDisplayNode(volumeNode)",
+    "        if displayNode is None:",
+    "            displayNode = vrLogic.CreateDefaultVolumeRenderingNodes(volumeNode)",
+    "        preset = vrLogic.GetPresetByName(VOLUME_RENDERING_PRESET)",
+    "        if preset is not None:",
+    "            displayNode.GetVolumePropertyNode().Copy(preset)",
+    "            print(f'Applied volume rendering preset: \"{VOLUME_RENDERING_PRESET}\"')",
+    "        displayNode.SetVisibility(True)",
+    "        try:",
+    "            displayNode.SetAndObserveVolumeNodeID(volumeNode.GetID())",
+    "        except Exception:",
+    "            pass",
+    "        return displayNode",
+    "    except Exception as e:",
+    "        print(\"Could not enable volume rendering:\", e)",
+    "        return None",
+    "",
+    "def add_axis_line(name, p1, p2, color=(1.0, 1.0, 1.0)):",
+    "    lineNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLMarkupsLineNode', name)",
+    "    lineNode.CreateDefaultDisplayNodes()",
+    "    lineNode.AddControlPointWorld(vtk.vtkVector3d(float(p1[0]), float(p1[1]), float(p1[2])))",
+    "    lineNode.AddControlPointWorld(vtk.vtkVector3d(float(p2[0]), float(p2[1]), float(p2[2])))",
+    "    lineNode.SetLocked(True)",
+    "    d = lineNode.GetDisplayNode()",
+    "    if d is not None:",
+    "        d.SetSelectedColor(color)",
+    "        d.SetColor(color)",
+    "        d.SetLineThickness(0.35)",
+    "        d.SetVisibility(True)",
+    "    return lineNode",
+    "",
+    "def add_centered_axis_line(name, center, direction, length=80.0, color=(1.0, 1.0, 1.0)):",
+    "    direction = nrm(direction)",
+    "    p1 = center - 0.5 * length * direction",
+    "    p2 = center + 0.5 * length * direction",
+    "    return add_axis_line(name, p1, p2, color=color)",
+    "",
+    "def add_orientation_axis_lines():",
+    "    if USE_ANATOMICAL_ORIENTATION:",
+    "        add_axis_line(f'{SECTION_LABEL}_L', DISTAL_AXIS_POINT, PROXIMAL_AXIS_POINT, color=(0.0, 1.0, 0.0))",
+    "        add_centered_axis_line(f'{SECTION_LABEL}_ML', PSEC, ML, length=80.0, color=(0.0, 0.4, 1.0))",
+    "        add_centered_axis_line(f'{SECTION_LABEL}_AP', PSEC, AP, length=80.0, color=(1.0, 0.0, 0.0))",
+    "",
+    "def add_scale_bar_at_current_slice():",
+    "    if not CREATE_SCALE_BAR:",
+    "        return",
+    "    remove_old_scale_nodes()",
+    "    Pcur, x_axis, y_axis, z_axis = get_current_slice_axes()",
+    "    x_offset = -(FIELD_OF_VIEW_MM / 2.0 - SCALE_BAR_MARGIN_MM - SCALE_BAR_LENGTH_MM / 2.0)",
+    "    y_offset = -(FIELD_OF_VIEW_MM / 2.0 - SCALE_BAR_MARGIN_MM)",
+    "    center = Pcur + x_offset * x_axis + y_offset * y_axis",
+    "    p1 = center - 0.5 * SCALE_BAR_LENGTH_MM * x_axis",
+    "    p2 = center + 0.5 * SCALE_BAR_LENGTH_MM * x_axis",
+    "    line = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLMarkupsLineNode', f'OrientCSG_scale_{SECTION_LABEL}_10mm')",
+    "    line.CreateDefaultDisplayNodes()",
+    "    line.AddControlPointWorld(vtk.vtkVector3d(float(p1[0]), float(p1[1]), float(p1[2])), '')",
+    "    line.AddControlPointWorld(vtk.vtkVector3d(float(p2[0]), float(p2[1]), float(p2[2])), '')",
+    "    line.SetLocked(True)",
+    "    d = line.GetDisplayNode()",
+    "    if d is not None:",
+    "        d.SetVisibility(True)",
+    "        d.SetColor(1.0, 1.0, 1.0)",
+    "        d.SetSelectedColor(1.0, 1.0, 1.0)",
+    "        d.SetLineThickness(0.75)",
+    "        d.SetGlyphScale(0.35)",
+    "        d.SetTextScale(1.0)",
+    "        try:",
+    "            d.SetPointLabelsVisibility(False)",
+    "        except Exception:",
+    "            pass",
+    "        try:",
+    "            d.SetVisibility3D(False)",
+    "            d.SetVisibility2D(True)",
+    "        except Exception:",
+    "            pass",
+    "",
+    "def refresh_orientcsg_scale():",
+    "    add_scale_bar_at_current_slice()",
+    "",
+    "def restore_view():",
+    "    global ORIENTCSG_INITIAL_SLICE_TO_RAS",
+    "    if ORIENTCSG_INITIAL_SLICE_TO_RAS is None:",
+    "        raise ValueError('No stored OrientCSG orientation found. Run the full block once first.')",
+    "    apply_slice_to_ras_matrix(ORIENTCSG_INITIAL_SLICE_TO_RAS)",
+    "    refresh_orientcsg_scale()",
+    "    print('Restored OrientCSG long-bone slice orientation and scale.')",
+    "",
+    "# ============================================================",
+    "# Run",
+    "# ============================================================",
+    "",
+    "remove_old_orientcsg_nodes()",
+    "sliceToRAS, X_AXIS, Y_AXIS, Z_AXIS = make_slice_to_ras(PSEC, NORMAL, X_SCREEN_REFERENCE, Y_PREFERRED)",
+    "volumeNode = find_volume_node(VOLUME_NAME)",
+    "ORIENTCSG_INITIAL_SLICE_TO_RAS = copy_vtk_matrix(sliceToRAS)",
+    "sliceWidget, sliceLogic, sliceNode = setup_slice_view(volumeNode, sliceToRAS)",
+    "add_orientation_axis_lines()",
+    "add_scale_bar_at_current_slice()",
+    "vrDisplayNode = setup_volume_rendering(volumeNode)",
+    "",
+    "print('\\n================ ORIENTCSG / SLICER LONG-BONE TRUE SECTION ================')",
+    "print('Volume:', volumeNode.GetName())",
+    "print('Section:', SECTION_LABEL)",
+    "print('Slice view:', SLICE_VIEW_NAME)",
+    "print('Field of view, mm:', FIELD_OF_VIEW_MM)",
+    "print('Use anatomical orientation:', USE_ANATOMICAL_ORIENTATION)",
+    "print('Red slice browsing locked:', LOCK_RED_SLICE_BROWSING)",
+    "print('Scale bar created:', CREATE_SCALE_BAR)",
+    "print('\\nPSEC, Slicer RAS:')",
+    "print(PSEC)",
+    "print('\\nSlice axes, Slicer RAS:')",
+    "print('X_AXIS:', X_AXIS)",
+    "print('Y_AXIS:', Y_AXIS)",
+    "print('Z_AXIS:', Z_AXIS)",
+    "print('\\nTo restore this slice orientation later, run: restore_view()')",
+    "print('To refresh the scale bar after changing the field of view, run: refresh_orientcsg_scale()')"
   )
 
   paste(code, collapse = "\n")

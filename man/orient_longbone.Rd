@@ -18,6 +18,7 @@ orient_longbone(
   mesh_file = NULL,
   lm_coord_system = "LPS",
   model_name = NULL,
+  volume_name = NULL,
   bonej_coord_transform = "dicom_iop",
   bonej_transform_matrix = NULL
 )
@@ -84,7 +85,13 @@ interpretation of the numbers only; it does not depend on whether the text
 was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{model_name}{Optional model node name used by the generated Slicer Python
-block. If omitted, the basename of \code{mesh_file} is used when available.}
+block when \code{SLICER = TRUE} and \code{SOLID = TRUE}. If omitted, the basename of
+\code{mesh_file} is used when available.}
+
+\item{volume_name}{Optional scalar volume node name used by the generated
+Slicer Python block when \code{SLICER = TRUE} and \code{SOLID = FALSE}. If omitted,
+the generated Python block first tries to use the background volume in the
+selected slice view and then the only scalar volume in the scene.}
 
 \item{bonej_coord_transform}{Advanced character argument controlling how the
 BoneJ eigenvector matrix is transformed before use. The default,
@@ -128,8 +135,9 @@ anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 or a closed surface mesh. The BoneJ input can be supplied as the legacy 3 x 3
 eigenvector matrix or as a full Results-table row containing the unit-vector
 columns. The function can generate Avizo/Amira TCL command
-blocks for the classic CT-derived workflow or 3D Slicer Python command blocks
-for workflows based on solid surface meshes.
+blocks for the classic CT-derived workflow or 3D Slicer Python command
+blocks for CT-derived volume workflows or workflows based on solid surface
+meshes.
 }
 \section{Input workflows}{
 
@@ -156,10 +164,12 @@ The \code{SLICER} argument controls the type of capture script returned.
 \item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks. This is the default backend
 and is compatible with \code{mode = "TIBIA"}, \code{mode = "HUMERUS"}, and
 \code{mode = "HUMERUS_TABLE"}.
-\item \code{SLICER = TRUE} returns 3D Slicer Python blocks. This backend is implemented
-for \code{mode = "TIBIA"} and \code{mode = "HUMERUS"}. It is intentionally not
-implemented for \code{mode = "HUMERUS_TABLE"}, because surface scans do not
-preserve a reliable scanner/table orientation.
+\item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{SOLID = FALSE},
+these blocks orient a Slicer slice view on a scalar volume node. When
+\code{SOLID = TRUE}, they cut and display the corresponding model node. This
+backend is implemented for \code{mode = "TIBIA"} and \code{mode = "HUMERUS"}. It
+is intentionally not implemented for \code{mode = "HUMERUS_TABLE"}, because
+surface scans do not preserve a reliable scanner/table orientation.
 }
 }
 
@@ -217,16 +227,20 @@ improved compatibility across Amira/Avizo versions.
 
 \section{3D Slicer requirements}{
 
-When \code{SLICER = TRUE}, the generated Python code assumes that the corresponding
-model is loaded in 3D Slicer. If \code{model_name} is omitted, the function uses the
-basename of \code{mesh_file} when available. Landmark rows copied from a Slicer
-Markups table can be supplied through \code{landmarks_str}; however, the coordinate
-system must describe the numeric values that are actually pasted into R. In
-common Slicer Markups table/export workflows these pasted values may be LPS,
-even though the Slicer interface displays R/A/S columns. Use
-\code{lm_coord_system = "LPS"} for such copied/exported text. Use
-\code{lm_coord_system = "RAS"} only for values that are confirmed to be true Slicer
-world RAS coordinates, for example values extracted with
+When \code{SLICER = TRUE} and \code{SOLID = FALSE}, the generated Python code assumes
+that the corresponding scalar volume is loaded in 3D Slicer. If \code{volume_name}
+is omitted, the Python block first tries to use the background volume in the
+selected slice view and then the only scalar volume in the scene. When
+\code{SLICER = TRUE} and \code{SOLID = TRUE}, the generated Python code assumes that
+the corresponding model is loaded in 3D Slicer. If \code{model_name} is omitted,
+the function uses the basename of \code{mesh_file} when available. Landmark rows
+copied from a Slicer Markups table can be supplied through \code{landmarks_str};
+however, the coordinate system must describe the numeric values that are
+actually pasted into R. In common Slicer Markups table/export workflows these
+pasted values may be LPS, even though the Slicer interface displays R/A/S
+columns. Use \code{lm_coord_system = "LPS"} for such copied/exported text. Use
+\code{lm_coord_system = "RAS"} only for values that are confirmed to be true
+Slicer world RAS coordinates, for example values extracted with
 \code{GetNthControlPointPositionWorld()}.
 }
 

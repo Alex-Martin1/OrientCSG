@@ -161,6 +161,69 @@ copy_tcl(res_humerus_table, section = "SECTION_50")
 
 
 
+# TIBIA: CT/DICOM true cross-section + 3D Slicer workflow=====
+
+# This workflow uses the BoneJ/DICOM longitudinal axis, but generates a Python
+# block that orients a 3D Slicer slice view on a scalar volume node.
+# Replace volume_name with the exact scalar volume node name in 3D Slicer, or
+# leave it empty to let the Python block use the Red slice background volume
+# or the only scalar volume in the scene.
+
+res_tibia_true_slicer <- orient_longbone(
+  mode = "TIBIA",
+  longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+  dicom_iop = dicom_iop_str_tibia,
+  landmarks_str = tibia_landmarks_str,
+  section_loc = 50,
+  individual_id = "TIBIA_TRUE_SLICER_EXAMPLE",
+  SOLID = FALSE,
+  SLICER = TRUE,
+  USE_ANAT_ORIENT = TRUE,
+  volume_name = "TIBIA_DICOM_VOLUME",
+  camera_distance_mm = 300,
+  lm_coord_system = "LPS"
+)
+
+res_tibia_true_slicer$summary
+
+cat(get_slicer_py(res_tibia_true_slicer, section = "SECTION_50"))
+
+copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
+
+
+
+# HUMERUS: CT/DICOM true cross-section + 3D Slicer workflow=====
+
+# This workflow mirrors the tibial true volume + Slicer route, but uses
+# mode = "HUMERUS" and can generate several section positions.
+
+res_humerus_true_slicer <- orient_longbone(
+  mode = "HUMERUS",
+  longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+  dicom_iop = dicom_iop_str_humerus,
+  landmarks_str = humerus_landmarks_str,
+  section_loc = c(35, 50),
+  individual_id = "HUMERUS_TRUE_SLICER_EXAMPLE",
+  SOLID = FALSE,
+  SLICER = TRUE,
+  USE_ANAT_ORIENT = TRUE,
+  volume_name = "HUMERUS_DICOM_VOLUME",
+  camera_distance_mm = 300,
+  lm_coord_system = "LPS"
+)
+
+res_humerus_true_slicer$summary
+
+cat(get_slicer_py(res_humerus_true_slicer, section = "SECTION_35"))
+cat(get_slicer_py(res_humerus_true_slicer, section = "SECTION_50"))
+
+copy_slicer_py(res_humerus_true_slicer, section = "SECTION_35")
+copy_slicer_py(res_humerus_true_slicer, section = "SECTION_50")
+
+
+
+
+
 # TIBIA: solid mesh + 3D Slicer workflow=====
 
 # This workflow is intended for closed surface meshes (.ply, .stl, .obj).

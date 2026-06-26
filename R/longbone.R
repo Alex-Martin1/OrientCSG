@@ -7,8 +7,9 @@
 #' or a closed surface mesh. The BoneJ input can be supplied as the legacy 3 x 3
 #' eigenvector matrix or as a full Results-table row containing the unit-vector
 #' columns. The function can generate Avizo/Amira TCL command
-#' blocks for the classic CT-derived workflow or 3D Slicer Python command blocks
-#' for workflows based on solid surface meshes.
+#' blocks for the classic CT-derived workflow or 3D Slicer Python command
+#' blocks for CT-derived volume workflows or workflows based on solid surface
+#' meshes.
 #'
 #' @section Input workflows:
 #' The `SOLID` argument controls how the longitudinal axis is obtained.
@@ -31,10 +32,12 @@
 #' - `SLICER = FALSE` returns Avizo/Amira TCL blocks. This is the default backend
 #'   and is compatible with `mode = "TIBIA"`, `mode = "HUMERUS"`, and
 #'   `mode = "HUMERUS_TABLE"`.
-#' - `SLICER = TRUE` returns 3D Slicer Python blocks. This backend is implemented
-#'   for `mode = "TIBIA"` and `mode = "HUMERUS"`. It is intentionally not
-#'   implemented for `mode = "HUMERUS_TABLE"`, because surface scans do not
-#'   preserve a reliable scanner/table orientation.
+#' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `SOLID = FALSE`,
+#'   these blocks orient a Slicer slice view on a scalar volume node. When
+#'   `SOLID = TRUE`, they cut and display the corresponding model node. This
+#'   backend is implemented for `mode = "TIBIA"` and `mode = "HUMERUS"`. It
+#'   is intentionally not implemented for `mode = "HUMERUS_TABLE"`, because
+#'   surface scans do not preserve a reliable scanner/table orientation.
 #'
 #' @section Orientation modes:
 #' The `mode` argument determines how landmarks are interpreted and how the
@@ -80,16 +83,20 @@
 #' improved compatibility across Amira/Avizo versions.
 #'
 #' @section 3D Slicer requirements:
-#' When `SLICER = TRUE`, the generated Python code assumes that the corresponding
-#' model is loaded in 3D Slicer. If `model_name` is omitted, the function uses the
-#' basename of `mesh_file` when available. Landmark rows copied from a Slicer
-#' Markups table can be supplied through `landmarks_str`; however, the coordinate
-#' system must describe the numeric values that are actually pasted into R. In
-#' common Slicer Markups table/export workflows these pasted values may be LPS,
-#' even though the Slicer interface displays R/A/S columns. Use
-#' `lm_coord_system = "LPS"` for such copied/exported text. Use
-#' `lm_coord_system = "RAS"` only for values that are confirmed to be true Slicer
-#' world RAS coordinates, for example values extracted with
+#' When `SLICER = TRUE` and `SOLID = FALSE`, the generated Python code assumes
+#' that the corresponding scalar volume is loaded in 3D Slicer. If `volume_name`
+#' is omitted, the Python block first tries to use the background volume in the
+#' selected slice view and then the only scalar volume in the scene. When
+#' `SLICER = TRUE` and `SOLID = TRUE`, the generated Python code assumes that
+#' the corresponding model is loaded in 3D Slicer. If `model_name` is omitted,
+#' the function uses the basename of `mesh_file` when available. Landmark rows
+#' copied from a Slicer Markups table can be supplied through `landmarks_str`;
+#' however, the coordinate system must describe the numeric values that are
+#' actually pasted into R. In common Slicer Markups table/export workflows these
+#' pasted values may be LPS, even though the Slicer interface displays R/A/S
+#' columns. Use `lm_coord_system = "LPS"` for such copied/exported text. Use
+#' `lm_coord_system = "RAS"` only for values that are confirmed to be true
+#' Slicer world RAS coordinates, for example values extracted with
 #' `GetNthControlPointPositionWorld()`.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
@@ -141,7 +148,12 @@
 #'   interpretation of the numbers only; it does not depend on whether the text
 #'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param model_name Optional model node name used by the generated Slicer Python
-#'   block. If omitted, the basename of `mesh_file` is used when available.
+#'   block when `SLICER = TRUE` and `SOLID = TRUE`. If omitted, the basename of
+#'   `mesh_file` is used when available.
+#' @param volume_name Optional scalar volume node name used by the generated
+#'   Slicer Python block when `SLICER = TRUE` and `SOLID = FALSE`. If omitted,
+#'   the generated Python block first tries to use the background volume in the
+#'   selected slice view and then the only scalar volume in the scene.
 #' @param bonej_coord_transform Advanced character argument controlling how the
 #'   BoneJ eigenvector matrix is transformed before use. The default,
 #'   `"dicom_iop"`, derives the transformation from `dicom_iop`. The values
@@ -217,6 +229,7 @@ orient_longbone <- function(mode,
                             mesh_file = NULL,
                             lm_coord_system = "LPS",
                             model_name = NULL,
+                            volume_name = NULL,
                             bonej_coord_transform = "dicom_iop",
                             bonej_transform_matrix = NULL) {
   mode <- toupper(trimws(mode))
@@ -487,6 +500,10 @@ orient_longbone <- function(mode,
     }
   }
 
+  if (is.null(volume_name) || length(volume_name) != 1L || is.na(volume_name) || !nzchar(volume_name)) {
+    volume_name <- ""
+  }
+
   res <- list(
     type = mode,
     individual_id = individual_id,
@@ -508,6 +525,7 @@ orient_longbone <- function(mode,
     USE_ANAT_ORIENT = USE_ANAT_ORIENT,
     mesh_file = mesh_file,
     model_name = model_name,
+    volume_name = volume_name,
     mesh_axes = mesh_axes,
     bonej = if (isTRUE(SOLID)) NULL else list(
       coord_transform = bonej_transform$name,
