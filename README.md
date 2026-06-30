@@ -392,22 +392,23 @@ get_slicer_py(res, section = "CS1")
 copy_slicer_py(res, section = "CS1")
 ```
 
-Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks cut the loaded model, create the oriented section, set the 3D view, and define this helper function:
+Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks define `restore_view()` as the main restoration command. In the solid-mesh route this restores the generated 3D verification view. In the TRUE-volume route it restores the Red slice orientation, the 3D verification camera, and the scale bar. TRUE-volume blocks also define `refresh_orientcsg_scale()` for recreating the 10 mm scale bar at the current slice position, and `restore_3d_camera()` if only the 3D camera needs to be restored.
+
+For solid-mesh long-bone blocks:
 
 ```python
-restore_orientcsg_camera_state()
+restore_view()
 ```
 
-Run this function in the Slicer Python Interactor to restore the generated long-bone view.
-
-Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines these helper commands:
+For TRUE-volume long-bone blocks:
 
 ```python
 restore_view()
 refresh_orientcsg_scale()
+restore_3d_camera()
 ```
 
-Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
+Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines `restore_view()` and `refresh_orientcsg_scale()`. Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
 
 ## Installed examples
 

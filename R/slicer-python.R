@@ -343,7 +343,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "    modelNode.SetAttribute('OrientCSG.CameraViewUp', ','.join([f'{v:.12g}' for v in camera.GetViewUp()]))",
     "    modelNode.SetAttribute('OrientCSG.CameraParallelScale', f'{camera.GetParallelScale():.12g}')",
     "",
-    "def restore_orientcsg_camera_state(modelNode=None):",
+    "def restore_view(modelNode=None):",
     "    if modelNode is None:",
     "        modelNode = get_target_model_node()",
     "    threeDView = slicer.app.layoutManager().threeDWidget(0).threeDView()",
@@ -424,7 +424,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
     "else:",
     "    print('\\nSection-only mode: anatomical axis lines were not created.')",
     "print('Ruler visible, requested color enum:', RULER_COLOR)",
-    "print('To restore this view later, run: restore_orientcsg_camera_state()')"
+    "print('To restore this view later, run: restore_view()')"
   )
 
   paste(code, collapse = "\n")
@@ -846,7 +846,7 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     "            return node",
     "    return find_volume_node(VOLUME_NAME)",
     "",
-    "def restore_orientcsg_camera_state(volumeNode=None):",
+    "def restore_3d_camera(volumeNode=None):",
     "    if volumeNode is None:",
     "        volumeNode = get_initial_volume_node()",
     "    threeDView = slicer.app.layoutManager().threeDWidget(0).threeDView()",
@@ -949,7 +949,7 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     "    apply_slice_to_ras_matrix(ORIENTCSG_INITIAL_SLICE_TO_RAS)",
     "    refresh_orientcsg_scale()",
     "    if ORIENT_3D_CAMERA:",
-    "        restore_orientcsg_camera_state()",
+    "        restore_3d_camera()",
     "    print('Restored OrientCSG long-bone slice orientation, 3D camera, and scale.')",
     "",
     "# ============================================================",
@@ -984,7 +984,7 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     "print('Y_AXIS:', Y_AXIS)",
     "print('Z_AXIS:', Z_AXIS)",
     "print('\\nTo restore this slice orientation later, run: restore_view()')",
-    "print('To restore only the 3D camera later, run: restore_orientcsg_camera_state()')",
+    "print('To restore only the 3D camera later, run: restore_3d_camera()')",
     "print('To refresh the scale bar after changing the field of view, run: refresh_orientcsg_scale()')"
   )
 

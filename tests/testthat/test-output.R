@@ -117,8 +117,9 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mod
   expect_contains_fixed(py, "ANTERIOR_UP_SIGN = 1")
   expect_contains_fixed(py, "def compute_camera_basis(L, ML, AP):")
   expect_contains_fixed(py, "camera = orient_3d_camera(volumeNode)")
-  expect_contains_fixed(py, "restore_orientcsg_camera_state()")
+  expect_contains_fixed(py, "restore_3d_camera()")
   expect_contains_fixed(py, "restore_view()")
+  expect_false(grepl("restore_orientcsg_camera_state", py, fixed = TRUE))
   expect_false(grepl("MODEL_NAME =", py, fixed = TRUE))
 })
 
@@ -157,7 +158,35 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
   expect_contains_fixed(py, "A proximal view places the camera on the proximal side")
   expect_contains_fixed(py, "camera.SetPosition")
   expect_contains_fixed(py, "camera.SetParallelScale(FIELD_OF_VIEW_MM / 2.0)")
-  expect_contains_fixed(py, "restore_orientcsg_camera_state()")
+  expect_contains_fixed(py, "restore_3d_camera()")
   expect_contains_fixed(py, "restore_view()")
+  expect_false(grepl("restore_orientcsg_camera_state", py, fixed = TRUE))
   expect_false(grepl("MODEL_NAME =", py, fixed = TRUE))
 })
+
+test_that("solid-mesh Slicer Python uses restore_view as public helper", {
+  res <- list(
+    USE_ANAT_ORIENT = TRUE,
+    type = "TIBIA",
+    SOLID = TRUE,
+    section_points = list(SECTION_50 = c(10, 20, 30)),
+    vectors = list(
+      L = c(0, 0, 1),
+      ML = c(1, 0, 0),
+      AP = c(0, 1, 0)
+    ),
+    projected = list(
+      Proj_TibioTalar = c(10, 20, 0),
+      Proj_Midpoint = c(10, 20, 100)
+    ),
+    model_name = "T108_solid",
+    camera_distance_mm = 300
+  )
+
+  py <- OrientCSG:::emit_slicer_section_python(res, section = "SECTION_50")
+  expect_contains_fixed(py, "MODEL_NAME = \"T108_solid\"")
+  expect_contains_fixed(py, "def restore_view(modelNode=None):")
+  expect_contains_fixed(py, "To restore this view later, run: restore_view()")
+  expect_false(grepl("restore_orientcsg_camera_state", py, fixed = TRUE))
+})
+

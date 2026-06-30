@@ -1,5 +1,6 @@
 # OrientCSG 0.3.4
 
+* Updated long-bone 3D Slicer Python output so the public restoration command is consistently `restore_view()` in both TRUE-volume and solid-mesh routes. TRUE-volume blocks now use `restore_3d_camera()` for camera-only restoration, and obsolete `restore_orientcsg_camera_state()` instructions were removed.
 * Added support for BoneJ Results-table row input in `longitudinal_matrix_str`; the legacy 3 x 3 eigenvector matrix is still accepted.
 * Added `USE_ANAT_ORIENT` to `orient_longbone()`.
 * When `USE_ANAT_ORIENT = TRUE`, the function preserves the previous anatomical-orientation workflow.
