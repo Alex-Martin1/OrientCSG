@@ -298,7 +298,7 @@ If `SLICER = TRUE`, OrientCSG also generates a Python block for 3D Slicer. The b
 ```r
 library(OrientCSG)
 
-mesh_file_tibia <- "C:/Users/Alex/Desktop/T108_solid.ply"
+mesh_file_tibia <- "C:/Users/Alex/Desktop/T108_Left_solid.ply"
 
 landmarks_str_slicer_tibia <- "
 1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
@@ -312,8 +312,8 @@ res_tibia_solid_slicer <- orient_longbone(
   landmarks_str = landmarks_str_slicer_tibia,
   lm_coord_system = "LPS",
   section_loc = 50,
-  individual_id = "T108",
-  model_name = "T108_solid",
+  individual_id = "T108_Left",
+  model_name = "T108_Left_solid",
   SOLID = TRUE,
   SLICER = TRUE
 )
@@ -338,7 +338,7 @@ row 3 = TibioTalar
 ```r
 library(OrientCSG)
 
-mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_solid.ply"
+mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_Right_solid.ply"
 
 landmarks_str_slicer_humerus <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
@@ -353,8 +353,8 @@ res_humerus_solid_slicer <- orient_longbone(
   landmarks_str = landmarks_str_slicer_humerus,
   lm_coord_system = "LPS",
   section_loc = c(35, 50),
-  individual_id = "H108",
-  model_name = "H108_solid",
+  individual_id = "H108_Right",
+  model_name = "H108_Right_solid",
   SOLID = TRUE,
   SLICER = TRUE
 )
