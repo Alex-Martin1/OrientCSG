@@ -146,3 +146,22 @@ make_slicer_markup_table <- function(mat) {
   }, character(1))
   paste(lines, collapse = "\n")
 }
+
+longitudinal_matrix_str_longbone_z <- "
+||0|1|0||
+||0|0|1||
+||1|0|0||
+"
+
+femur_landmarks_str <- "
+-20 0 0
+ 20 0 0
+  0 5 100
+"
+
+radius_landmarks_str <- "
+-10 0 0
+ 10 0 0
+  0 0 0
+  0 5 200
+"

@@ -2,7 +2,7 @@
 
 OrientCSG is an R package for reproducible orientation of mandibular and long-bone cross-sections in cross-sectional geometry workflows.
 
-The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports two broad types of workflows:
+The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports three broad types of workflows:
 
 1. classic CT-derived workflows using BoneJ-derived principal axes and Amira/Avizo TCL output;
 2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and
@@ -73,6 +73,8 @@ It currently supports:
 
 - `TIBIA`;
 - `HUMERUS`;
+- `FEMUR`;
+- `RADIUS`;
 - `HUMERUS_TABLE`.
 
 For classic CT-derived workflows, `orient_longbone()` uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis. The BoneJ matrix is now transformed using the DICOM Image Orientation (Patient) line (`0020,0037`) from the same image stack used in BoneJ. This avoids assuming a single fixed BoneJ-to-Avizo correction for all DICOM series.
@@ -82,7 +84,9 @@ For closed surface meshes, `orient_longbone()` can compute the longitudinal axis
 When `SLICER = TRUE`, OrientCSG generates a 3D Slicer Python block that creates the oriented section and sets the 3D view. This Slicer workflow is currently implemented for:
 
 - `TIBIA`;
-- `HUMERUS`.
+- `HUMERUS`;
+- `FEMUR`;
+- `RADIUS`.
 
 It is intentionally not implemented for `HUMERUS_TABLE`, because that mode depends on a standardized scanner/table orientation that is usually not preserved in free 3D surface scanning workflows.
 
@@ -374,6 +378,21 @@ row 3 = LateralTrocleaDist
 row 4 = ProximalHead
 ```
 
+The femur and radius modes use the following landmark orders:
+
+```text
+FEMUR
+row 1 = Condyle1
+row 2 = Condyle2
+row 3 = SuperiorNeck
+
+RADIUS
+row 1 = RadialStyloid
+row 2 = UlnarNotch
+row 3 = DistArticular
+row 4 = ProxArticular
+```
+
 ## Working with Slicer Python output
 
 When `SLICER = TRUE`, the generated Python blocks are stored in `res$slicer_py`.
@@ -479,13 +498,13 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+Version 1.0.0 adds femoral and radial long-bone modes for Avizo/Amira TCL and 3D Slicer Python workflows, including projected biomechanical-length calculation and distal-to-proximal axis checks for both elements. Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
 
 Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 
 Version 0.1.4 introduced the first solid mesh + Slicer workflow for tibial sections. Version 0.1.2 updated mandibular TCL generation so that CS1, CS2, and CS3 are emitted as normal-and-point Slice definitions, improving compatibility across Amira/Avizo versions while preserving the same orientation geometry. Version 0.1.1 introduced Avizo TCL generation for mandibular, tibial, humeral, and table-position humeral workflows, including 9-, 11-, and 12-landmark mandibular inputs and explicit measurement status/method metadata.
 
-Planned developments include additional long bones, particularly the femur and radius, as well as protocols for orienting fragmented long-bone specimens.
+Planned developments include protocols for orienting fragmented long-bone specimens and possible extension to additional elements or preservation scenarios.
 
 ## Methodological documentation
 

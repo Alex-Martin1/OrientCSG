@@ -2,7 +2,7 @@
 #'
 #' `orient_longbone()` implements the long-bone orientation workflows used by
 #' OrientCSG. It computes biomechanical length, cross-sectional locations, and
-#' anatomical orientation vectors for tibiae and humeri from a small set of
+#' anatomical orientation vectors for tibiae, humeri, femora, and radii from a small set of
 #' anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 #' or a closed surface mesh. The BoneJ input can be supplied as the legacy 3 x 3
 #' eigenvector matrix or as a full Results-table row containing the unit-vector
@@ -30,13 +30,14 @@
 #' The `SLICER` argument controls the type of capture script returned.
 #'
 #' - `SLICER = FALSE` returns Avizo/Amira TCL blocks. This is the default backend
-#'   and is compatible with `mode = "TIBIA"`, `mode = "HUMERUS"`, and
-#'   `mode = "HUMERUS_TABLE"`.
+#'   and is compatible with `mode = "TIBIA"`, `mode = "HUMERUS"`,
+#'   `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "HUMERUS_TABLE"`.
 #' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `SOLID = FALSE`,
 #'   these blocks orient a Slicer slice view on a scalar volume node. When
 #'   `SOLID = TRUE`, they cut and display the corresponding model node. This
-#'   backend is implemented for `mode = "TIBIA"` and `mode = "HUMERUS"`. It
-#'   is intentionally not implemented for `mode = "HUMERUS_TABLE"`, because
+#'   backend is implemented for `mode = "TIBIA"`, `mode = "HUMERUS"`,
+#'   `mode = "FEMUR"`, and `mode = "RADIUS"`. It is intentionally not
+#'   implemented for `mode = "HUMERUS_TABLE"`, because
 #'   surface scans do not preserve a reliable scanner/table orientation.
 #'
 #' @section Orientation modes:
@@ -49,6 +50,13 @@
 #' - `"HUMERUS"` uses four landmarks: two distal landmarks defining the
 #'   mediolateral reference direction, one distal landmark for biomechanical
 #'   length, and one proximal landmark on the humeral head.
+#' - `"FEMUR"` uses three landmarks: two distal condylar articular-centre
+#'   landmarks and one proximal landmark on the superior femoral neck. The
+#'   midpoint between the condylar landmarks defines the distal endpoint of
+#'   biomechanical length.
+#' - `"RADIUS"` uses four landmarks: the radial styloid tip, the ulnar-notch
+#'   midpoint, the distal radiocarpal articular centre, and the proximal radial
+#'   head articular centre.
 #' - `"HUMERUS_TABLE"` uses two landmarks defining humeral biomechanical length.
 #'   The mediolateral direction is derived from the scanner X axis. This mode is
 #'   intended for humeri scanned in a standardized table position and is only
@@ -67,7 +75,9 @@
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
 #' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
 #' reference is defined from the tibio-talar landmark to the midpoint of the two
-#' plateau landmarks.
+#' plateau landmarks. Equivalent distal-to-proximal references are defined for
+#' humeri, femora, radii, and table-position humeri from their biomechanical
+#' length landmarks.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
@@ -100,7 +110,7 @@
 #' `GetNthControlPointPositionWorld()`.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
-#'   `"TIBIA"`, `"HUMERUS"`, or `"HUMERUS_TABLE"`.
+#'   `"TIBIA"`, `"HUMERUS"`, `"FEMUR"`, `"RADIUS"`, or `"HUMERUS_TABLE"`.
 #' @param longitudinal_matrix_str Character string containing either the legacy
 #'   3 x 3 BoneJ eigenvector matrix or a full row copied from the BoneJ Results
 #'   table. Required when `SOLID = FALSE`. If a full Results-table row is
@@ -127,8 +137,8 @@
 #'   `longitudinal_matrix_str`.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
-#'   implemented for tibiae and humeri; `HUMERUS_TABLE` is intentionally not
-#'   supported for Slicer output when `USE_ANAT_ORIENT = TRUE`.
+#'   implemented for tibiae, humeri, femora, and radii; `HUMERUS_TABLE` is
+#'   intentionally not supported for Slicer output when `USE_ANAT_ORIENT = TRUE`.
 #' @param USE_ANAT_ORIENT Logical. If `TRUE` (default), use the full anatomical
 #'   orientation workflow for the selected `mode`, including the anatomical
 #'   landmark set and the ML/AP reference planes or axes. If `FALSE`, use a
@@ -233,8 +243,8 @@ orient_longbone <- function(mode,
                             bonej_coord_transform = "dicom_iop",
                             bonej_transform_matrix = NULL) {
   mode <- toupper(trimws(mode))
-  if (!mode %in% c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
-    stop('`mode` must be one of "TIBIA", "HUMERUS", or "HUMERUS_TABLE".', call. = FALSE)
+  if (!mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
+    stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", or "HUMERUS_TABLE".', call. = FALSE)
   }
 
   if (!is.logical(SOLID) || length(SOLID) != 1L || is.na(SOLID)) {
@@ -253,8 +263,8 @@ orient_longbone <- function(mode,
     stop('`SLICER = TRUE` is not implemented for `mode = "HUMERUS_TABLE"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
   }
 
-  if (isTRUE(SLICER) && isTRUE(USE_ANAT_ORIENT) && !mode %in% c("TIBIA", "HUMERUS")) {
-    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"` or `mode = "HUMERUS"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
+  if (isTRUE(SLICER) && isTRUE(USE_ANAT_ORIENT) && !mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
+    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"`, `mode = "HUMERUS"`, `mode = "FEMUR"`, or `mode = "RADIUS"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
   }
 
   lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
@@ -298,7 +308,7 @@ orient_longbone <- function(mode,
   }
 
   n_landmarks <- if (isTRUE(USE_ANAT_ORIENT)) {
-    switch(mode, TIBIA = 3, HUMERUS = 4, HUMERUS_TABLE = 2)
+    switch(mode, TIBIA = 3, HUMERUS = 4, FEMUR = 3, RADIUS = 4, HUMERUS_TABLE = 2)
   } else {
     1L
   }
@@ -311,8 +321,8 @@ orient_longbone <- function(mode,
 
   P1 <- mat_pts[1, ]
   P2 <- if (nrow(mat_pts) >= 2L) mat_pts[2, ] else NULL
-  P3 <- if (nrow(mat_pts) >= 3L && mode %in% c("TIBIA", "HUMERUS")) mat_pts[3, ] else NULL
-  P4 <- if (nrow(mat_pts) >= 4L && mode == "HUMERUS") mat_pts[4, ] else NULL
+  P3 <- if (nrow(mat_pts) >= 3L && mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) mat_pts[3, ] else NULL
+  P4 <- if (nrow(mat_pts) >= 4L && mode %in% c("HUMERUS", "RADIUS")) mat_pts[4, ] else NULL
 
   Lh <- nrm(L)
 
@@ -331,6 +341,18 @@ orient_longbone <- function(mode,
       long_ref <- P4 - P3
       if (sqrt(sum(long_ref^2)) < 1e-12) {
         stop("LM3 and LM4 coincide; the humeral longitudinal direction cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+    } else if (mode == "FEMUR") {
+      long_ref <- P3 - ((P1 + P2) / 2)
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("The superior-neck landmark and condylar midpoint coincide; the femoral longitudinal direction cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+    } else if (mode == "RADIUS") {
+      long_ref <- P4 - P3
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("LM3 and LM4 coincide; the radial longitudinal direction cannot be defined.", call. = FALSE)
       }
       if (dot3(long_ref, Lh) < 0) Lh <- -Lh
     } else if (mode == "HUMERUS_TABLE") {
@@ -421,6 +443,23 @@ orient_longbone <- function(mode,
     point_at_pct <- function(pct) Proj_LM3 + (pct / 100) * Bio_vec
     projected$Proj_LM3 <- Proj_LM3
     projected$Proj_LM4 <- Proj_LM4
+  } else if (mode == "FEMUR") {
+    Distal_midpoint <- (P1 + P2) / 2
+    Proj_DistalMidpoint <- Distal_midpoint
+    Proj_SuperiorNeck <- Distal_midpoint + dot3(P3 - Distal_midpoint, Lh) * Lh
+    Bio_vec <- Proj_SuperiorNeck - Proj_DistalMidpoint
+    Bio_length <- sqrt(sum(Bio_vec^2))
+    point_at_pct <- function(pct) Proj_DistalMidpoint + (pct / 100) * Bio_vec
+    projected$Proj_CondyleMidpoint <- Proj_DistalMidpoint
+    projected$Proj_SuperiorNeck <- Proj_SuperiorNeck
+  } else if (mode == "RADIUS") {
+    Proj_DistArticular <- P3
+    Proj_ProxArticular <- P3 + dot3(P4 - P3, Lh) * Lh
+    Bio_vec <- Proj_ProxArticular - Proj_DistArticular
+    Bio_length <- sqrt(sum(Bio_vec^2))
+    point_at_pct <- function(pct) Proj_DistArticular + (pct / 100) * Bio_vec
+    projected$Proj_DistArticular <- Proj_DistArticular
+    projected$Proj_ProxArticular <- Proj_ProxArticular
   } else {
     Bio_length <- abs(dot3(P2 - P1, Lh))
     point_at_pct <- function(pct) P1 + (pct / 100) * Bio_length * Lh
@@ -451,6 +490,18 @@ orient_longbone <- function(mode,
     sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], P3[3], point_z)
   } else if (mode == "HUMERUS") {
     labels <- c("MedialTrocleaAnt", "CapitulumAnt", "LateralTrocleaDist", "Proximal Head")
+    summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
+    sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], P4[1], point_x)
+    sy <- c(Lh[2], MLh[2], APh[2], P1[2], P2[2], P3[2], P4[2], point_y)
+    sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], P3[3], P4[3], point_z)
+  } else if (mode == "FEMUR") {
+    labels <- c("Condyle1", "Condyle2", "SuperiorNeck")
+    summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
+    sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], point_x)
+    sy <- c(Lh[2], MLh[2], APh[2], P1[2], P2[2], P3[2], point_y)
+    sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], P3[3], point_z)
+  } else if (mode == "RADIUS") {
+    labels <- c("RadialStyloid", "UlnarNotch", "DistArticular", "ProxArticular")
     summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
     sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], P4[1], point_x)
     sy <- c(Lh[2], MLh[2], APh[2], P1[2], P2[2], P3[2], P4[2], point_y)
@@ -594,6 +645,12 @@ longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
   } else if (mode == "HUMERUS") {
     ref <- mat_pts[4, ] - mat_pts[3, ]
     ref_label <- "distal-to-proximal humeral"
+  } else if (mode == "FEMUR") {
+    ref <- mat_pts[3, ] - ((mat_pts[1, ] + mat_pts[2, ]) / 2)
+    ref_label <- "condylar-midpoint to superior-neck femoral"
+  } else if (mode == "RADIUS") {
+    ref <- mat_pts[4, ] - mat_pts[3, ]
+    ref_label <- "distal-to-proximal radial"
   } else if (mode == "HUMERUS_TABLE") {
     ref <- mat_pts[2, ] - mat_pts[1, ]
     ref_label <- "distal-to-proximal humeral-table"

@@ -1,3 +1,11 @@
+# OrientCSG 1.0.0
+
+* Added long-bone anatomical orientation support for `FEMUR` and `RADIUS` modes in `orient_longbone()`.
+* Implemented femoral biomechanical length as the projected distance along the femoral longitudinal axis between the distal condylar midpoint (`Condyle1`/`Condyle2`) and `SuperiorNeck`.
+* Implemented radial biomechanical length as the projected distance along the radial longitudinal axis between `DistArticular` and `ProxArticular`.
+* Extended distal-to-proximal longitudinal-axis sign checks, Avizo/Amira TCL output, TRUE-volume 3D Slicer output, and solid-mesh 3D Slicer output to femora and radii.
+* Updated README, examples, manual pages, and tests for the new femoral and radial landmark definitions.
+
 # OrientCSG 0.3.4
 
 * Updated long-bone 3D Slicer Python output so the public restoration command is consistently `restore_view()` in both TRUE-volume and solid-mesh routes. TRUE-volume blocks now use `restore_3d_camera()` for camera-only restoration, and obsolete `restore_orientcsg_camera_state()` instructions were removed.

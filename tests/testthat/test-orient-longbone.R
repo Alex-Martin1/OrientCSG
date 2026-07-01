@@ -161,7 +161,7 @@ test_that("orient_longbone() accepts BoneJ Results-table row input", {
 test_that("orient_longbone() validates malformed input", {
   expect_error(
     orient_longbone(
-      mode = "FEMUR",
+      mode = "ULNA",
       longitudinal_matrix_str = longitudinal_matrix_str_tibia,
       landmarks_str = tibia_landmarks_str
     ),
@@ -308,7 +308,7 @@ test_that("orient_longbone() supports section-only mode without anatomical plane
 })
 
 test_that("orient_longbone() section-only mode accepts all long-bone modes", {
-  for (m in c("TIBIA", "HUMERUS", "HUMERUS_TABLE")) {
+  for (m in c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
     res <- orient_longbone(
       mode = m,
       longitudinal_matrix_str = longitudinal_matrix_str_humerus,
@@ -320,4 +320,98 @@ test_that("orient_longbone() section-only mode accepts all long-bone modes", {
     expect_equal(res$type, m)
     expect_equal(names(res$avizo_tcl), "SECTION_35")
   }
+})
+
+test_that("orient_longbone() works for FEMUR mode", {
+  res <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = femur_landmarks_str,
+    section_loc = c(35, 50),
+    individual_id = "FEMUR_TEST"
+  )
+
+  expect_true(inherits(res, "orientcsg_longbone"))
+  expect_equal(res$type, "FEMUR")
+  expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
+  expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
+  expect_equal(nrow(res$summary), 8)
+  expect_equal(nrow(res$manual_orientation), 5)
+  expect_true(res$summary$Bio_length[1] > 0)
+  expect_equal(res$summary$Bio_length[1], 100, tolerance = 1e-6)
+
+  expect_unit_vector(res$vectors$L)
+  expect_unit_vector(res$vectors$ML)
+  expect_unit_vector(res$vectors$AP)
+  expect_orthogonal(res$vectors$L, res$vectors$ML)
+  expect_orthogonal(res$vectors$L, res$vectors$AP)
+  expect_orthogonal(res$vectors$ML, res$vectors$AP)
+  expect_true(!is.null(res$projected$Proj_CondyleMidpoint))
+  expect_true(!is.null(res$projected$Proj_SuperiorNeck))
+})
+
+test_that("orient_longbone() works for RADIUS mode", {
+  res <- orient_longbone(
+    mode = "RADIUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = radius_landmarks_str,
+    section_loc = c(35, 50),
+    individual_id = "RADIUS_TEST"
+  )
+
+  expect_true(inherits(res, "orientcsg_longbone"))
+  expect_equal(res$type, "RADIUS")
+  expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
+  expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
+  expect_equal(nrow(res$summary), 9)
+  expect_equal(nrow(res$manual_orientation), 5)
+  expect_true(res$summary$Bio_length[1] > 0)
+  expect_equal(res$summary$Bio_length[1], 200, tolerance = 1e-6)
+
+  expect_unit_vector(res$vectors$L)
+  expect_unit_vector(res$vectors$ML)
+  expect_unit_vector(res$vectors$AP)
+  expect_orthogonal(res$vectors$L, res$vectors$ML)
+  expect_orthogonal(res$vectors$L, res$vectors$AP)
+  expect_orthogonal(res$vectors$ML, res$vectors$AP)
+  expect_true(!is.null(res$projected$Proj_DistArticular))
+  expect_true(!is.null(res$projected$Proj_ProxArticular))
+})
+
+test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and RADIUS modes", {
+  res_femur <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = femur_landmarks_str,
+    section_loc = 50,
+    volume_name = "FEMUR_volume",
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+  py_femur <- get_slicer_py(res_femur, section = "SECTION_50")
+  expect_contains_fixed(py_femur, "VOLUME_NAME = \"FEMUR_volume\"")
+  expect_contains_fixed(py_femur, "USE_ANATOMICAL_ORIENTATION = True")
+  expect_contains_fixed(py_femur, "DISTAL_AXIS_POINT =")
+  expect_contains_fixed(py_femur, "PROXIMAL_AXIS_POINT =")
+  expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = 1")
+
+  res_radius <- orient_longbone(
+    mode = "RADIUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = radius_landmarks_str,
+    section_loc = 50,
+    volume_name = "RADIUS_volume",
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+  py_radius <- get_slicer_py(res_radius, section = "SECTION_50")
+  expect_contains_fixed(py_radius, "VOLUME_NAME = \"RADIUS_volume\"")
+  expect_contains_fixed(py_radius, "USE_ANATOMICAL_ORIENTATION = True")
+  expect_contains_fixed(py_radius, "DISTAL_AXIS_POINT =")
+  expect_contains_fixed(py_radius, "PROXIMAL_AXIS_POINT =")
+  expect_contains_fixed(py_radius, "ANTERIOR_UP_SIGN = 1")
 })

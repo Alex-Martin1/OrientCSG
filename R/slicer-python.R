@@ -5,8 +5,8 @@
 # Python Interactor with the corresponding scalar volume or mesh model already
 # loaded.
 emit_slicer_section_python <- function(res, section = NULL) {
-  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS")) {
-    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
+    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, or `mode = \"RADIUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -54,6 +54,22 @@ emit_slicer_section_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_LM3
     proximal_endpoint <- res$projected$Proj_LM4
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "FEMUR")) {
+    if (is.null(res$projected$Proj_CondyleMidpoint) || is.null(res$projected$Proj_SuperiorNeck)) {
+      stop("Projected femoral endpoints are required for Slicer output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_CondyleMidpoint
+    proximal_endpoint <- res$projected$Proj_SuperiorNeck
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "RADIUS")) {
+    if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {
+      stop("Projected radial endpoints are required for Slicer output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_DistArticular
+    proximal_endpoint <- res$projected$Proj_ProxArticular
     anterior_up_sign <- 1
     ml_right_sign <- 1
   }
@@ -437,8 +453,8 @@ emit_slicer_section_python <- function(res, section = NULL) {
 # section. This route is used when SLICER = TRUE and SOLID = FALSE. It orients
 # a Slicer slice view on a scalar volume node, rather than cutting a model node.
 emit_slicer_longbone_volume_python <- function(res, section = NULL) {
-  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS")) {
-    stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"` or `mode = \"HUMERUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
+    stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, or `mode = \"RADIUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -483,6 +499,22 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_LM3
     proximal_endpoint <- res$projected$Proj_LM4
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "FEMUR")) {
+    if (is.null(res$projected$Proj_CondyleMidpoint) || is.null(res$projected$Proj_SuperiorNeck)) {
+      stop("Projected femoral endpoints are required for Slicer volume output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_CondyleMidpoint
+    proximal_endpoint <- res$projected$Proj_SuperiorNeck
+    anterior_up_sign <- 1
+    ml_right_sign <- 1
+  } else if (identical(res$type, "RADIUS")) {
+    if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {
+      stop("Projected radial endpoints are required for Slicer volume output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_DistArticular
+    proximal_endpoint <- res$projected$Proj_ProxArticular
     anterior_up_sign <- 1
     ml_right_sign <- 1
   }

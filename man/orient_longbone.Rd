@@ -25,7 +25,7 @@ orient_longbone(
 }
 \arguments{
 \item{mode}{Character value indicating the orientation mode. Must be one of
-\code{"TIBIA"}, \code{"HUMERUS"}, or \code{"HUMERUS_TABLE"}.}
+\code{"TIBIA"}, \code{"HUMERUS"}, \code{"FEMUR"}, \code{"RADIUS"}, or \code{"HUMERUS_TABLE"}.}
 
 \item{longitudinal_matrix_str}{Character string containing either the legacy
 3 x 3 BoneJ eigenvector matrix or a full row copied from the BoneJ Results
@@ -60,8 +60,8 @@ homogeneous solid. If \code{FALSE}, the longitudinal axis is read from
 
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
-implemented for tibiae and humeri; \code{HUMERUS_TABLE} is intentionally not
-supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.}
+implemented for tibiae, humeri, femora, and radii; \code{HUMERUS_TABLE} is
+intentionally not supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.}
 
 \item{USE_ANAT_ORIENT}{Logical. If \code{TRUE} (default), use the full anatomical
 orientation workflow for the selected \code{mode}, including the anatomical
@@ -130,7 +130,7 @@ longitudinal vector and the anatomical distal-proximal reference.
 \description{
 \code{orient_longbone()} implements the long-bone orientation workflows used by
 OrientCSG. It computes biomechanical length, cross-sectional locations, and
-anatomical orientation vectors for tibiae and humeri from a small set of
+anatomical orientation vectors for tibiae, humeri, femora, and radii from a small set of
 anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 or a closed surface mesh. The BoneJ input can be supplied as the legacy 3 x 3
 eigenvector matrix or as a full Results-table row containing the unit-vector
@@ -162,13 +162,14 @@ axis. This workflow requires the suggested package Rvcg.
 The \code{SLICER} argument controls the type of capture script returned.
 \itemize{
 \item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks. This is the default backend
-and is compatible with \code{mode = "TIBIA"}, \code{mode = "HUMERUS"}, and
-\code{mode = "HUMERUS_TABLE"}.
+and is compatible with \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
+\code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "HUMERUS_TABLE"}.
 \item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{SOLID = FALSE},
 these blocks orient a Slicer slice view on a scalar volume node. When
 \code{SOLID = TRUE}, they cut and display the corresponding model node. This
-backend is implemented for \code{mode = "TIBIA"} and \code{mode = "HUMERUS"}. It
-is intentionally not implemented for \code{mode = "HUMERUS_TABLE"}, because
+backend is implemented for \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
+\code{mode = "FEMUR"}, and \code{mode = "RADIUS"}. It is intentionally not
+implemented for \code{mode = "HUMERUS_TABLE"}, because
 surface scans do not preserve a reliable scanner/table orientation.
 }
 }
@@ -184,6 +185,13 @@ endpoint of biomechanical length.
 \item \code{"HUMERUS"} uses four landmarks: two distal landmarks defining the
 mediolateral reference direction, one distal landmark for biomechanical
 length, and one proximal landmark on the humeral head.
+\item \code{"FEMUR"} uses three landmarks: two distal condylar articular-centre
+landmarks and one proximal landmark on the superior femoral neck. The
+midpoint between the condylar landmarks defines the distal endpoint of
+biomechanical length.
+\item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
+midpoint, the distal radiocarpal articular centre, and the proximal radial
+head articular centre.
 \item \code{"HUMERUS_TABLE"} uses two landmarks defining humeral biomechanical length.
 The mediolateral direction is derived from the scanner X axis. This mode is
 intended for humeri scanned in a standardized table position and is only
@@ -205,7 +213,9 @@ longitudinal axis is estimated directly from the closed mesh by volumetric
 inertia. In both cases, the sign of the longitudinal vector is adjusted when
 anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
 reference is defined from the tibio-talar landmark to the midpoint of the two
-plateau landmarks.
+plateau landmarks. Equivalent distal-to-proximal references are defined for
+humeri, femora, radii, and table-position humeri from their biomechanical
+length landmarks.
 }
 
 \section{Section locations}{
