@@ -128,271 +128,84 @@ For long bones, OrientCSG currently assumes complete or near-complete specimens.
 
 For mandibles, the workflow can be applied to fragmented specimens if the anatomical region required by the landmark protocol is sufficiently preserved. The function accepts 9, 11, or 12 landmarks. The 9-landmark input is intended for cases where `LM10` and `LM11` cannot be placed. The 12-landmark input adds `LM12` as the contralateral gonion, allowing direct computation of bigonial breadth.
 
-## Basic mandibular workflow
+## Examples
 
-The mandibular workflow accepts 9, 11, or 12 landmarks in the fixed protocol order. Coordinates can be pasted as a single character string copied from an Avizo landmark export, a 3D Slicer Markups table, or another coordinate source. The coordinate system is declared separately with `lm_coord_system`, whose default is `"LPS"`.
+The README intentionally provides only a compact overview of package use.
+Complete executable examples are distributed with the package in `inst/examples/`.
+These installed examples should be treated as the main practical reference because they show the full input structure for each supported workflow.
 
-`orient_mandible()` uses the landmarks to fix both the cross-section planes and the viewing orientation. The ARP normal (`Vec_Penp`) is signed anatomically from inferior toward superior. The priority is: real `LM9` when the gonion is preserved and `lm9_valid = TRUE`; `LM3`/`LM4` when they provide the appropriate inferior reference for the selected protocol; and an orientation-only `LM9` placeholder when the real gonion is not preserved and `lm9_valid = FALSE`. This same signed vector is used for both Avizo/Amira TCL and 3D Slicer Python outputs.
+The long-bone example script includes:
 
-Use `lm1_side` to declare the anatomical side on which `LM1` was placed. The default is `"RIGHT"`. If the right corpus is poorly preserved and `LM1` is placed on the left side, set `lm1_side = "LEFT"`; OrientCSG then uses the left-side convention for CS1/CS2 viewing and for the anatomical transverse direction used by CS3 in both Avizo/Amira and 3D Slicer outputs.
+- `TIBIA`;
+- `HUMERUS`;
+- `FEMUR`;
+- `RADIUS`;
+- `HUMERUS_TABLE`;
+- CT/DICOM true cross-section + 3D Slicer workflows;
+- solid mesh + 3D Slicer workflows.
+
+The mandibular example script shows the mandibular orientation workflow and the corresponding Amira/Avizo and 3D Slicer outputs.
+
+After installation, the example directory can be located with:
 
 ```r
-library(OrientCSG)
+system.file("examples", package = "OrientCSG")
+list.files(system.file("examples", package = "OrientCSG"))
+```
 
-landmarks_str <- "
--30.802746 -7.687321 -143.703278
- -1.575801  7.369631 -105.562813
- -0.330960 -22.722292  -93.421600
- -0.528437 -16.996193 -108.474274
--28.758656  -5.048145 -132.697403
--21.375843  -4.792870 -134.530151
--25.118534  -0.853733 -121.618919
--19.496758  -0.576878 -123.945511
--46.735912 -35.260029 -164.050079
--18.105160   2.743076 -110.288727
--47.784660  12.426559 -201.179794
-"
+To inspect the long-bone example script:
 
-res <- orient_mandible(
-  landmarks_str = landmarks_str,
-  individual_id = "MANDIBLE_001",
-  camera_distance_mm = 300,
-  lm1_side = "RIGHT"
+```r
+example_file <- system.file(
+  "examples",
+  "longbone_orientation_example.R",
+  package = "OrientCSG"
 )
 
-res$summary
-res$measurements
-res$manual_orientation
+file.edit(example_file)
 ```
 
-Retrieve or copy an Amira/Avizo TCL block:
+To run it:
 
 ```r
-cat(get_tcl(res, section = "CS1"))
-copy_tcl(res, section = "CS1")
-write_tcl(res, file = "MANDIBLE_001_CS1.tcl", section = "CS1")
+source(example_file)
 ```
 
-For 3D Slicer, use the same landmarks and set `SLICER = TRUE`. If the landmark text was copied from a Slicer Markups table or exported from Slicer in the usual Markups workflow, keep `lm_coord_system = "LPS"` unless you have verified that the copied text is true RAS. Use `lm_coord_system = "RAS"` only for coordinates extracted explicitly as Slicer world RAS, for example with `GetNthControlPointPositionWorld()`. Set `volume_name` to the scalar volume node name in Slicer when more than one volume may be loaded.
+To inspect or run the mandibular example:
 
 ```r
-res_slicer <- orient_mandible(
-  landmarks_str = landmarks_str,
-  individual_id = "MANDIBLE_001",
-  lm1_side = "RIGHT",
-  lm_coord_system = "LPS",
-  SLICER = TRUE,
-  volume_name = "MANDIBLE_VOLUME"
+mandible_example <- system.file(
+  "examples",
+  "mandible_orientation_example.R",
+  package = "OrientCSG"
 )
 
-cat(get_slicer_py(res_slicer, section = "CS1"))
-copy_slicer_py(res_slicer, section = "CS1")
+file.edit(mandible_example)
+source(mandible_example)
 ```
 
-### Mandibular preservation options
-
-By default, `orient_mandible()` assumes the fragmented-mandible workflow:
+A minimal long-bone call has the following general structure:
 
 ```r
-res <- orient_mandible(
-  landmarks_str = landmarks_str,
-  complete_arch = FALSE,
-  estimate_lm10 = FALSE,
-  lm9_valid = TRUE
-)
-```
-
-If the mandibular arch is sufficiently complete and the physical `LM1_Line`/`A_Line` point is preserved, set `complete_arch = TRUE`. In this mode, `LM4` is interpreted as the real `LM1_Line` point rather than the landmark used to estimate it by reflection:
-
-```r
-res <- orient_mandible(
-  landmarks_str = landmarks_str,
-  complete_arch = TRUE
-)
-```
-
-If the contralateral gonion is preserved, provide 12 landmarks. `LM12` will be interpreted as the contralateral gonion and bigonial breadth will be computed directly as `LM9`--`LM12`.
-
-If `LM10` and `LM11` cannot be placed, provide only the first 9 landmarks. The package will still generate the section-orientation TCL blocks, but mandibular length will be returned as non-computable in `res$measurements`.
-
-If `LM9` cannot be placed on a real anatomical gonion and a placeholder is used only to preserve the input structure, set `lm9_valid = FALSE`. In this case, measurements depending on `LM9`, including corpus length and bigonial breadth, are returned as non-computable.
-
-## Classic long-bone workflow: BoneJ + Amira/Avizo
-
-The classic long-bone workflow requires:
-
-1. the DICOM Image Orientation (Patient) line, copied from the same image stack used in BoneJ;
-2. a BoneJ Moments of Inertia eigenvector matrix; and
-3. the anatomical landmarks required by the selected mode.
-
-Use a raw R string, `r"(...)"`, when pasting the DICOM line so that the backslashes are read literally.
-
-```r
-library(OrientCSG)
-
-dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
-
-longitudinal_matrix_str <- "
-||0.008|-0.758|-0.653||
-||0.017|-0.652|0.758||
-||1.000|0.017|-0.008||
-"
-
-tibia_landmarks_str <- "
-130.94606  -12.514749 -392.244507
-164.351898 -17.573267 -395.017944
-146.258621 -15.388991  -61.599937
-"
-
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
   dicom_iop = dicom_iop_str,
-  landmarks_str = tibia_landmarks_str,
+  landmarks_str = landmarks_str,
   section_loc = 50,
-  individual_id = "TIBIA_001",
+  individual_id = "T108_Left",
   camera_distance_mm = 300
 )
 
 res$summary
-res$manual_orientation
-```
-
-Retrieve or copy the generated TCL block:
-
-```r
 cat(get_tcl(res, section = "SECTION_50"))
-copy_tcl(res, section = "SECTION_50")
-write_tcl(res, file = "TIBIA_001_SECTION_50.tcl", section = "SECTION_50")
 ```
 
-Multiple section locations can be requested at once:
+For 3D Slicer workflows, use `SLICER = TRUE` and inspect the generated Python block with:
 
 ```r
-res <- orient_longbone(
-  mode = "TIBIA",
-  longitudinal_matrix_str = longitudinal_matrix_str,
-  dicom_iop = dicom_iop_str,
-  landmarks_str = tibia_landmarks_str,
-  section_loc = c(35, 50, 65),
-  individual_id = "TIBIA_001"
-)
-
-names(res$avizo_tcl)
+cat(get_slicer_py(res, section = "SECTION_50"))
 ```
-
-## Solid mesh + 3D Slicer workflow
-
-For closed surface meshes (`.ply`, `.stl`, or `.obj`), `orient_longbone()` can compute the longitudinal axis directly from the mesh.
-
-This workflow is activated with:
-
-```r
-SOLID = TRUE
-```
-
-If `SLICER = TRUE`, OrientCSG also generates a Python block for 3D Slicer. The block can be pasted into the 3D Slicer Python Interactor to create the oriented section, set the 3D view, display the axes, and configure the view for capture. The generated output is emitted to Slicer in RAS world coordinates; therefore OrientCSG converts from its internal LPS/file-space convention to RAS only at this output step.
-
-### Tibia example
-
-```r
-library(OrientCSG)
-
-mesh_file_tibia <- "C:/Users/Alex/Desktop/T108_Left_solid.ply"
-
-landmarks_str_slicer_tibia <- "
-1 164.351898 -17.573267 -395.017944 0 0 0 1 1 1 0 F-1 2 0
-2 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-2 2 0
-3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
-"
-
-res_tibia_solid_slicer <- orient_longbone(
-  mode = "TIBIA",
-  mesh_file = mesh_file_tibia,
-  landmarks_str = landmarks_str_slicer_tibia,
-  lm_coord_system = "LPS",
-  section_loc = 50,
-  individual_id = "T108_Left",
-  model_name = "T108_Left_solid",
-  SOLID = TRUE,
-  SLICER = TRUE
-)
-
-res_tibia_solid_slicer$summary
-res_tibia_solid_slicer$mesh_axes$eigenvectors
-
-cat(get_slicer_py(res_tibia_solid_slicer, "SECTION_50"))
-copy_slicer_py(res_tibia_solid_slicer, "SECTION_50")
-```
-
-The current tibia/Slicer parser expects Slicer Markups-style rows in this fixed order. If these rows were copied from the Slicer table, use `lm_coord_system = "LPS"` unless the copied text has been verified as true RAS:
-
-```text
-row 1 = Plateau2
-row 2 = Plateau1
-row 3 = TibioTalar
-```
-
-### Humerus example
-
-```r
-library(OrientCSG)
-
-mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_Right_solid.ply"
-
-landmarks_str_slicer_humerus <- "
-1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
-2 186.393386840820 -15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
-3 182.241800000000  -6.976971000000 -59.921390000000 0 0 0 1 1 1 0 F-3 2 0
-4 182.721400000000   8.127365000000 -345.482760000000 0 0 0 1 1 1 0 F-4 2 0
-"
-
-res_humerus_solid_slicer <- orient_longbone(
-  mode = "HUMERUS",
-  mesh_file = mesh_file_humerus,
-  landmarks_str = landmarks_str_slicer_humerus,
-  lm_coord_system = "LPS",
-  section_loc = c(35, 50),
-  individual_id = "H108_Right",
-  model_name = "H108_Right_solid",
-  SOLID = TRUE,
-  SLICER = TRUE
-)
-
-res_humerus_solid_slicer$summary
-res_humerus_solid_slicer$mesh_axes$eigenvectors
-
-cat(get_slicer_py(res_humerus_solid_slicer, "SECTION_35"))
-cat(get_slicer_py(res_humerus_solid_slicer, "SECTION_50"))
-
-copy_slicer_py(res_humerus_solid_slicer, "SECTION_35")
-copy_slicer_py(res_humerus_solid_slicer, "SECTION_50")
-```
-
-The current humerus/Slicer parser expects Slicer Markups-style rows in this fixed order. If these rows were copied from the Slicer table, use `lm_coord_system = "LPS"` unless the copied text has been verified as true RAS:
-
-```text
-row 1 = MedialTrocleaAnt
-row 2 = CapitulumAnt
-row 3 = LateralTrocleaDist
-row 4 = ProximalHead
-```
-
-The femur and radius modes use the following landmark orders:
-
-```text
-FEMUR
-row 1 = Condyle1
-row 2 = Condyle2
-row 3 = SuperiorNeck
-
-RADIUS
-row 1 = RadialStyloid
-row 2 = UlnarNotch
-row 3 = DistArticular
-row 4 = ProxArticular
-```
-
 ## Working with Slicer Python output
 
 When `SLICER = TRUE`, the generated Python blocks are stored in `res$slicer_py`.
@@ -428,27 +241,6 @@ restore_3d_camera()
 ```
 
 Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines `restore_view()` and `refresh_orientcsg_scale()`. Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
-
-## Installed examples
-
-OrientCSG includes example scripts that can be inspected or executed after installation:
-
-```r
-system.file("examples", package = "OrientCSG")
-list.files(system.file("examples", package = "OrientCSG"))
-```
-
-To run the mandibular example:
-
-```r
-source(system.file("examples", "mandible_orientation_example.R", package = "OrientCSG"))
-```
-
-To run the long-bone example:
-
-```r
-source(system.file("examples", "longbone_orientation_example.R", package = "OrientCSG"))
-```
 
 ## Avizo/Amira requirements
 
