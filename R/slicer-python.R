@@ -62,7 +62,9 @@ emit_slicer_section_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_CondyleMidpoint
     proximal_endpoint <- res$projected$Proj_SuperiorNeck
-    anterior_up_sign <- 1
+    # Use -AP as screen-up so that the anterior femoral aspect is displayed at
+    # the top of the section, matching the Avizo/Amira capture convention.
+    anterior_up_sign <- -1
     ml_right_sign <- 1
   } else if (identical(res$type, "RADIUS")) {
     if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {
@@ -507,7 +509,9 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_CondyleMidpoint
     proximal_endpoint <- res$projected$Proj_SuperiorNeck
-    anterior_up_sign <- 1
+    # Use -AP as screen-up so that the anterior femoral aspect is displayed at
+    # the top of the section, matching the Avizo/Amira capture convention.
+    anterior_up_sign <- -1
     ml_right_sign <- 1
   } else if (identical(res$type, "RADIUS")) {
     if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {

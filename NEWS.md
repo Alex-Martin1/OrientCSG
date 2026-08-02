@@ -1,3 +1,9 @@
+# OrientCSG 1.0.0.9000
+
+* Corrected the in-plane femoral capture orientation so that the anterior aspect is displayed at the top in Avizo/Amira TCL output, TRUE-volume 3D Slicer output, and solid-mesh 3D Slicer output.
+* Added direct three-component BoneJ longitudinal-vector input to `longitudinal_matrix_str`, alongside the existing legacy 3 x 3 matrix and full Results-table row formats.
+* Added regression tests and updated the installed long-bone examples and function documentation for both changes.
+
 # OrientCSG 1.0.0
 
 * Added long-bone anatomical orientation support for `FEMUR` and `RADIUS` modes in `orient_longbone()`.

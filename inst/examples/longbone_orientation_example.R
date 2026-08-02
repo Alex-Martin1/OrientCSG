@@ -7,12 +7,11 @@ library(OrientCSG)
 
 # Notes on example format -------------------------------------------------
 #
-# The TIBIA and HUMERUS examples use the pre-June 2026 BoneJ output format,
-# where the longitudinal-axis information is pasted as a compact 3 x 3 matrix.
-# The FEMUR and RADIUS examples use the post-June 2026 BoneJ output format,
-# where the same information is pasted from the updated tabular output row.
-# OrientCSG accepts both formats; the mixed examples are intentional and show
-# backward compatibility across the BoneJ output update.
+# OrientCSG accepts three BoneJ longitudinal-axis input formats. The TIBIA and
+# HUMERUS examples use the pre-June 2026 compact 3 x 3 matrix. The FEMUR example
+# uses the longitudinal vector directly as three coordinates (x, y, z). The
+# RADIUS example uses the post-June 2026 complete Results-table row. These mixed
+# examples are intentional and demonstrate compatibility with all three formats.
 #
 # In the 3D Slicer workflows, landmarks copied from the Markups table are shown
 # in table format. These examples use lm_coord_system = "LPS", matching the
@@ -69,6 +68,14 @@ copy_tcl(res_tibia, section = "SECTION_50")
 #
 # Same specimen and section location as in the main TIBIA example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
+
+dicom_iop_str_tibia <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+
+longitudinal_matrix_str_tibia <- "
+||0.011|-0.780|-0.626||
+||0.019|-0.626|0.780||
+||1.000|0.021|-0.008||
+"
 
 tibia_landmarks_slicer_T108_Left_B <- "
 1 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-1 2 0
@@ -193,6 +200,14 @@ copy_tcl(res_humerus, section = "SECTION_50")
 # Same specimen and section locations as in the main HUMERUS example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
 
+dicom_iop_str_humerus <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+
+longitudinal_matrix_str_humerus <- "
+||0.023|0.973|0.231||
+||0.022|-0.232|0.972||
+||0.999|-0.018|-0.027||
+"
+
 humerus_landmarks_slicer_H108_Right_B <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
 2 186.393386840820 -15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
@@ -281,7 +296,7 @@ if (file.exists(mesh_file_humerus)) {
 dicom_iop_str_femur <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
 
 longitudinal_matrix_str_femur <- "
-AAM_T-324_fémur_I	57.46085720770676	74.30795885498785	253.907737301091	137317.32610560616	247.17118699005323	1691827.0417617331	1690769.8657119467	50641.81658958559	3065.504282644045	-39612.15593432332	-81494.7808522638	1695292.242516427	1692302.1959205428	45644.285626294324	-0.02411871280310699	-0.04950688973444657	0.9984825264177349	-0.9154090025393372	-0.4003318665483994	-0.041961347640542476	-0.4018017493275227	0.9150319472535892	0.035663563235422066
+-0.02411871280310699 -0.04950688973444657 0.9984825264177349
 "
 
 femur_landmarks_str_F324_Left_A <- "
@@ -313,6 +328,12 @@ copy_tcl(res_femur, section = "SECTION_50")
 #
 # Same specimen and section location as in the main FEMUR example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
+
+dicom_iop_str_femur <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
+
+longitudinal_matrix_str_femur <- "
+AAM_T-324_fémur_I	57.46085720770676	74.30795885498785	253.907737301091	137317.32610560616	247.17118699005323	1691827.0417617331	1690769.8657119467	50641.81658958559	3065.504282644045	-39612.15593432332	-81494.7808522638	1695292.242516427	1692302.1959205428	45644.285626294324	-0.02411871280310699	-0.04950688973444657	0.9984825264177349	-0.9154090025393372	-0.4003318665483994	-0.041961347640542476	-0.4018017493275227	0.9150319472535892	0.035663563235422066
+"
 
 femur_landmarks_slicer_F324_Left_B <- "
 1 -177.140548706055 12.686900138855  -28.967437744141 0 0 0 1 1 1 0 F-1 2 0
@@ -434,6 +455,12 @@ copy_tcl(res_radius, section = "SECTION_50")
 #
 # Same specimen and section locations as in the main RADIUS example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
+
+dicom_iop_str_radius <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
+
+longitudinal_matrix_str_radius <- "
+AAM_T-324_radio_D	44.080015942418335	42.95720179215419	133.55952713852332	27089.50882590009	48.761115886621546	327980.4273665555	329095.261157972	3115.9014055120465	-162.16410856405977	-10145.27733217148	31.245220695520096	329126.5532500726	328265.66037740244	2799.3763025646913	0.031183739970721044	-1.1120859949082385E-4	-0.9995136627350755	-0.9811818843788818	0.19064031021506495	-0.03063301956731138	-0.19055100138321474	-0.981659951181544	-0.005835761998476635
+"
 
 radius_landmarks_slicer_R324_Right_B <- "
 1  -83.089904785156 -9.098584175110  -89.785583496094 0 0 0 1 1 1 0 F-1 2 0

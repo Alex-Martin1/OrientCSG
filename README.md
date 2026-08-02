@@ -36,7 +36,7 @@ Depending on the workflow, it can:
 
 - compute anatomical points and vectors;
 - compute section locations;
-- compute long-bone longitudinal axes from either a BoneJ eigenvector matrix or a closed surface mesh;
+- compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, a BoneJ eigenvector matrix, a full BoneJ Results-table row, or a closed surface mesh;
 - return summary tables and manual-orientation tables;
 - generate Amira/Avizo TCL command blocks;
 - generate 3D Slicer Python blocks for supported Slicer workflows;
@@ -77,7 +77,7 @@ It currently supports:
 - `RADIUS`;
 - `HUMERUS_TABLE`.
 
-For classic CT-derived workflows, `orient_longbone()` uses the first column of the BoneJ Moments of Inertia eigenvector matrix as the longitudinal axis. The BoneJ matrix is now transformed using the DICOM Image Orientation (Patient) line (`0020,0037`) from the same image stack used in BoneJ. This avoids assuming a single fixed BoneJ-to-Avizo correction for all DICOM series.
+For classic CT-derived workflows, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, the legacy 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for matrix or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed using the DICOM Image Orientation (Patient) line (`0020,0037`) from the same image stack used in BoneJ. This avoids assuming a single fixed BoneJ-to-Avizo correction for all DICOM series.
 
 For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
 
@@ -133,6 +133,7 @@ For mandibles, the workflow can be applied to fragmented specimens if the anatom
 The README intentionally provides only a compact overview of package use.
 Complete executable examples are distributed with the package in `inst/examples/`.
 These installed examples should be treated as the main practical reference because they show the full input structure for each supported workflow.
+The long-bone script demonstrates all three accepted BoneJ text formats: a direct three-component vector, the legacy 3 x 3 matrix, and a full Results-table row.
 
 The long-bone example script includes:
 

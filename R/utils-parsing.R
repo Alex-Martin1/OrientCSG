@@ -185,16 +185,17 @@ parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
 
 # Internal parsing helper ----------------------------------------------------
 #
-# Read BoneJ Moments of Inertia eigenvectors. Two input formats are accepted:
-#   1. The legacy 3 x 3 eigenvector matrix copied from the Log window.
-#   2. A full BoneJ Results-table row containing the unit-vector columns.
+# Read BoneJ Moments of Inertia eigenvectors. Three input formats are accepted:
+#   1. A direct three-component longitudinal vector (x, y, z).
+#   2. The legacy 3 x 3 eigenvector matrix copied from the Log window.
+#   3. A full BoneJ Results-table row containing the unit-vector columns.
 #
 # For the Results-table row format, the final nine numeric fields are interpreted
 # as vector0{x, y, z}, vector1{x, y, z}, and vector2{x, y, z}. The orientation
-# workflow uses the first vector as the longitudinal direction, following the
-# established long-bone protocol. Numeric fields are parsed token by token rather
-# than with a broad regex so that specimen IDs such as AAM_T-181_tibia are not
-# misread as measurements.
+# workflow uses the direct vector or the first matrix/table vector as the
+# longitudinal direction, following the established long-bone protocol. Numeric
+# fields are parsed token by token rather than with a broad regex so that specimen
+# IDs such as AAM_T-181_tibia are not misread as measurements.
 parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   if (is.null(longitudinal_matrix_str) ||
       length(longitudinal_matrix_str) != 1L ||
@@ -207,22 +208,31 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   nums <- suppressWarnings(as.numeric(fields))
   nums <- nums[is.finite(nums)]
 
-  if (length(nums) < 9L) {
-    stop(
-      "The longitudinal matrix must contain at least 9 numeric values: either a 3 x 3 BoneJ eigenvector matrix or a full BoneJ Results-table row with unit-vector columns.",
-      call. = FALSE
-    )
+  if (length(nums) == 3L) {
+    return(matrix(nums, nrow = 3L, ncol = 1L))
   }
 
   if (length(nums) == 9L) {
-    return(matrix(nums[1:9], nrow = 3, byrow = TRUE))
+    return(matrix(nums, nrow = 3L, byrow = TRUE))
   }
 
-  eig <- utils::tail(nums, 9L)
-  cbind(
-    eig[1:3],
-    eig[4:6],
-    eig[7:9]
+  if (length(nums) > 9L) {
+    eig <- utils::tail(nums, 9L)
+    return(cbind(
+      eig[1:3],
+      eig[4:6],
+      eig[7:9]
+    ))
+  }
+
+  stop(
+    paste0(
+      "`longitudinal_matrix_str` must contain either 3 numeric values ",
+      "defining the BoneJ longitudinal vector, 9 numeric values defining ",
+      "the legacy 3 x 3 eigenvector matrix, or a full BoneJ Results-table ",
+      "row containing the final nine unit-vector values."
+    ),
+    call. = FALSE
   )
 }
 

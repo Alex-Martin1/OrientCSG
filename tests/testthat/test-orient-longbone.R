@@ -158,6 +158,36 @@ test_that("orient_longbone() accepts BoneJ Results-table row input", {
   expect_unit_vector(res$vectors$L)
 })
 
+test_that("orient_longbone() accepts a direct three-component BoneJ longitudinal vector", {
+  res_vector <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = "0 0 1",
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = femur_landmarks_str,
+    section_loc = 50,
+    individual_id = "FEMUR_INPUT_EQUIVALENCE"
+  )
+
+  res_matrix <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_iop = dicom_iop_flip_xy,
+    landmarks_str = femur_landmarks_str,
+    section_loc = 50,
+    individual_id = "FEMUR_INPUT_EQUIVALENCE"
+  )
+
+  expect_equal(dim(res_vector$bonej$eigenvectors), c(3L, 1L))
+  expect_equal(
+    unname(res_vector$bonej$eigenvectors[, 1]),
+    c(0, 0, 1),
+    tolerance = 1e-12
+  )
+  expect_equal(res_vector$vectors$L, res_matrix$vectors$L, tolerance = 1e-12)
+  expect_equal(res_vector$section_points, res_matrix$section_points, tolerance = 1e-12)
+  expect_equal(res_vector$summary, res_matrix$summary, tolerance = 1e-12)
+})
+
 test_that("orient_longbone() validates malformed input", {
   expect_error(
     orient_longbone(
@@ -181,10 +211,10 @@ test_that("orient_longbone() validates malformed input", {
   expect_error(
     orient_longbone(
       mode = "TIBIA",
-      longitudinal_matrix_str = "1 2 3",
+      longitudinal_matrix_str = "1 2 3 4",
       landmarks_str = tibia_landmarks_str
     ),
-    "at least 9 numeric values"
+    "must contain either 3 numeric values"
   )
 
   expect_error(
@@ -322,6 +352,20 @@ test_that("orient_longbone() section-only mode accepts all long-bone modes", {
   }
 })
 
+test_that("femoral Avizo/Amira camera uses anterior-up capture orientation", {
+  P <- c(0, 0, 0)
+  L <- c(0, 0, 1)
+  ML <- c(1, 0, 0)
+  AP <- c(0, -1, 0)
+
+  camera_femur <- emit_longbone_camera(P, L, ML, AP, mode = "FEMUR")
+  camera_tibia <- emit_longbone_camera(P, L, ML, AP, mode = "TIBIA")
+  camera_humerus <- emit_longbone_camera(P, L, ML, AP, mode = "HUMERUS")
+
+  expect_identical(camera_femur, camera_tibia)
+  expect_false(identical(camera_femur, camera_humerus))
+})
+
 test_that("orient_longbone() works for FEMUR mode", {
   res <- orient_longbone(
     mode = "FEMUR",
@@ -396,7 +440,18 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_femur, "USE_ANATOMICAL_ORIENTATION = True")
   expect_contains_fixed(py_femur, "DISTAL_AXIS_POINT =")
   expect_contains_fixed(py_femur, "PROXIMAL_AXIS_POINT =")
-  expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = 1")
+  expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = -1")
+
+  # The solid-mesh Slicer generator uses the same femoral screen-up convention.
+  res_femur_solid <- res_femur
+  res_femur_solid$SOLID <- TRUE
+  res_femur_solid$model_name <- "FEMUR_model"
+  py_femur_solid <- emit_slicer_section_python(
+    res_femur_solid,
+    section = "SECTION_50"
+  )
+  expect_contains_fixed(py_femur_solid, "MODEL_NAME = \"FEMUR_model\"")
+  expect_contains_fixed(py_femur_solid, "ANTERIOR_UP_SIGN = -1")
 
   res_radius <- orient_longbone(
     mode = "RADIUS",
