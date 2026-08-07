@@ -110,6 +110,42 @@ test_that("orient_mandible() generates expected TCL blocks", {
   expect_contains_fixed(tcl_cs1, "viewer 0 setCameraType orthographic")
 })
 
+test_that("mandibular CS1/CS2 Avizo cameras are placed on the anterior side", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    individual_id = "MANDIBLE_ANTERIOR_VIEW"
+  )
+
+  extract_tcl_camera_position <- function(tcl) {
+    lines <- strsplit(tcl, "\n", fixed = TRUE)[[1]]
+    extract_component <- function(name) {
+      hit <- grep(paste0("^set ", name, " "), lines, value = TRUE)
+      if (length(hit) != 1L) {
+        stop("Could not extract a unique TCL camera component: ", name)
+      }
+      as.numeric(sub(paste0("^set ", name, "[[:space:]]+"), "", hit))
+    }
+    c(
+      extract_component("Cx"),
+      extract_component("Cy"),
+      extract_component("Cz")
+    )
+  }
+
+  for (section in c("CS1", "CS2")) {
+    tcl <- get_tcl(res, section = section)
+    camera <- extract_tcl_camera_position(tcl)
+    psec <- if (section == "CS1") res$points$CS1B else res$points$CS2B
+    camera_side <- nrm(camera - psec)
+
+    expect_gt(dot3(camera_side, res$vectors$Anterior_ref), 0)
+    expect_contains_fixed(
+      tcl,
+      "view from anterior (LM0 -> LM2)"
+    )
+  }
+})
+
 test_that("orient_mandible() validates malformed input", {
   expect_error(
     orient_mandible("1 2 3"),
@@ -303,6 +339,52 @@ test_that("orient_mandible() separates input format from coordinate system", {
   expect_equal(res_ras$landmarks, res_lps$landmarks, tolerance = 1e-6)
   expect_equal(res_ras$summary, res_lps$summary, tolerance = 1e-6)
   expect_equal(res_ras$measurements$value_mm, res_lps$measurements$value_mm, tolerance = 1e-6)
+})
+
+test_that("mandibular CS1/CS2 Slicer bases use the anterior reference consistently", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    SLICER = TRUE,
+    volume_name = "MANDIBLE_VOLUME"
+  )
+
+  extract_python_vector <- function(code, variable) {
+    lines <- strsplit(code, "\n", fixed = TRUE)[[1]]
+    pattern <- paste0("^", variable, " = np\\.array\\(\\[")
+    hit <- grep(pattern, lines, value = TRUE)
+    if (length(hit) != 1L) {
+      stop("Could not extract a unique Python vector: ", variable)
+    }
+    body <- sub(
+      paste0("^", variable, " = np\\.array\\(\\[([^]]+)\\].*$"),
+      "\\1",
+      hit
+    )
+    as.numeric(trimws(strsplit(body, ",", fixed = TRUE)[[1]]))
+  }
+
+  for (section in c("CS1", "CS2")) {
+    py <- get_slicer_py(res, section = section)
+    normal_ras <- extract_python_vector(py, "NORMAL")
+    x_ref_ras <- extract_python_vector(py, "X_SCREEN_REFERENCE")
+
+    # RAS <-> LPS is the same sign flip in X/Y in either direction.
+    normal_lps <- normal_ras * c(-1, -1, 1)
+    x_ref_lps <- x_ref_ras * c(-1, -1, 1)
+
+    # OrientCSG signs Slicer's section Z axis toward LM0 -> LM2 so the displayed
+    # X/Y basis matches the anterior-view convention used by Avizo/Amira.
+    expect_gt(dot3(nrm(normal_lps), res$vectors$Anterior_ref), 0)
+
+    # X must already agree with anatomical Y-up and the selected Z sign; this
+    # prevents make_slice_to_ras() from flipping the section normal back.
+    expected_x <- nrm(cross3(res$vectors$Vec_Penp, normal_lps))
+    expect_equal(
+      unname(nrm(x_ref_lps)),
+      unname(expected_x),
+      tolerance = 1e-8
+    )
+  }
 })
 
 test_that("orient_mandible() generates Slicer Python blocks", {

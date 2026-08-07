@@ -32,8 +32,9 @@ practical value for the current image-capture workflow.}
 
 \item{lm1_side}{Character value indicating the anatomical side on which \code{LM1}
 was placed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}. This argument
-controls the side from which CS1 and CS2 are viewed and the anatomical
-interpretation of the transverse axis used for CS3.}
+controls the anatomical right-left convention used for CS3. The viewing side
+of CS1 and CS2 is determined independently from the \code{LM0 -> LM2} anterior
+reference.}
 
 \item{complete_arch}{Logical. If \code{FALSE} (default), \code{LM1_Line} is estimated by
 reflection across the plane defined by \code{LM2}, \code{LM3}, and \code{LM4}. If \code{TRUE},
@@ -157,8 +158,10 @@ The function also computes auxiliary points and vectors, including \code{LM0},
 \code{Vec_CS2_Normal}, because these elements are needed for manual verification,
 image orientation, and size-related measurements. \code{Vec_CS1} and \code{Vec_CS2} are
 retained internally for TCL and camera generation, but are not included in the
-compact summary table. The sign of \code{Vec_Penp} is selected anatomically so
-that it points from inferior toward superior. The priority is: real \code{LM9} when
+compact summary table. \code{Anterior_ref} is the normalized \code{LM0 -> LM2} vector and
+is used to select the anterior viewing side for CS1 and CS2 in both software
+backends. The sign of \code{Vec_Penp} is selected anatomically so that it points
+from inferior toward superior. The priority is: real \code{LM9} when
 \code{lm9_valid = TRUE}; \code{LM3}/\code{LM4} as inferior references when suitable for the
 selected protocol; and an orientation-only \code{LM9} placeholder when \code{lm9_valid = FALSE}. This same signed vector controls the screen-vertical orientation in
 both Avizo/Amira and 3D Slicer outputs.

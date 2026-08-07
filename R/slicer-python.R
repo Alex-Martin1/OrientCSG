@@ -1054,25 +1054,33 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
 
   LM <- res$landmarks
   LM2 <- LM["LM2", ]
+  Anterior_ref <- res$vectors$Anterior_ref
   Vec_LandmarkedSide <- res$vectors$Vec_LandmarkedSide
 
   if (section == "CS1") {
     Psec <- res$points$CS1B
     normal <- res$vectors$Vec_CS1_Normal
-    x_ref <- project_vector_to_plane(res$vectors$Vec_CS1, normal)
 
-    if (dot3(normal, Vec_LandmarkedSide) < 0) {
+    # Select the section-normal sign from the LM0 -> LM2 anterior reference.
+    # Using the anterior-signed Z axis together with anatomical Y-up makes the
+    # displayed Slicer basis match the anterior-view convention used by Avizo.
+    if (dot3(normal, Anterior_ref) < 0) {
       normal <- -normal
     }
+
+    # Keep X consistent with the selected Z and anatomical Y-up. Otherwise the
+    # generic Python reformatting code could flip Z again while resolving X.
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
     three_d_side <- "PLUS"
   } else if (section == "CS2") {
     Psec <- res$points$CS2B
     normal <- res$vectors$Vec_CS2_Normal
-    x_ref <- project_vector_to_plane(res$vectors$Vec_CS2, normal)
 
-    if (dot3(normal, Vec_LandmarkedSide) < 0) {
+    if (dot3(normal, Anterior_ref) < 0) {
       normal <- -normal
     }
+
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
     three_d_side <- "PLUS"
   } else {
     Psec <- LM2

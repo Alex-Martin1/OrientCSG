@@ -23,19 +23,21 @@ library(OrientCSG)
 
 # The coordinates must be provided in the fixed order LM1 to LM11.
 landmarks_str <- "
--30.802746 -7.687321 -143.703278
- -1.575801  7.369631 -105.562813
- -0.330960 -22.722292  -93.421600
- -0.528437 -16.996193 -108.474274
--28.758656  -5.048145 -132.697403
--21.375843  -4.792870 -134.530151
--25.118534  -0.853733 -121.618919
--19.496758  -0.576878 -123.945511
--46.735912 -35.260029 -164.050079
--18.105160   2.743076 -110.288727
--47.784660  12.426559 -201.179794
+-31.682018 -7.369675 -144.368362
+-1.717529 7.448179 -105.245010
+-0.401781 -25.137714 -96.049057
+-0.042929 -18.584265 -108.635551
+-28.604687 -4.790329 -132.661606
+-21.006124 -4.806461 -134.751617
+-24.975908 -0.632755 -121.262993
+-19.007364 -0.607044 -123.859459
+-46.876762 -34.717976 -165.529541
+-18.158485 2.887395 -110.095894
+-47.689346 13.069942 -199.864578
 "
 
+# lm1_side defines the anatomical right-left convention used for CS3.
+# CS1 and CS2 are viewed automatically from anterior using LM0 -> LM2.
 res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_EXAMPLE",
@@ -90,6 +92,8 @@ landmarks_str_slicer_mandible <- "
 # landmarks_str = landmarks_str_slicer_mandible
 # lm_coord_system = "LPS"
 
+# As in the Avizo/Amira route, CS1 and CS2 are viewed from anterior using
+# LM0 -> LM2; lm1_side remains the anatomical side convention for CS3.
 res_slicer <- orient_mandible(
   landmarks_str = landmarks_str_slicer_mandible,
   individual_id = "MANDIBLE_EXAMPLE",

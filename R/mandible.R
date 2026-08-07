@@ -43,8 +43,10 @@
 #' `Vec_CS2_Normal`, because these elements are needed for manual verification,
 #' image orientation, and size-related measurements. `Vec_CS1` and `Vec_CS2` are
 #' retained internally for TCL and camera generation, but are not included in the
-#' compact summary table. The sign of `Vec_Penp` is selected anatomically so
-#' that it points from inferior toward superior. The priority is: real `LM9` when
+#' compact summary table. `Anterior_ref` is the normalized `LM0 -> LM2` vector and
+#' is used to select the anterior viewing side for CS1 and CS2 in both software
+#' backends. The sign of `Vec_Penp` is selected anatomically so that it points
+#' from inferior toward superior. The priority is: real `LM9` when
 #' `lm9_valid = TRUE`; `LM3`/`LM4` as inferior references when suitable for the
 #' selected protocol; and an orientation-only `LM9` placeholder when `lm9_valid =
 #' FALSE`. This same signed vector controls the screen-vertical orientation in
@@ -76,8 +78,9 @@
 #'   practical value for the current image-capture workflow.
 #' @param lm1_side Character value indicating the anatomical side on which `LM1`
 #'   was placed. Allowed values are `"RIGHT"` and `"LEFT"`. This argument
-#'   controls the side from which CS1 and CS2 are viewed and the anatomical
-#'   interpretation of the transverse axis used for CS3.
+#'   controls the anatomical right-left convention used for CS3. The viewing side
+#'   of CS1 and CS2 is determined independently from the `LM0 -> LM2` anterior
+#'   reference.
 #' @param complete_arch Logical. If `FALSE` (default), `LM1_Line` is estimated by
 #'   reflection across the plane defined by `LM2`, `LM3`, and `LM4`. If `TRUE`,
 #'   `LM4` is interpreted as the physically preserved `LM1_Line`/`A_Line` point.
@@ -239,8 +242,9 @@ orient_mandible <- function(landmarks_str = NULL,
   # Build anatomical side vectors that do not depend on whether LM1 was placed
   # on the right or left mandibular side. Vec_RightToLeft always points from the
   # anatomical right side toward the anatomical left side. Vec_LandmarkedSide
-  # points toward the side where LM1 was actually placed and is used to select
-  # the viewing side for CS1 and CS2.
+  # points toward the side where LM1 was actually placed and is retained for the
+  # CS3 viewing-side convention. CS1 and CS2 instead use the LM0 -> LM2 anterior
+  # reference to select the viewing side.
   Vec_RightToLeft <- if (identical(lm1_side, "RIGHT")) {
     nrm(Vec_1_1Line)
   } else {
@@ -751,10 +755,10 @@ avizo_tcl_mandible <- function(res) {
     Z_slice <- nrm(cross3(Vec_CS, Vec_Penp))
 
     # The camera direction is perpendicular to both the screen-horizontal section
-    # vector and the ARP normal. Its sign is selected so that CS1 and CS2 are
-    # viewed from the side on which LM1 was placed.
+    # vector and the ARP normal. Its sign is selected from the LM0 -> LM2 anterior
+    # reference so that the camera is placed on the anterior side of CS1/CS2.
     Z_camera <- nrm(cross3(X_screen, Vec_Penp))
-    if (dot3(Z_camera, Vec_LandmarkedSide) < 0) Z_camera <- -Z_camera
+    if (dot3(Z_camera, Anterior_ref) < 0) Z_camera <- -Z_camera
 
     c(
       "# ============================================================",
@@ -769,7 +773,7 @@ avizo_tcl_mandible <- function(res) {
       "",
       paste(emit_optional_orthogonal_view(Psec, X_screen, section_label), collapse = "\n"),
       "",
-      "# Camera: slice parallel to screen; ARP horizontal; view from LM1 side",
+      "# Camera: slice parallel to screen; ARP horizontal; view from anterior (LM0 -> LM2)",
       paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
     )
   }
