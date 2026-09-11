@@ -185,10 +185,11 @@ parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
 
 # Internal parsing helper ----------------------------------------------------
 #
-# Read BoneJ Moments of Inertia eigenvectors. Three input formats are accepted:
+# Read BoneJ Moments of Inertia eigenvectors. Four text forms are accepted:
 #   1. A direct three-component longitudinal vector (x, y, z).
-#   2. The legacy 3 x 3 eigenvector matrix copied from the Log window.
-#   3. A full BoneJ Results-table row containing the unit-vector columns.
+#   2. Current BoneJ Log output copied verbatim, e.g. three `[INFO] ||...||` rows.
+#   3. The legacy compact 3 x 3 eigenvector matrix.
+#   4. A full BoneJ Results-table row containing the unit-vector columns.
 #
 # For the Results-table row format, the final nine numeric fields are interpreted
 # as vector0{x, y, z}, vector1{x, y, z}, and vector2{x, y, z}. The orientation
@@ -229,7 +230,7 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
     paste0(
       "`longitudinal_matrix_str` must contain either 3 numeric values ",
       "defining the BoneJ longitudinal vector, 9 numeric values defining ",
-      "the legacy 3 x 3 eigenvector matrix, or a full BoneJ Results-table ",
+      "the current BoneJ Log/3 x 3 eigenvector matrix, or a full BoneJ Results-table ",
       "row containing the final nine unit-vector values."
     ),
     call. = FALSE

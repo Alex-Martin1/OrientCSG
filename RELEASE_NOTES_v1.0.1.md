@@ -8,6 +8,10 @@ OrientCSG 1.0.1 is a stable maintenance release correcting the orientation of Bo
 
 The correction is applied before long-bone geometry is constructed, so it propagates to all `SOLID = FALSE` modes and both TRUE-volume output backends (Avizo/Amira TCL and 3D Slicer Python).
 
+## BoneJ Log input
+
+Current BoneJ Moments of Inertia eigenvector output can be pasted directly from the Log window into `longitudinal_matrix_str`, including the `[INFO]` prefixes and pipe characters. OrientCSG interprets the three Log rows as the 3 x 3 eigenvector matrix and uses the first column as the longitudinal vector, while retaining support for direct three-component vectors, the legacy compact matrix, and full Results-table rows. This behavior is covered by a dedicated regression test.
+
 ## API and output
 
 TRUE-volume calls now require `dicom_iop`, `dicom_ipp_1`, and `dicom_ipp_2`. The IPP values may come from any two consecutive slices, provided `dicom_ipp_1` precedes `dicom_ipp_2` in the BoneJ stack.

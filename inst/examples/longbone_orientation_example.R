@@ -7,11 +7,12 @@ library(OrientCSG)
 
 # Notes on example format -------------------------------------------------
 #
-# OrientCSG accepts three BoneJ longitudinal-axis input formats. The TIBIA and
-# HUMERUS examples use the pre-June 2026 compact 3 x 3 matrix. The FEMUR example
-# uses the longitudinal vector directly as three coordinates (x, y, z). The
-# RADIUS example uses the post-June 2026 complete Results-table row. These mixed
-# examples are intentional and demonstrate compatibility with all three formats.
+# OrientCSG accepts four BoneJ longitudinal-axis text forms. The TIBIA examples
+# use current BoneJ Log output pasted verbatim, including the `[INFO]` prefixes
+# and pipe characters. The HUMERUS examples use the legacy compact 3 x 3 matrix,
+# the FEMUR example uses the longitudinal vector directly as three coordinates
+# (x, y, z), and the RADIUS example uses the complete Results-table row. These
+# mixed examples are intentional and demonstrate compatibility with all formats.
 #
 # In the 3D Slicer workflows, landmarks copied from the Markups table are shown
 # in table format. These examples use lm_coord_system = "LPS", matching the
@@ -41,9 +42,9 @@ dicom_ipp_1_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
 
 longitudinal_matrix_str_tibia <- "
-||0.011|-0.780|-0.626||
-||0.019|-0.626|0.780||
-||1.000|0.021|-0.008||
+[INFO] ||0.011|-0.780|-0.626||
+[INFO] ||0.019|-0.626|0.780||
+[INFO] ||1.000|0.021|-0.008||
 "
 
 tibia_landmarks_str_T108_Left_A <- "
@@ -84,9 +85,9 @@ dicom_ipp_1_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
 
 longitudinal_matrix_str_tibia <- "
-||0.011|-0.780|-0.626||
-||0.019|-0.626|0.780||
-||1.000|0.021|-0.008||
+[INFO] ||0.011|-0.780|-0.626||
+[INFO] ||0.019|-0.626|0.780||
+[INFO] ||1.000|0.021|-0.008||
 "
 
 tibia_landmarks_slicer_T108_Left_B <- "

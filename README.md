@@ -36,7 +36,7 @@ Depending on the workflow, it can:
 
 - compute anatomical points and vectors;
 - compute section locations;
-- compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, a BoneJ eigenvector matrix, a full BoneJ Results-table row, or a closed surface mesh;
+- compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, current BoneJ Log output copied verbatim, a legacy 3 x 3 eigenvector matrix, a full BoneJ Results-table row, or a closed surface mesh;
 - return summary tables and manual-orientation tables; TRUE-volume long-bone summaries store biomechanical length followed by the IOP/IPP values used for orientation in `Bio_Length_&_Orient`;
 - generate Amira/Avizo TCL command blocks;
 - generate 3D Slicer Python blocks for supported Slicer workflows;
@@ -77,7 +77,20 @@ It currently supports:
 - `RADIUS`;
 - `HUMERUS_TABLE`.
 
-For classic CT-derived workflows, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, the legacy 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for matrix or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed from the ImageJ stack basis to the internal DICOM/LPS basis using three DICOM metadata lines from the exact stack used in BoneJ: Image Orientation (Patient) (`0020,0037`) plus Image Position (Patient) (`0020,0032`) from two consecutive slices supplied in stack order. IOP defines the in-plane axes and the ordered IPP pair resolves the actual direction of stack Z, including series whose slice order runs opposite to the IOP-derived normal.
+For classic CT-derived workflows, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, current BoneJ Log output copied directly from the Log window (three `[INFO] ||...||` rows), the legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for Log, matrix, or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed from the ImageJ stack basis to the internal DICOM/LPS basis using three DICOM metadata lines from the exact stack used in BoneJ: Image Orientation (Patient) (`0020,0037`) plus Image Position (Patient) (`0020,0032`) from two consecutive slices supplied in stack order. IOP defines the in-plane axes and the ordered IPP pair resolves the actual direction of stack Z, including series whose slice order runs opposite to the IOP-derived normal.
+
+
+Current BoneJ Log output can be pasted without editing, for example:
+
+```r
+longitudinal_matrix_str <- "
+[INFO] ||0.018|-0.826|-0.563||
+[INFO] ||-0.019|0.562|-0.827||
+[INFO] ||-1.000|-0.026|0.005||
+"
+```
+
+The `[INFO]` prefixes and pipe characters are ignored by the parser; the three rows are interpreted as the 3 x 3 eigenvector matrix exactly as printed by BoneJ.
 
 For TRUE-volume anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks.
 
@@ -135,7 +148,7 @@ For mandibles, the workflow can be applied to fragmented specimens if the anatom
 The README intentionally provides only a compact overview of package use.
 Complete executable examples are distributed with the package in `inst/examples/`.
 These installed examples should be treated as the main practical reference because they show the full input structure for each supported workflow.
-The long-bone script demonstrates all three accepted BoneJ text formats: a direct three-component vector, the legacy 3 x 3 matrix, and a full Results-table row.
+The long-bone script demonstrates all four accepted BoneJ text forms: current Log output copied verbatim, a direct three-component vector, the legacy compact 3 x 3 matrix, and a full Results-table row.
 
 The long-bone example script includes:
 
@@ -274,7 +287,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - landmark coordinates were pasted in the wrong order;
 - the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, or `lm9_valid`);
 - the wrong number of mandibular landmarks was supplied;
-- the BoneJ eigenvector matrix was copied incorrectly;
+- the BoneJ Log/eigenvector input was copied incorrectly;
 - the wrong DICOM Image Orientation (Patient) line was supplied, or it came from a different stack than the one processed in BoneJ;
 - the wrong long-bone mode was selected;
 - `SOLID = TRUE` was requested but the mesh is not closed or cannot be read by `Rvcg`;
@@ -299,7 +312,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 1.0.1 corrects TRUE-volume BoneJ-to-DICOM orientation by combining Image Orientation (Patient) with an ordered pair of consecutive Image Position (Patient) values, so the sign of the stack Z axis is recovered rather than assumed. The change applies before section construction and therefore propagates consistently to Avizo/Amira and 3D Slicer output for every `SOLID = FALSE` long-bone mode. Version 1.0.0 adds femoral and radial long-bone modes for Avizo/Amira TCL and 3D Slicer Python workflows, including projected biomechanical-length calculation and distal-to-proximal axis checks for both elements. Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+Version 1.0.1 corrects TRUE-volume BoneJ-to-DICOM orientation by combining Image Orientation (Patient) with an ordered pair of consecutive Image Position (Patient) values, so the sign of the stack Z axis is recovered rather than assumed. It also explicitly supports current BoneJ Log eigenvector output pasted verbatim as three `[INFO] ||...||` rows, alongside the direct-vector, legacy matrix, and Results-table formats. The change applies before section construction and therefore propagates consistently to Avizo/Amira and 3D Slicer output for every `SOLID = FALSE` long-bone mode. Version 1.0.0 adds femoral and radial long-bone modes for Avizo/Amira TCL and 3D Slicer Python workflows, including projected biomechanical-length calculation and distal-to-proximal axis checks for both elements. Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
 
 Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 

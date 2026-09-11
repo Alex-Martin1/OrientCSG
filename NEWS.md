@@ -1,5 +1,6 @@
 # OrientCSG 1.0.1
 
+* Explicitly documented and regression-tested support for current BoneJ Moments of Inertia Log output pasted verbatim as three `[INFO] ||...||` eigenvector rows; no manual removal of console prefixes or pipe characters is required.
 * Corrected TRUE-volume BoneJ axis conversion by using DICOM Image Orientation (Patient) together with Image Position (Patient) from two consecutive slices in BoneJ stack order. The ordered IPP pair determines whether stack Z follows or opposes the IOP-derived normal.
 * Added required `dicom_ipp_1` and `dicom_ipp_2` arguments for every `SOLID = FALSE` long-bone workflow. The change is applied before anatomical section construction and therefore affects Avizo/Amira and 3D Slicer output consistently for all supported TRUE-volume long-bone modes.
 * Updated long-bone result summaries: the former `Bio_length` column is now `Bio_Length_&_Orient`, containing biomechanical length followed by the IOP, IPP1, and IPP2 values used for TRUE-volume orientation. The numeric length is also retained as `res$biomechanical_length`.

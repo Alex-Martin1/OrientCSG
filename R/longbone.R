@@ -5,8 +5,9 @@
 #' anatomical orientation vectors for tibiae, humeri, femora, and radii from a small set of
 #' anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 #' or a closed surface mesh. The BoneJ input can be supplied as a direct
-#' three-component longitudinal vector, the legacy 3 x 3 eigenvector matrix, or
-#' a full Results-table row containing the unit-vector columns. The function can
+#' three-component longitudinal vector, current Log output copied verbatim
+#' (three `[INFO] ||...||` rows), the legacy compact 3 x 3 eigenvector matrix,
+#' or a full Results-table row containing the unit-vector columns. The function can
 #' generate Avizo/Amira TCL command
 #' blocks for the classic CT-derived workflow or 3D Slicer Python command
 #' blocks for CT-derived volume workflows or workflows based on solid surface
@@ -17,8 +18,9 @@
 #'
 #' - `SOLID = FALSE` implements the classic DICOM/CT workflow. In this mode,
 #'   `longitudinal_matrix_str` must contain either a direct three-component
-#'   BoneJ longitudinal vector, the legacy 3 x 3 Moments of Inertia eigenvector
-#'   matrix, or a full row copied from the BoneJ Results table with the
+#'   BoneJ longitudinal vector, current BoneJ Log output copied verbatim, the
+#'   legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full row
+#'   copied from the BoneJ Results table with the
 #'   unit-vector columns recorded. The direct vector, or the first BoneJ vector
 #'   in matrix/table input, is interpreted as the longitudinal axis after
 #'   conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
@@ -68,8 +70,9 @@
 #'
 #' @section Longitudinal axis:
 #' When `SOLID = FALSE`, the function expects the BoneJ longitudinal direction
-#' supplied as either three numeric components, the legacy 3 x 3 matrix, or a
-#' full Results-table row. If a full row is supplied, the last nine numeric
+#' supplied as either three numeric components, current BoneJ Log output
+#' (three `[INFO] ||...||` rows), the legacy compact 3 x 3 matrix, or a full
+#' Results-table row. If a full row is supplied, the last nine numeric
 #' values are interpreted as the three BoneJ unit vectors, and the first of
 #' these vectors is treated as the longitudinal axis. A direct three-component
 #' input is treated as that same first BoneJ vector. By default, the BoneJ
@@ -129,8 +132,9 @@
 #' @param mode Character value indicating the orientation mode. Must be one of
 #'   `"TIBIA"`, `"HUMERUS"`, `"FEMUR"`, `"RADIUS"`, or `"HUMERUS_TABLE"`.
 #' @param longitudinal_matrix_str Character string containing either three
-#'   numeric components of the BoneJ longitudinal vector, the legacy 3 x 3
-#'   BoneJ eigenvector matrix, or a full row copied from the BoneJ Results table.
+#'   numeric components of the BoneJ longitudinal vector, current BoneJ Log
+#'   output copied verbatim (three `[INFO] ||...||` rows), the legacy compact
+#'   3 x 3 BoneJ eigenvector matrix, or a full row copied from the BoneJ Results table.
 #'   Required when `SOLID = FALSE`. A direct three-component input is used as
 #'   the longitudinal vector. If a full Results-table row is supplied, the last
 #'   nine numeric values are interpreted as the three BoneJ unit vectors, and

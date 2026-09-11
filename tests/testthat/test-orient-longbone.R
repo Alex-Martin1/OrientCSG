@@ -150,6 +150,62 @@ test_that("orient_longbone() generates expected TCL blocks", {
 
 
 
+test_that("current BoneJ Log eigenvector output is accepted verbatim", {
+  bonej_log <- "
+[INFO] ||0.018|-0.826|-0.563||
+[INFO] ||-0.019|0.562|-0.827||
+[INFO] ||-1.000|-0.026|0.005||
+"
+
+  expected <- matrix(
+    c(
+      0.018, -0.826, -0.563,
+      -0.019, 0.562, -0.827,
+      -1.000, -0.026, 0.005
+    ),
+    nrow = 3L,
+    byrow = TRUE
+  )
+
+  parsed <- parse_bonej_eigenvectors(bonej_log)
+
+  expect_equal(parsed, expected, tolerance = 1e-12)
+  expect_equal(unname(parsed[, 1]), c(0.018, -0.019, -1.000), tolerance = 1e-12)
+
+  tibia_log <- "
+[INFO] ||0.008|-0.758|-0.653||
+[INFO] ||0.017|-0.652|0.758||
+[INFO] ||1.000|0.017|-0.008||
+"
+
+  res_log <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = tibia_log,
+    dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50,
+    individual_id = "TIBIA_LOG"
+  )
+
+  res_matrix <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50,
+    individual_id = "TIBIA_LOG"
+  )
+
+  expect_equal(res_log$bonej$eigenvectors, res_matrix$bonej$eigenvectors, tolerance = 1e-12)
+  expect_equal(res_log$vectors$L, res_matrix$vectors$L, tolerance = 1e-12)
+  expect_equal(res_log$section_points, res_matrix$section_points, tolerance = 1e-12)
+  expect_identical(res_log$avizo_tcl, res_matrix$avizo_tcl)
+})
+
 test_that("orient_longbone() accepts BoneJ Results-table row input", {
   res <- orient_longbone(
     mode = "TIBIA",
