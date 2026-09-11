@@ -15,6 +15,11 @@ mandible_landmarks_str <- "
 dicom_iop_flip_xy <- "0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0"
 dicom_iop_carcavilla <- "0020,0037 Image Orientation (Patient): 1\\0\\0\\0\\-1\\0"
 
+dicom_ipp_1_flip_xy <- "0020,0032 Image Position (Patient): 0\\0\\0"
+dicom_ipp_2_flip_xy <- "0020,0032 Image Position (Patient): 0\\0\\0.3"
+dicom_ipp_1_carcavilla <- "0020,0032 Image Position (Patient): 0\\0\\0"
+dicom_ipp_2_carcavilla <- "0020,0032 Image Position (Patient): 0\\0\\-0.3"
+
 longitudinal_matrix_str_tibia <- "
 ||0.008|-0.758|-0.653||
 ||0.017|-0.652|0.758||

@@ -1,4 +1,11 @@
-# OrientCSG 1.0.0.9000
+# OrientCSG 1.0.1
+
+* Corrected TRUE-volume BoneJ axis conversion by using DICOM Image Orientation (Patient) together with Image Position (Patient) from two consecutive slices in BoneJ stack order. The ordered IPP pair determines whether stack Z follows or opposes the IOP-derived normal.
+* Added required `dicom_ipp_1` and `dicom_ipp_2` arguments for every `SOLID = FALSE` long-bone workflow. The change is applied before anatomical section construction and therefore affects Avizo/Amira and 3D Slicer output consistently for all supported TRUE-volume long-bone modes.
+* Updated long-bone result summaries: the former `Bio_length` column is now `Bio_Length_&_Orient`, containing biomechanical length followed by the IOP, IPP1, and IPP2 values used for TRUE-volume orientation. The numeric length is also retained as `res$biomechanical_length`.
+* Documented that anterior/posterior display in TRUE-volume long-bone workflows assumes standardized anatomical positioning of the dry specimen during CT acquisition.
+* Added regression coverage for opposite slice-order signs, including the T109 geometry that exposed the IOP-only ambiguity, and updated examples and documentation for the new DICOM inputs.
+
 
 * Corrected mandibular CS1/CS2 viewing-side selection so Avizo/Amira and 3D Slicer use the anatomical anterior reference (`LM0 -> LM2`) rather than the LM1-side reference. CS3 retains the existing `lm1_side` convention.
 * Corrected the in-plane femoral capture orientation so that the anterior aspect is displayed at the top in Avizo/Amira TCL output, TRUE-volume 3D Slicer output, and solid-mesh 3D Slicer output.
@@ -25,8 +32,6 @@
 # OrientCSG 0.3.3
 
 * Removed deprecated public aliases `slicer_landmarks_str` and `landmark_coordinate_system`; use `landmarks_str` and `lm_coord_system` instead.
-* Renamed the diagnostic BoneJ transform option `bonej_coord_transform = "legacy_flip_xy"` to `bonej_coord_transform = "flip_xy"`; the old spelling is no longer accepted.
-
 * Clarified coordinate-system handling for 3D Slicer workflows. `lm_coord_system` now explicitly refers to the numeric values that reach R: coordinates copied or exported from Slicer Markups may paste/write as LPS even when the interface displays R/A/S columns, whereas values extracted explicitly with `GetNthControlPointPositionWorld()` should be treated as true Slicer world RAS.
 * Updated README, examples, function documentation, and manual pages to reflect this distinction for mandibular and long-bone workflows.
 * Forced the tibial longitudinal vector in `orient_longbone()` to point from the tibio-talar landmark toward the midpoint of the two plateau landmarks. This stabilizes proximal-view Slicer output for tibial solid-mesh workflows.
@@ -35,10 +40,7 @@
 * Oriented the mandibular ARP normal (`Vec_Penp`) anatomically from inferior toward superior using the priority real LM9, then LM3/LM4, then orientation-only LM9. The same signed vector is used by both Avizo/Amira TCL and 3D Slicer Python outputs.
 * Replaced the older `cs3_camera_side` concept with `lm1_side`, which declares whether LM1 was placed on the right or left mandibular side. This side is now used to select the viewing side for CS1/CS2 and the anatomical side convention for CS3 in both Avizo/Amira and 3D Slicer outputs.
 
-* Added DICOM Image Orientation (Patient) handling for BoneJ eigenvector matrices in `orient_longbone()`. Classic DICOM/BoneJ workflows now derive the BoneJ-to-internal coordinate transform from `dicom_iop` instead of always assuming the legacy `(-x, -y, z)` correction.
-* Added advanced `bonej_coord_transform` options (`"dicom_iop"`, `"legacy_flip_xy"`, `"none"`, and `"manual"`) for reproducibility and diagnostics.
 * Added a longitudinal-axis diagnostic comparing the transformed BoneJ axis with the anatomical distal-proximal reference defined by the landmarks.
-* Updated long-bone examples and tests to include the DICOM Image Orientation (Patient) line.
 
 # OrientCSG 0.3.1
 

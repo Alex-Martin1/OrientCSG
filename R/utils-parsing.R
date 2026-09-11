@@ -236,13 +236,12 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   )
 }
 
-# Internal DICOM helper ------------------------------------------------------
+# Internal DICOM helpers -----------------------------------------------------
 #
-# Parse the DICOM Image Orientation (Patient) field (0020,0037). The input can
-# be either a numeric vector with six values or a pasted DICOM line such as
-# "0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0". If a full
-# DICOM line is supplied, the tag numbers are ignored and the last six numeric
-# values are interpreted as the row and column direction cosines.
+# Parse DICOM Image Orientation (Patient) (0020,0037). The input may be a
+# numeric vector with six values or the complete line copied from the exact
+# DICOM stack used in BoneJ. When a complete line is supplied, the final six
+# numeric values are interpreted as the two in-plane direction-cosine triplets.
 parse_dicom_iop <- function(dicom_iop) {
   if (is.numeric(dicom_iop)) {
     if (length(dicom_iop) != 6L || any(!is.finite(dicom_iop))) {
@@ -259,9 +258,7 @@ parse_dicom_iop <- function(dicom_iop) {
   }
 
   nums <- extract_numeric_tokens(dicom_iop)
-  if (length(nums) >= 6L) {
-    nums <- utils::tail(nums, 6L)
-  }
+  if (length(nums) >= 6L) nums <- utils::tail(nums, 6L)
 
   if (length(nums) != 6L || any(!is.finite(nums))) {
     stop("Could not parse six finite values from `dicom_iop`.", call. = FALSE)
@@ -270,14 +267,55 @@ parse_dicom_iop <- function(dicom_iop) {
   as.numeric(nums)
 }
 
-# Internal DICOM helper ------------------------------------------------------
-#
-# Build the vector transformation from the ImageJ/BoneJ stack basis to the
-# DICOM patient basis used internally by the classic Avizo/Amira workflow. The
-# first IOP triplet gives the direction of the image-row axis, the second gives
-# the image-column axis, and their cross product gives the slice-normal axis.
-dicom_iop_to_bonej_transform <- function(dicom_iop) {
+# Parse DICOM Image Position (Patient) (0020,0032). The input may be a numeric
+# XYZ triplet or the complete DICOM line. For TRUE-volume workflows,
+# `dicom_ipp_1` and `dicom_ipp_2` must describe two consecutive slices in the
+# same order in which those slices occur in the ImageJ/BoneJ stack.
+parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
+  if (is.numeric(dicom_ipp)) {
+    if (length(dicom_ipp) != 3L || any(!is.finite(dicom_ipp))) {
+      stop(sprintf("`%s` must contain three finite numeric values.", arg_name), call. = FALSE)
+    }
+    return(as.numeric(dicom_ipp))
+  }
+
+  if (!is.character(dicom_ipp) || length(dicom_ipp) != 1L || !nzchar(trimws(dicom_ipp))) {
+    stop(
+      sprintf("`%s` must be a numeric vector of length 3 or a pasted DICOM Image Position (Patient) line.", arg_name),
+      call. = FALSE
+    )
+  }
+
+  nums <- extract_numeric_tokens(dicom_ipp)
+  if (length(nums) >= 3L) nums <- utils::tail(nums, 3L)
+
+  if (length(nums) != 3L || any(!is.finite(nums))) {
+    stop(sprintf("Could not parse three finite values from `%s`.", arg_name), call. = FALSE)
+  }
+
+  as.numeric(nums)
+}
+
+# Format parsed DICOM values compactly for the result summary while retaining
+# sufficient numeric precision for traceability.
+format_dicom_values <- function(x) {
+  paste(vapply(as.numeric(x), function(v) {
+    format(v, digits = 15, scientific = FALSE, trim = TRUE)
+  }, character(1)), collapse = "\\")
+}
+
+# Build the transformation from the ImageJ/BoneJ stack basis to the internal
+# DICOM/LPS patient basis. IOP defines the two in-plane stack axes. Their cross
+# product defines the slice normal up to sign; two consecutive IPP positions,
+# supplied in BoneJ stack order, determine that sign. This avoids assuming that
+# stack index Z necessarily increases in the IOP cross-product direction.
+dicom_geometry_to_bonej_transform <- function(dicom_iop,
+                                               dicom_ipp_1,
+                                               dicom_ipp_2,
+                                               alignment_tolerance = 0.999) {
   iop <- parse_dicom_iop(dicom_iop)
+  ipp_1 <- parse_dicom_ipp(dicom_ipp_1, "dicom_ipp_1")
+  ipp_2 <- parse_dicom_ipp(dicom_ipp_2, "dicom_ipp_2")
 
   row_axis <- nrm(iop[1:3])
   col_axis <- nrm(iop[4:6])
@@ -295,72 +333,44 @@ dicom_iop_to_bonej_transform <- function(dicom_iop) {
     stop("The DICOM row and column direction cosines are collinear.", call. = FALSE)
   }
   col_axis <- nrm(col_axis)
-  slice_axis <- nrm(cross3(row_axis, col_axis))
 
-  out <- cbind(row_axis, col_axis, slice_axis)
-  rownames(out) <- c("x", "y", "z")
-  colnames(out) <- c("stack_x", "stack_y", "stack_z")
-  attr(out, "dicom_iop") <- iop
-  out
-}
-
-# Internal argument helper ---------------------------------------------------
-#
-# Resolve how the BoneJ eigenvector matrix is transferred into the package's
-# internal LPS/DICOM coordinate convention. The default uses DICOM Image
-# Orientation (Patient). `flip_xy` reproduces workflows developed before this
-# DICOM-aware conversion was added.
-resolve_bonej_transform <- function(bonej_coord_transform = "dicom_iop",
-                                    dicom_iop = NULL,
-                                    bonej_transform_matrix = NULL) {
-  if (is.null(bonej_coord_transform) || length(bonej_coord_transform) != 1L || is.na(bonej_coord_transform)) {
-    stop("`bonej_coord_transform` must be a single character value.", call. = FALSE)
-  }
-
-  transform_name <- tolower(trimws(bonej_coord_transform))
-
-  if (identical(transform_name, "dicom_iop")) {
-    if (is.null(dicom_iop)) {
-      stop(
-        paste0(
-          "`dicom_iop` is required when `SOLID = FALSE` and ",
-          "`bonej_coord_transform = 'dicom_iop'`. Paste the DICOM ",
-          "Image Orientation (Patient) line, for example: ",
-          "dicom_iop = r\"(0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0)\"."
-        ),
-        call. = FALSE
-      )
-    }
-    transform_matrix <- dicom_iop_to_bonej_transform(dicom_iop)
-    parsed_iop <- attr(transform_matrix, "dicom_iop")
-  } else if (identical(transform_name, "flip_xy")) {
-    transform_matrix <- diag(c(-1, -1, 1))
-    parsed_iop <- NULL
-  } else if (identical(transform_name, "none")) {
-    transform_matrix <- diag(c(1, 1, 1))
-    parsed_iop <- NULL
-  } else if (identical(transform_name, "manual")) {
-    if (is.null(bonej_transform_matrix)) {
-      stop("`bonej_transform_matrix` is required when `bonej_coord_transform = 'manual'`.", call. = FALSE)
-    }
-    transform_matrix <- as.matrix(bonej_transform_matrix)
-    if (!identical(dim(transform_matrix), c(3L, 3L)) || any(!is.finite(transform_matrix))) {
-      stop("`bonej_transform_matrix` must be a finite 3 x 3 numeric matrix.", call. = FALSE)
-    }
-    parsed_iop <- NULL
-  } else {
+  iop_normal <- nrm(cross3(row_axis, col_axis))
+  ipp_delta <- ipp_2 - ipp_1
+  slice_spacing <- sqrt(sum(ipp_delta^2))
+  if (!is.finite(slice_spacing) || slice_spacing < 1e-12) {
     stop(
-      '`bonej_coord_transform` must be one of "dicom_iop", "flip_xy", "none", or "manual".',
+      "`dicom_ipp_1` and `dicom_ipp_2` must refer to two distinct consecutive slices in BoneJ stack order.",
       call. = FALSE
     )
   }
 
-  rownames(transform_matrix) <- c("x", "y", "z")
-  colnames(transform_matrix) <- c("stack_x", "stack_y", "stack_z")
+  ipp_direction <- ipp_delta / slice_spacing
+  signed_alignment <- dot3(ipp_direction, iop_normal)
+  alignment <- abs(signed_alignment)
+  if (!is.finite(alignment) || alignment < alignment_tolerance) {
+    stop(
+      paste0(
+        "The displacement from `dicom_ipp_1` to `dicom_ipp_2` is not parallel to the DICOM image-plane normal. ",
+        "Use Image Position (Patient) values from two consecutive slices, in the exact order used in the BoneJ stack, ",
+        "and do not use a stack that was reoriented or resliced after DICOM import."
+      ),
+      call. = FALSE
+    )
+  }
 
-  list(
-    name = transform_name,
-    matrix = transform_matrix,
-    dicom_iop = parsed_iop
-  )
+  slice_direction <- if (signed_alignment < 0) -1 else 1
+  slice_axis <- slice_direction * iop_normal
+
+  out <- cbind(row_axis, col_axis, slice_axis)
+  rownames(out) <- c("x", "y", "z")
+  colnames(out) <- c("stack_x", "stack_y", "stack_z")
+
+  attr(out, "dicom_iop") <- iop
+  attr(out, "dicom_ipp_1") <- ipp_1
+  attr(out, "dicom_ipp_2") <- ipp_2
+  attr(out, "iop_normal") <- iop_normal
+  attr(out, "slice_direction") <- slice_direction
+  attr(out, "slice_spacing") <- slice_spacing
+  attr(out, "slice_alignment") <- alignment
+  out
 }

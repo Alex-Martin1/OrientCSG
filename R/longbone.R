@@ -21,8 +21,9 @@
 #'   matrix, or a full row copied from the BoneJ Results table with the
 #'   unit-vector columns recorded. The direct vector, or the first BoneJ vector
 #'   in matrix/table input, is interpreted as the longitudinal axis after
-#'   conversion from the
-#'   ImageJ/BoneJ stack basis to the internal DICOM/LPS convention.
+#'   conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
+#'   convention. The conversion uses DICOM Image Orientation (Patient) plus
+#'   Image Position (Patient) from two consecutive slices in BoneJ stack order.
 #' - `SOLID = TRUE` implements the solid-mesh workflow. In this mode, `mesh_file`
 #'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
 #'   is treated as a homogeneous closed solid, and the eigenvector associated
@@ -72,10 +73,12 @@
 #' values are interpreted as the three BoneJ unit vectors, and the first of
 #' these vectors is treated as the longitudinal axis. A direct three-component
 #' input is treated as that same first BoneJ vector. By default, the BoneJ
-#' vector or vectors are transformed
-#' using the DICOM Image Orientation (Patient) field supplied through
-#' `dicom_iop`; this replaces the earlier fixed `(-x, -y, z)` correction and
-#' supports stacks with different DICOM orientations. When `SOLID = TRUE`, the
+#' vector or vectors are transformed using DICOM Image Orientation (Patient)
+#' (`dicom_iop`) together with Image Position (Patient) from two consecutive
+#' slices (`dicom_ipp_1` and `dicom_ipp_2`) copied in BoneJ stack order. IOP
+#' defines the in-plane axes, while the ordered IPP pair determines the actual
+#' sign of the stack Z axis. This makes the transformation independent of
+#' whether slice indices progress with or against the IOP-derived normal. When `SOLID = TRUE`, the
 #' longitudinal axis is estimated directly from the closed mesh by volumetric
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
 #' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
@@ -83,6 +86,15 @@
 #' plateau landmarks. Equivalent distal-to-proximal references are defined for
 #' humeri, femora, radii, and table-position humeri from their biomechanical
 #' length landmarks.
+#'
+#' @section TRUE-volume acquisition orientation:
+#' For anatomical anterior/posterior display, TRUE-volume long-bone workflows
+#' retain the established OrientCSG acquisition convention: dry bones must be
+#' scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
+#' resolves the physical stack axes and slice-order sign; it cannot infer an
+#' anatomical anterior/posterior reversal caused by placing a specimen rotated
+#' 180 degrees around its longitudinal axis. No additional landmarks are required
+#' when the scanning-position convention is followed consistently.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
@@ -123,11 +135,18 @@
 #'   the longitudinal vector. If a full Results-table row is supplied, the last
 #'   nine numeric values are interpreted as the three BoneJ unit vectors, and
 #'   the first of these vectors is used as the longitudinal axis.
-#' @param dicom_iop Optional DICOM Image Orientation (Patient) information for
-#'   the stack used in BoneJ. Usually this is pasted directly as the full DICOM
-#'   line, for example
-#'   `r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"`.
-#'   Required by default when `SOLID = FALSE`.
+#' @param dicom_iop DICOM Image Orientation (Patient) information for the exact
+#'   stack used in BoneJ. Usually pasted directly as the full `(0020,0037)` line.
+#'   Required when `SOLID = FALSE`.
+#' @param dicom_ipp_1 DICOM Image Position (Patient) information from the first
+#'   of two consecutive slices selected from the exact stack used in BoneJ.
+#'   Usually pasted directly as the full `(0020,0032)` line. The two IPP lines
+#'   need not come from the first slices of the stack, but they must be
+#'   consecutive and supplied in stack order. Required when `SOLID = FALSE`.
+#' @param dicom_ipp_2 DICOM Image Position (Patient) information from the second
+#'   of the same two consecutive slices, supplied after `dicom_ipp_1` in the
+#'   order in which the slices occur in the BoneJ stack. Required when
+#'   `SOLID = FALSE`.
 #' @param landmarks_str Character string containing landmark coordinates. The
 #'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
 #'   coordinates and Slicer Markups-style rows are both accepted.
@@ -170,13 +189,6 @@
 #'   Slicer Python block when `SLICER = TRUE` and `SOLID = FALSE`. If omitted,
 #'   the generated Python block first tries to use the background volume in the
 #'   selected slice view and then the only scalar volume in the scene.
-#' @param bonej_coord_transform Advanced character argument controlling how the
-#'   BoneJ eigenvector matrix is transformed before use. The default,
-#'   `"dicom_iop"`, derives the transformation from `dicom_iop`. The values
-#'   `"flip_xy"`, `"none"`, and `"manual"` are retained for diagnostic
-#'   workflows.
-#' @param bonej_transform_matrix Optional 3 x 3 matrix used only when
-#'   `bonej_coord_transform = "manual"`.
 #'
 #' @return An object of class `orientcsg_longbone` and
 #'   `orientcsg_orientation`. The object is a list with the following
@@ -188,8 +200,11 @@
 #'   - `vectors`: Longitudinal, mediolateral, and anteroposterior unit vectors.
 #'   - `section_loc`: Requested section percentages.
 #'   - `section_points`: Three-dimensional coordinates of each section origin.
-#'   - `summary`: Summary table with vectors, landmarks, section points, and
-#'     biomechanical length.
+#'   - `summary`: Summary table with vectors, landmarks, section points,
+#'     biomechanical length, and the DICOM IOP/IPP values used for TRUE-volume
+#'     orientation in the `Bio_Length_&_Orient` column.
+#'   - `biomechanical_length`: Numeric biomechanical length used internally and
+#'     to place percentage sections.
 #'   - `manual_orientation`: Table arranged for manual verification of
 #'     anatomical planes and transverse section orientation in Avizo/Amira.
 #'   - `avizo_tcl`: Named list of Avizo TCL command blocks, when `SLICER = FALSE`.
@@ -204,6 +219,8 @@
 #' @examples
 #' \dontrun{
 #' dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+#' dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
+#' dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
 #'
 #' longitudinal_matrix_str <- "
 #' 0.008 0.017 1.000
@@ -219,6 +236,8 @@
 #'   mode = "TIBIA",
 #'   longitudinal_matrix_str = longitudinal_matrix_str,
 #'   dicom_iop = dicom_iop_str,
+#'   dicom_ipp_1 = dicom_ipp_1,
+#'   dicom_ipp_2 = dicom_ipp_2,
 #'   landmarks_str = tibia_landmarks_str,
 #'   section_loc = 50,
 #'   individual_id = "TIBIA_001"
@@ -233,6 +252,8 @@
 orient_longbone <- function(mode,
                             longitudinal_matrix_str = NULL,
                             dicom_iop = NULL,
+                            dicom_ipp_1 = NULL,
+                            dicom_ipp_2 = NULL,
                             landmarks_str = NULL,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
@@ -243,9 +264,7 @@ orient_longbone <- function(mode,
                             mesh_file = NULL,
                             lm_coord_system = "LPS",
                             model_name = NULL,
-                            volume_name = NULL,
-                            bonej_coord_transform = "dicom_iop",
-                            bonej_transform_matrix = NULL) {
+                            volume_name = NULL) {
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
     stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", or "HUMERUS_TABLE".', call. = FALSE)
@@ -296,18 +315,27 @@ orient_longbone <- function(mode,
       stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
     }
 
-    # BoneJ returns vectors in the ImageJ stack basis. For DICOM-derived stacks,
-    # this basis is not always related to the Avizo/Amira/DICOM patient basis by
-    # the same fixed sign change. By default, the transformation is derived from
-    # DICOM Image Orientation (Patient), while legacy and manual options remain
-    # available for reproducibility and diagnostics.
+    if (is.null(dicom_iop) || is.null(dicom_ipp_1) || is.null(dicom_ipp_2)) {
+      stop(
+        paste0(
+          "`dicom_iop`, `dicom_ipp_1`, and `dicom_ipp_2` are required when `SOLID = FALSE`. ",
+          "Use the IOP line plus Image Position (Patient) lines from two consecutive slices ",
+          "in the exact order used in the BoneJ stack."
+        ),
+        call. = FALSE
+      )
+    }
+
+    # BoneJ reports principal-axis vectors in the ImageJ stack basis. IOP fixes
+    # the two in-plane directions, while the ordered consecutive IPP pair fixes
+    # whether stack Z follows or opposes the IOP-derived normal.
     M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
-    bonej_transform <- resolve_bonej_transform(
-      bonej_coord_transform = bonej_coord_transform,
+    bonej_transform_matrix <- dicom_geometry_to_bonej_transform(
       dicom_iop = dicom_iop,
-      bonej_transform_matrix = bonej_transform_matrix
+      dicom_ipp_1 = dicom_ipp_1,
+      dicom_ipp_2 = dicom_ipp_2
     )
-    M_internal <- bonej_transform$matrix %*% M_bonej
+    M_internal <- bonej_transform_matrix %*% M_bonej
     L <- M_internal[, 1]
   }
 
@@ -378,7 +406,7 @@ orient_longbone <- function(mode,
       longitudinal_axis_check$angle_deg > longitudinal_axis_check$warning_threshold_deg) {
     warning(
       sprintf(
-        "The transformed BoneJ longitudinal axis is %.2f degrees away from the anatomical %s reference. Check `dicom_iop`, slice order, or `bonej_coord_transform`.",
+        "The transformed BoneJ longitudinal axis is %.2f degrees away from the anatomical %s reference. Check the BoneJ vector, DICOM IOP/IPP lines, slice order, and specimen acquisition orientation.",
         longitudinal_axis_check$angle_deg,
         longitudinal_axis_check$reference
       ),
@@ -518,13 +546,28 @@ orient_longbone <- function(mode,
     sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], point_z)
   }
 
+  summary_orient <- rep(NA_character_, length(summary_metrics))
+  summary_orient[1] <- if (is.finite(Bio_length)) as.character(round(Bio_length, 6)) else NA_character_
+
+  if (!isTRUE(SOLID)) {
+    dicom_summary_values <- c(
+      format_dicom_values(attr(bonej_transform_matrix, "dicom_iop")),
+      format_dicom_values(attr(bonej_transform_matrix, "dicom_ipp_1")),
+      format_dicom_values(attr(bonej_transform_matrix, "dicom_ipp_2"))
+    )
+    n_store <- min(length(dicom_summary_values), max(0L, length(summary_metrics) - 1L))
+    if (n_store > 0L) {
+      summary_orient[seq.int(2L, 1L + n_store)] <- dicom_summary_values[seq_len(n_store)]
+    }
+  }
+
   summary_tbl <- data.frame(
     Individual = rep(individual_id, length(summary_metrics)),
     metric = summary_metrics,
     x = round(sx, 6),
     y = round(sy, 6),
     z = round(sz, 6),
-    Bio_length = round(c(Bio_length, rep(NA_real_, length(summary_metrics) - 1)), 6),
+    `Bio_Length_&_Orient` = summary_orient,
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
@@ -570,6 +613,7 @@ orient_longbone <- function(mode,
     },
     section_loc = section_loc,
     section_points = section_points,
+    biomechanical_length = Bio_length,
     summary = summary_tbl,
     manual_orientation = manual_orientation,
     camera_distance_mm = camera_distance_mm,
@@ -583,9 +627,15 @@ orient_longbone <- function(mode,
     volume_name = volume_name,
     mesh_axes = mesh_axes,
     bonej = if (isTRUE(SOLID)) NULL else list(
-      coord_transform = bonej_transform$name,
-      dicom_iop = bonej_transform$dicom_iop,
-      transform_matrix = bonej_transform$matrix,
+      coord_transform = "dicom_iop_ipp",
+      dicom_iop = attr(bonej_transform_matrix, "dicom_iop"),
+      dicom_ipp_1 = attr(bonej_transform_matrix, "dicom_ipp_1"),
+      dicom_ipp_2 = attr(bonej_transform_matrix, "dicom_ipp_2"),
+      iop_normal = attr(bonej_transform_matrix, "iop_normal"),
+      slice_direction = attr(bonej_transform_matrix, "slice_direction"),
+      slice_spacing = attr(bonej_transform_matrix, "slice_spacing"),
+      slice_alignment = attr(bonej_transform_matrix, "slice_alignment"),
+      transform_matrix = bonej_transform_matrix,
       eigenvectors = M_bonej,
       transformed_eigenvectors = M_internal
     ),

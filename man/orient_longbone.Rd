@@ -8,6 +8,8 @@ orient_longbone(
   mode,
   longitudinal_matrix_str = NULL,
   dicom_iop = NULL,
+  dicom_ipp_1 = NULL,
+  dicom_ipp_2 = NULL,
   landmarks_str = NULL,
   section_loc = 50,
   individual_id = "LONG_BONE_001",
@@ -18,9 +20,7 @@ orient_longbone(
   mesh_file = NULL,
   lm_coord_system = "LPS",
   model_name = NULL,
-  volume_name = NULL,
-  bonej_coord_transform = "dicom_iop",
-  bonej_transform_matrix = NULL
+  volume_name = NULL
 )
 }
 \arguments{
@@ -35,11 +35,20 @@ the longitudinal vector. If a full Results-table row is supplied, the last
 nine numeric values are interpreted as the three BoneJ unit vectors, and
 the first of these vectors is used as the longitudinal axis.}
 
-\item{dicom_iop}{Optional DICOM Image Orientation (Patient) information for
-the stack used in BoneJ. Usually this is pasted directly as the full DICOM
-line, for example
-\code{r"(0020,0037 Image Orientation (Patient): -1\\0\\0\\0\\-1\\0)"}.
-Required by default when \code{SOLID = FALSE}.}
+\item{dicom_iop}{DICOM Image Orientation (Patient) information for the exact
+stack used in BoneJ. Usually pasted directly as the full \verb{(0020,0037)} line.
+Required when \code{SOLID = FALSE}.}
+
+\item{dicom_ipp_1}{DICOM Image Position (Patient) information from the first
+of two consecutive slices selected from the exact stack used in BoneJ.
+Usually pasted directly as the full \verb{(0020,0032)} line. The two IPP lines
+need not come from the first slices of the stack, but they must be
+consecutive and supplied in stack order. Required when \code{SOLID = FALSE}.}
+
+\item{dicom_ipp_2}{DICOM Image Position (Patient) information from the second
+of the same two consecutive slices, supplied after \code{dicom_ipp_1} in the
+order in which the slices occur in the BoneJ stack. Required when
+\code{SOLID = FALSE}.}
 
 \item{landmarks_str}{Character string containing landmark coordinates. The
 expected number and interpretation of landmarks depend on \code{mode}. Plain XYZ
@@ -93,15 +102,6 @@ block when \code{SLICER = TRUE} and \code{SOLID = TRUE}. If omitted, the basenam
 Slicer Python block when \code{SLICER = TRUE} and \code{SOLID = FALSE}. If omitted,
 the generated Python block first tries to use the background volume in the
 selected slice view and then the only scalar volume in the scene.}
-
-\item{bonej_coord_transform}{Advanced character argument controlling how the
-BoneJ eigenvector matrix is transformed before use. The default,
-\code{"dicom_iop"}, derives the transformation from \code{dicom_iop}. The values
-\code{"flip_xy"}, \code{"none"}, and \code{"manual"} are retained for diagnostic
-workflows.}
-
-\item{bonej_transform_matrix}{Optional 3 x 3 matrix used only when
-\code{bonej_coord_transform = "manual"}.}
 }
 \value{
 An object of class \code{orientcsg_longbone} and
@@ -114,8 +114,11 @@ components:
 \item \code{vectors}: Longitudinal, mediolateral, and anteroposterior unit vectors.
 \item \code{section_loc}: Requested section percentages.
 \item \code{section_points}: Three-dimensional coordinates of each section origin.
-\item \code{summary}: Summary table with vectors, landmarks, section points, and
-biomechanical length.
+\item \code{summary}: Summary table with vectors, landmarks, section points,
+biomechanical length, and the DICOM IOP/IPP values used for TRUE-volume
+orientation in the \verb{Bio_Length_&_Orient} column.
+\item \code{biomechanical_length}: Numeric biomechanical length used internally and
+to place percentage sections.
 \item \code{manual_orientation}: Table arranged for manual verification of
 anatomical planes and transverse section orientation in Avizo/Amira.
 \item \code{avizo_tcl}: Named list of Avizo TCL command blocks, when \code{SLICER = FALSE}.
@@ -151,8 +154,9 @@ BoneJ longitudinal vector, the legacy 3 x 3 Moments of Inertia eigenvector
 matrix, or a full row copied from the BoneJ Results table with the
 unit-vector columns recorded. The direct vector, or the first BoneJ vector
 in matrix/table input, is interpreted as the longitudinal axis after
-conversion from the
-ImageJ/BoneJ stack basis to the internal DICOM/LPS convention.
+conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
+convention. The conversion uses DICOM Image Orientation (Patient) plus
+Image Position (Patient) from two consecutive slices in BoneJ stack order.
 \item \code{SOLID = TRUE} implements the solid-mesh workflow. In this mode, \code{mesh_file}
 must point to a watertight \code{.ply}, \code{.stl}, or \code{.obj} surface mesh. The mesh
 is treated as a homogeneous closed solid, and the eigenvector associated
@@ -211,10 +215,12 @@ full Results-table row. If a full row is supplied, the last nine numeric
 values are interpreted as the three BoneJ unit vectors, and the first of
 these vectors is treated as the longitudinal axis. A direct three-component
 input is treated as that same first BoneJ vector. By default, the BoneJ
-vector or vectors are transformed
-using the DICOM Image Orientation (Patient) field supplied through
-\code{dicom_iop}; this replaces the earlier fixed \verb{(-x, -y, z)} correction and
-supports stacks with different DICOM orientations. When \code{SOLID = TRUE}, the
+vector or vectors are transformed using DICOM Image Orientation (Patient)
+(\code{dicom_iop}) together with Image Position (Patient) from two consecutive
+slices (\code{dicom_ipp_1} and \code{dicom_ipp_2}) copied in BoneJ stack order. IOP
+defines the in-plane axes, while the ordered IPP pair determines the actual
+sign of the stack Z axis. This makes the transformation independent of
+whether slice indices progress with or against the IOP-derived normal. When \code{SOLID = TRUE}, the
 longitudinal axis is estimated directly from the closed mesh by volumetric
 inertia. In both cases, the sign of the longitudinal vector is adjusted when
 anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
@@ -222,6 +228,17 @@ reference is defined from the tibio-talar landmark to the midpoint of the two
 plateau landmarks. Equivalent distal-to-proximal references are defined for
 humeri, femora, radii, and table-position humeri from their biomechanical
 length landmarks.
+}
+
+\section{TRUE-volume acquisition orientation}{
+
+For anatomical anterior/posterior display, TRUE-volume long-bone workflows
+retain the established OrientCSG acquisition convention: dry bones must be
+scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
+resolves the physical stack axes and slice-order sign; it cannot infer an
+anatomical anterior/posterior reversal caused by placing a specimen rotated
+180 degrees around its longitudinal axis. No additional landmarks are required
+when the scanning-position convention is followed consistently.
 }
 
 \section{Section locations}{
@@ -263,6 +280,8 @@ Slicer world RAS coordinates, for example values extracted with
 \examples{
 \dontrun{
 dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
+dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
+dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
 
 longitudinal_matrix_str <- "
 0.008 0.017 1.000
@@ -278,6 +297,8 @@ res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
   dicom_iop = dicom_iop_str,
+  dicom_ipp_1 = dicom_ipp_1,
+  dicom_ipp_2 = dicom_ipp_2,
   landmarks_str = tibia_landmarks_str,
   section_loc = 50,
   individual_id = "TIBIA_001"

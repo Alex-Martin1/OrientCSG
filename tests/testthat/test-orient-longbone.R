@@ -3,6 +3,8 @@ test_that("orient_longbone() works for TIBIA mode", {
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50,
     individual_id = "TIBIA_TEST"
@@ -22,7 +24,11 @@ test_that("orient_longbone() works for TIBIA mode", {
   expect_equal(nrow(res$summary), 7)
   expect_equal(nrow(res$manual_orientation), 5)
 
-  expect_true(res$summary$Bio_length[1] > 0)
+  expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
+  expect_equal(names(res$summary)[6], "Bio_Length_&_Orient")
+  expect_equal(res$summary$`Bio_Length_&_Orient`[2], "-1\\0\\0\\0\\-1\\0")
+  expect_equal(res$summary$`Bio_Length_&_Orient`[3], "0\\0\\0")
+  expect_equal(res$summary$`Bio_Length_&_Orient`[4], "0\\0\\0.3")
 
   expect_unit_vector(res$vectors$L)
   expect_unit_vector(res$vectors$ML)
@@ -38,6 +44,8 @@ test_that("orient_longbone() orients tibial L distal-to-proximal", {
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -54,6 +62,8 @@ test_that("orient_longbone() works for HUMERUS mode", {
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "HUMERUS_TEST"
@@ -69,7 +79,7 @@ test_that("orient_longbone() works for HUMERUS mode", {
   expect_equal(nrow(res$summary), 9)
   expect_equal(nrow(res$manual_orientation), 5)
 
-  expect_true(res$summary$Bio_length[1] > 0)
+  expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
 
   expect_unit_vector(res$vectors$L)
   expect_unit_vector(res$vectors$ML)
@@ -85,6 +95,8 @@ test_that("orient_longbone() works for HUMERUS_TABLE mode", {
     mode = "HUMERUS_TABLE",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_table_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "HUMERUS_TABLE_TEST"
@@ -100,7 +112,7 @@ test_that("orient_longbone() works for HUMERUS_TABLE mode", {
   expect_equal(nrow(res$summary), 7)
   expect_equal(nrow(res$manual_orientation), 5)
 
-  expect_true(res$summary$Bio_length[1] > 0)
+  expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
 
   expect_unit_vector(res$vectors$L)
   expect_unit_vector(res$vectors$ML)
@@ -116,6 +128,8 @@ test_that("orient_longbone() generates expected TCL blocks", {
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50)
   )
@@ -141,6 +155,8 @@ test_that("orient_longbone() accepts BoneJ Results-table row input", {
     mode = "TIBIA",
     longitudinal_matrix_str = bonej_results_row_tibia,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50,
     individual_id = "TIBIA_RESULTS_ROW"
@@ -163,6 +179,8 @@ test_that("orient_longbone() accepts a direct three-component BoneJ longitudinal
     mode = "FEMUR",
     longitudinal_matrix_str = "0 0 1",
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = femur_landmarks_str,
     section_loc = 50,
     individual_id = "FEMUR_INPUT_EQUIVALENCE"
@@ -172,6 +190,8 @@ test_that("orient_longbone() accepts a direct three-component BoneJ longitudinal
     mode = "FEMUR",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = femur_landmarks_str,
     section_loc = 50,
     individual_id = "FEMUR_INPUT_EQUIVALENCE"
@@ -212,6 +232,9 @@ test_that("orient_longbone() validates malformed input", {
     orient_longbone(
       mode = "TIBIA",
       longitudinal_matrix_str = "1 2 3 4",
+      dicom_iop = dicom_iop_flip_xy,
+      dicom_ipp_1 = dicom_ipp_1_flip_xy,
+      dicom_ipp_2 = dicom_ipp_2_flip_xy,
       landmarks_str = tibia_landmarks_str
     ),
     "must contain either 3 numeric values"
@@ -222,6 +245,8 @@ test_that("orient_longbone() validates malformed input", {
       mode = "TIBIA",
       longitudinal_matrix_str = longitudinal_matrix_str_tibia,
       dicom_iop = dicom_iop_flip_xy,
+      dicom_ipp_1 = dicom_ipp_1_flip_xy,
+      dicom_ipp_2 = dicom_ipp_2_flip_xy,
       landmarks_str = "1 2 3"
     ),
     "requires 9 numeric values"
@@ -235,6 +260,30 @@ test_that("orient_longbone() validates malformed input", {
     ),
     "dicom_iop"
   )
+
+  expect_error(
+    orient_longbone(
+      mode = "TIBIA",
+      longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+      dicom_iop = dicom_iop_flip_xy,
+      dicom_ipp_1 = dicom_ipp_1_flip_xy,
+      landmarks_str = tibia_landmarks_str
+    ),
+    "dicom_ipp_2"
+  )
+
+  expect_error(
+    orient_longbone(
+      mode = "TIBIA",
+      longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+      dicom_iop = dicom_iop_flip_xy,
+      dicom_ipp_1 = "0020,0032 Image Position (Patient): 0\\0\\0",
+      dicom_ipp_2 = "0020,0032 Image Position (Patient): 1\\0\\0",
+      landmarks_str = tibia_landmarks_str
+    ),
+    "not parallel"
+  )
+
 })
 
 test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
@@ -246,6 +295,8 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = c(35, 50),
     lm_coord_system = "LPS"
@@ -254,6 +305,8 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_lps_slicer,
     section_loc = c(35, 50),
     lm_coord_system = "LPS"
@@ -262,6 +315,8 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_ras_slicer,
     section_loc = c(35, 50),
     lm_coord_system = "RAS"
@@ -274,37 +329,65 @@ test_that("orient_longbone() accepts Slicer table text through landmarks_str", {
   expect_equal(res_slicer$summary, res_plain$summary, tolerance = 1e-6)
 })
 
-test_that("DICOM Image Orientation Patient controls the BoneJ transform", {
-  res_nubia <- orient_longbone(
+test_that("DICOM IOP plus ordered consecutive IPP positions control the BoneJ transform", {
+  res_same_normal <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = humerus_landmarks_str,
     section_loc = 35
   )
 
-  res_flip_xy <- orient_longbone(
-    mode = "HUMERUS",
-    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    landmarks_str = humerus_landmarks_str,
-    section_loc = 35,
-    bonej_coord_transform = "flip_xy"
-  )
-
-  expect_equal(res_nubia$bonej$coord_transform, "dicom_iop")
-  expect_equal(c(res_nubia$bonej$transform_matrix), c(diag(c(-1, -1, 1))), tolerance = 1e-12)
-  expect_equal(res_nubia$summary, res_flip_xy$summary, tolerance = 1e-6)
+  expect_equal(res_same_normal$bonej$coord_transform, "dicom_iop_ipp")
+  expect_equal(c(res_same_normal$bonej$transform_matrix), c(diag(c(-1, -1, 1))), tolerance = 1e-12)
+  expect_equal(res_same_normal$bonej$slice_direction, 1)
+  expect_equal(res_same_normal$bonej$slice_spacing, 0.3, tolerance = 1e-12)
+  expect_equal(res_same_normal$bonej$slice_alignment, 1, tolerance = 1e-12)
 
   res_carcavilla <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_carcavilla_humerus,
     dicom_iop = dicom_iop_carcavilla,
+    dicom_ipp_1 = dicom_ipp_1_carcavilla,
+    dicom_ipp_2 = dicom_ipp_2_carcavilla,
     landmarks_str = carcavilla_humerus_landmarks_str,
     section_loc = 35
   )
 
   expect_equal(c(res_carcavilla$bonej$transform_matrix), c(diag(c(1, -1, -1))), tolerance = 1e-12)
+  expect_equal(res_carcavilla$bonej$slice_direction, 1)
   expect_lt(res_carcavilla$longitudinal_axis_check$angle_deg, 6)
+
+  # Regression case matching T109 geometry: the IOP cross-product points toward
+  # -Z, but stack order advances toward +Z. The ordered IPP pair must therefore
+  # reverse only the slice-axis sign, yielding diag(1, -1, 1).
+  t109_iop <- "0020,0037 Image Orientation (Patient): 1\\0\\0\\0\\-1\\0"
+  t109_ipp_1 <- "0020,0032 Image Position (Patient): -2.04353\\43.9381\\-408.4"
+  t109_ipp_2 <- "0020,0032 Image Position (Patient): -2.04353\\43.9381\\-408.1"
+  t109_vector <- "0.018055801 -0.019243574 -0.999651776"
+  t109_landmarks <- "
+67.131508 -15.877651 -391.27063
+31.569515 -10.953564 -389.399292
+44.886795 -12.93088 -72.962769
+"
+
+  res_t109 <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = t109_vector,
+    dicom_iop = t109_iop,
+    dicom_ipp_1 = t109_ipp_1,
+    dicom_ipp_2 = t109_ipp_2,
+    landmarks_str = t109_landmarks,
+    section_loc = 50,
+    individual_id = "AAM_T-109_tibia_D"
+  )
+
+  expect_equal(c(res_t109$bonej$transform_matrix), c(diag(c(1, -1, 1))), tolerance = 1e-12)
+  expect_equal(res_t109$bonej$slice_direction, -1)
+  expect_equal(res_t109$bonej$dicom_ipp_1, c(-2.04353, 43.9381, -408.4), tolerance = 1e-12)
+  expect_equal(res_t109$bonej$dicom_ipp_2, c(-2.04353, 43.9381, -408.1), tolerance = 1e-12)
 })
 
 test_that("orient_longbone() supports section-only mode without anatomical planes", {
@@ -312,6 +395,8 @@ test_that("orient_longbone() supports section-only mode without anatomical plane
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = "150 -15 -250",
     section_loc = 50,
     individual_id = "TIBIA_SECTION_ONLY",
@@ -343,6 +428,8 @@ test_that("orient_longbone() section-only mode accepts all long-bone modes", {
       mode = m,
       longitudinal_matrix_str = longitudinal_matrix_str_humerus,
       dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
       landmarks_str = "150 -15 -250",
       section_loc = 35,
       USE_ANAT_ORIENT = FALSE
@@ -371,6 +458,8 @@ test_that("orient_longbone() works for FEMUR mode", {
     mode = "FEMUR",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = femur_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "FEMUR_TEST"
@@ -382,8 +471,8 @@ test_that("orient_longbone() works for FEMUR mode", {
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
   expect_equal(nrow(res$summary), 8)
   expect_equal(nrow(res$manual_orientation), 5)
-  expect_true(res$summary$Bio_length[1] > 0)
-  expect_equal(res$summary$Bio_length[1], 100, tolerance = 1e-6)
+  expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
+  expect_equal(as.numeric(res$summary$`Bio_Length_&_Orient`[1]), 100, tolerance = 1e-6)
 
   expect_unit_vector(res$vectors$L)
   expect_unit_vector(res$vectors$ML)
@@ -400,6 +489,8 @@ test_that("orient_longbone() works for RADIUS mode", {
     mode = "RADIUS",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = radius_landmarks_str,
     section_loc = c(35, 50),
     individual_id = "RADIUS_TEST"
@@ -411,8 +502,8 @@ test_that("orient_longbone() works for RADIUS mode", {
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
   expect_equal(nrow(res$summary), 9)
   expect_equal(nrow(res$manual_orientation), 5)
-  expect_true(res$summary$Bio_length[1] > 0)
-  expect_equal(res$summary$Bio_length[1], 200, tolerance = 1e-6)
+  expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
+  expect_equal(as.numeric(res$summary$`Bio_Length_&_Orient`[1]), 200, tolerance = 1e-6)
 
   expect_unit_vector(res$vectors$L)
   expect_unit_vector(res$vectors$ML)
@@ -429,6 +520,8 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
     mode = "FEMUR",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = femur_landmarks_str,
     section_loc = 50,
     volume_name = "FEMUR_volume",
@@ -457,6 +550,8 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
     mode = "RADIUS",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
     dicom_iop = dicom_iop_flip_xy,
+    dicom_ipp_1 = dicom_ipp_1_flip_xy,
+    dicom_ipp_2 = dicom_ipp_2_flip_xy,
     landmarks_str = radius_landmarks_str,
     section_loc = 50,
     volume_name = "RADIUS_volume",
