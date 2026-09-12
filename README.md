@@ -4,7 +4,7 @@ OrientCSG is an R package for reproducible orientation of mandibular and long-bo
 
 The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports three broad types of workflows:
 
-1. classic CT-derived workflows using BoneJ-derived principal axes and Amira/Avizo TCL output;
+1. classic CT-derived workflows using BoneJ-derived principal axes, with Amira/Avizo TCL or 3D Slicer Python output;
 2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and
 3. mandibular volume workflows with either Avizo/Amira TCL or 3D Slicer Python output.
 
@@ -103,7 +103,7 @@ When `SLICER = TRUE`, OrientCSG generates a 3D Slicer Python block that creates 
 - `FEMUR`;
 - `RADIUS`.
 
-It is intentionally not implemented for `HUMERUS_TABLE`, because that mode depends on a standardized scanner/table orientation that is usually not preserved in free 3D surface scanning workflows.
+It is intentionally not implemented for `HUMERUS_TABLE`, because that mode relies on a standardized scanner/table orientation rather than the landmark-based anatomical workflow used by the supported Slicer modes.
 
 ## Coordinate conventions
 
@@ -288,7 +288,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - the wrong mandibular preservation option was selected (`complete_arch`, `estimate_lm10`, or `lm9_valid`);
 - the wrong number of mandibular landmarks was supplied;
 - the BoneJ Log/eigenvector input was copied incorrectly;
-- the wrong DICOM Image Orientation (Patient) line was supplied, or it came from a different stack than the one processed in BoneJ;
+- the wrong DICOM Image Orientation (Patient) or Image Position (Patient) values were supplied, the IPP values were not taken from two consecutive slices in stack order, or the metadata came from a different stack than the one processed in BoneJ;
 - the wrong long-bone mode was selected;
 - `SOLID = TRUE` was requested but the mesh is not closed or cannot be read by `Rvcg`;
 - the wrong coordinate convention was used for Slicer landmarks;
@@ -336,6 +336,6 @@ Development of this package was supported by the FCT R&D research project “Par
 
 ## References
 
-Ruff, C. B. (2002). Long bone articular and diaphyseal structure in Old World monkeys and apes. II: Estimation of body mass. *American Journal of Physical Anthropology*, *120*(1), 16–37. https://doi.org/10.1002/ajpa.10118
+Ruff, C. B. (2002). Long bone articular and diaphyseal structure in Old World monkeys and apes. I: Locomotor effects. *American Journal of Physical Anthropology*, *119*(4), 305–342. https://doi.org/10.1002/ajpa.10117
 
 Toro-Ibacache, V., Ugarte, F., Morales, C., Eyquem, A., Aguilera, J., & Astudillo, W. (2019). Dental malocclusions are not just about small and weak bones: assessing the morphology of the mandible with cross-section analysis and geometric morphometrics. *Clinical Oral Investigations*, *23*(9), 3479–3490. https://doi.org/10.1007/s00784-018-2766-6
