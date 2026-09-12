@@ -336,6 +336,6 @@ Development of this package was supported by the FCT R&D research project “Par
 
 ## References
 
-Ruff, C. B. (2002). Long bone articular and diaphyseal structure in Old World monkeys and apes. I: Locomotor effects. *American Journal of Physical Anthropology*, *119*(4), 305–342. https://doi.org/10.1002/ajpa.10117
+Ruff, C. B. (2003). Long bone articular and diaphyseal structure in Old World monkeys and apes. II: Estimation of body mass. *American Journal of Physical Anthropology*, *120*(1), 16–37. https://doi.org/10.1002/ajpa.10118
 
 Toro-Ibacache, V., Ugarte, F., Morales, C., Eyquem, A., Aguilera, J., & Astudillo, W. (2019). Dental malocclusions are not just about small and weak bones: assessing the morphology of the mandible with cross-section analysis and geometric morphometrics. *Clinical Oral Investigations*, *23*(9), 3479–3490. https://doi.org/10.1007/s00784-018-2766-6
