@@ -2,9 +2,7 @@ test_that("get_tcl() returns selected and combined TCL blocks", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_flip_xy,
-    dicom_ipp_1 = dicom_ipp_1_flip_xy,
-    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    dicom_orientation = dicom_orientation_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -40,9 +38,7 @@ test_that("write_tcl() writes a selected TCL block to disk", {
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_flip_xy,
-    dicom_ipp_1 = dicom_ipp_1_flip_xy,
-    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    dicom_orientation = dicom_orientation_flip_xy,
     landmarks_str = tibia_landmarks_str,
     section_loc = 50
   )
@@ -95,9 +91,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mod
   res <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-    dicom_iop = dicom_iop_flip_xy,
-    dicom_ipp_1 = dicom_ipp_1_flip_xy,
-    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    dicom_orientation = dicom_orientation_flip_xy,
     landmarks_str = humerus_landmarks_table,
     lm_coord_system = "RAS",
     section_loc = c(35, 50),
@@ -135,9 +129,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
   res <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-    dicom_iop = dicom_iop_flip_xy,
-    dicom_ipp_1 = dicom_ipp_1_flip_xy,
-    dicom_ipp_2 = dicom_ipp_2_flip_xy,
+    dicom_orientation = dicom_orientation_flip_xy,
     landmarks_str = tibia_landmarks_table,
     lm_coord_system = "LPS",
     section_loc = 50,

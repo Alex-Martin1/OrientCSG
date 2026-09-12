@@ -269,9 +269,9 @@ parse_dicom_iop <- function(dicom_iop) {
 }
 
 # Parse DICOM Image Position (Patient) (0020,0032). The input may be a numeric
-# XYZ triplet or the complete DICOM line. For TRUE-volume workflows,
-# `dicom_ipp_1` and `dicom_ipp_2` must describe two consecutive slices in the
-# same order in which those slices occur in the ImageJ/BoneJ stack.
+# XYZ triplet or the complete DICOM line. For TRUE-volume workflows, the two
+# IPP entries contained in `dicom_orientation` must describe consecutive slices
+# in the same order in which those slices occur in the ImageJ/BoneJ stack.
 parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
   if (is.numeric(dicom_ipp)) {
     if (length(dicom_ipp) != 3L || any(!is.finite(dicom_ipp))) {
@@ -297,6 +297,65 @@ parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
   as.numeric(nums)
 }
 
+# Parse the combined TRUE-volume DICOM orientation input. The public
+# `dicom_orientation` argument is normally a three-element character vector
+# constructed as c(IOP, IPP1, IPP2). A single three-line character block is
+# also accepted. The IOP line is identified by tag/name when possible; the two
+# IPP lines retain their supplied order because that order defines stack Z.
+parse_dicom_orientation <- function(dicom_orientation) {
+  if (is.numeric(dicom_orientation)) {
+    if (length(dicom_orientation) != 12L || any(!is.finite(dicom_orientation))) {
+      stop(
+        "Numeric `dicom_orientation` input must contain 12 finite values: 6 IOP values followed by 3 IPP1 and 3 IPP2 values.",
+        call. = FALSE
+      )
+    }
+    return(list(
+      iop = as.numeric(dicom_orientation[1:6]),
+      ipp_1 = as.numeric(dicom_orientation[7:9]),
+      ipp_2 = as.numeric(dicom_orientation[10:12])
+    ))
+  }
+
+  if (!is.character(dicom_orientation) || length(dicom_orientation) < 1L) {
+    stop(
+      "`dicom_orientation` must contain one DICOM Image Orientation (Patient) line and two consecutive Image Position (Patient) lines.",
+      call. = FALSE
+    )
+  }
+
+  lines <- unlist(strsplit(paste(dicom_orientation, collapse = "\n"), "[\r\n]+", perl = TRUE))
+  lines <- trimws(lines)
+  lines <- lines[nzchar(lines)]
+
+  if (length(lines) != 3L) {
+    stop(
+      "`dicom_orientation` must contain exactly three non-empty entries: one IOP line and two consecutive IPP lines.",
+      call. = FALSE
+    )
+  }
+
+  is_iop <- grepl("0020\\s*,\\s*0037", lines, ignore.case = TRUE, perl = TRUE) |
+    grepl("Image Orientation \\(Patient\\)", lines, ignore.case = TRUE, perl = TRUE)
+  is_ipp <- grepl("0020\\s*,\\s*0032", lines, ignore.case = TRUE, perl = TRUE) |
+    grepl("Image Position \\(Patient\\)", lines, ignore.case = TRUE, perl = TRUE)
+
+  if (sum(is_iop) == 1L && sum(is_ipp) == 2L) {
+    iop_line <- lines[is_iop]
+    ipp_lines <- lines[is_ipp]
+  } else {
+    # Fallback for compact untagged text: IOP first, then IPP1 and IPP2.
+    iop_line <- lines[1]
+    ipp_lines <- lines[2:3]
+  }
+
+  list(
+    iop = parse_dicom_iop(iop_line),
+    ipp_1 = parse_dicom_ipp(ipp_lines[1], "dicom_orientation IPP1"),
+    ipp_2 = parse_dicom_ipp(ipp_lines[2], "dicom_orientation IPP2")
+  )
+}
+
 # Format parsed DICOM values compactly for the result summary while retaining
 # sufficient numeric precision for traceability.
 format_dicom_values <- function(x) {
@@ -310,13 +369,12 @@ format_dicom_values <- function(x) {
 # product defines the slice normal up to sign; two consecutive IPP positions,
 # supplied in BoneJ stack order, determine that sign. This avoids assuming that
 # stack index Z necessarily increases in the IOP cross-product direction.
-dicom_geometry_to_bonej_transform <- function(dicom_iop,
-                                               dicom_ipp_1,
-                                               dicom_ipp_2,
-                                               alignment_tolerance = 0.999) {
-  iop <- parse_dicom_iop(dicom_iop)
-  ipp_1 <- parse_dicom_ipp(dicom_ipp_1, "dicom_ipp_1")
-  ipp_2 <- parse_dicom_ipp(dicom_ipp_2, "dicom_ipp_2")
+dicom_orientation_to_bonej_transform <- function(dicom_orientation,
+                                                  alignment_tolerance = 0.999) {
+  orientation <- parse_dicom_orientation(dicom_orientation)
+  iop <- orientation$iop
+  ipp_1 <- orientation$ipp_1
+  ipp_2 <- orientation$ipp_2
 
   row_axis <- nrm(iop[1:3])
   col_axis <- nrm(iop[4:6])
@@ -340,7 +398,7 @@ dicom_geometry_to_bonej_transform <- function(dicom_iop,
   slice_spacing <- sqrt(sum(ipp_delta^2))
   if (!is.finite(slice_spacing) || slice_spacing < 1e-12) {
     stop(
-      "`dicom_ipp_1` and `dicom_ipp_2` must refer to two distinct consecutive slices in BoneJ stack order.",
+      "The two IPP entries in `dicom_orientation` must refer to two distinct consecutive slices in BoneJ stack order.",
       call. = FALSE
     )
   }
@@ -351,7 +409,7 @@ dicom_geometry_to_bonej_transform <- function(dicom_iop,
   if (!is.finite(alignment) || alignment < alignment_tolerance) {
     stop(
       paste0(
-        "The displacement from `dicom_ipp_1` to `dicom_ipp_2` is not parallel to the DICOM image-plane normal. ",
+        "The displacement between the two IPP entries in `dicom_orientation` is not parallel to the DICOM image-plane normal. ",
         "Use Image Position (Patient) values from two consecutive slices, in the exact order used in the BoneJ stack, ",
         "and do not use a stack that was reoriented or resliced after DICOM import."
       ),

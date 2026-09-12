@@ -135,7 +135,7 @@ for i in range(markupsNode.GetNumberOfControlPoints()):
     print(i + 1, label, p[0], p[1], p[2])
 ```
 
-For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. BoneJ eigenvectors are transformed from stack coordinates to the internal DICOM/LPS basis using `dicom_iop`, `dicom_ipp_1`, and `dicom_ipp_2`. The IPP values must be taken from two consecutive slices and supplied in the order in which those slices occur in the exact stack analysed by BoneJ. The result object stores the parsed DICOM geometry, inferred slice direction, transformation matrix, and transformed eigenvectors in `res$bonej`, and reports a longitudinal-axis check in `res$longitudinal_axis_check`.
+For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. BoneJ eigenvectors are transformed from stack coordinates to the internal DICOM/LPS basis using the single `dicom_orientation` argument. The recommended workflow is to define the IOP and the two consecutive IPP lines as separate objects and combine them with `c(dicom_iop, dicom_ipp_1, dicom_ipp_2)`. The IPP values must be supplied in the order in which those slices occur in the exact stack analysed by BoneJ. The result object stores the parsed DICOM orientation, inferred slice direction, transformation matrix, and transformed eigenvectors in `res$bonej`, and reports a longitudinal-axis check in `res$longitudinal_axis_check`.
 
 ## Preservation requirements
 
@@ -200,19 +200,18 @@ file.edit(mandible_example)
 source(mandible_example)
 ```
 
-A minimal TRUE-volume long-bone call has the following general structure. `dicom_ipp_1` and `dicom_ipp_2` can come from any two consecutive slices, provided they are copied in the same order in which those slices occur in the BoneJ stack:
+A minimal TRUE-volume long-bone call has the following general structure. The three DICOM metadata lines can be kept as separate objects in the script and then combined into `dicom_orientation`. The two IPP values can come from any two consecutive slices, provided they are copied in the same order in which those slices occur in the BoneJ stack:
 
 ```r
 dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation <- c(dicom_iop_str, dicom_ipp_1, dicom_ipp_2)
 
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
-  dicom_iop = dicom_iop_str,
-  dicom_ipp_1 = dicom_ipp_1,
-  dicom_ipp_2 = dicom_ipp_2,
+  dicom_orientation = dicom_orientation,
   landmarks_str = landmarks_str,
   section_loc = 50,
   individual_id = "T108_Left",

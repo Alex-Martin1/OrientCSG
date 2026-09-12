@@ -76,10 +76,10 @@
 #' values are interpreted as the three BoneJ unit vectors, and the first of
 #' these vectors is treated as the longitudinal axis. A direct three-component
 #' input is treated as that same first BoneJ vector. By default, the BoneJ
-#' vector or vectors are transformed using DICOM Image Orientation (Patient)
-#' (`dicom_iop`) together with Image Position (Patient) from two consecutive
-#' slices (`dicom_ipp_1` and `dicom_ipp_2`) copied in BoneJ stack order. IOP
-#' defines the in-plane axes, while the ordered IPP pair determines the actual
+#' vector or vectors are transformed using `dicom_orientation`, which contains
+#' DICOM Image Orientation (Patient) together with Image Position (Patient)
+#' from two consecutive slices copied in BoneJ stack order. IOP defines the
+#' in-plane axes, while the ordered IPP pair determines the actual
 #' sign of the stack Z axis. This makes the transformation independent of
 #' whether slice indices progress with or against the IOP-derived normal. When `SOLID = TRUE`, the
 #' longitudinal axis is estimated directly from the closed mesh by volumetric
@@ -139,18 +139,15 @@
 #'   the longitudinal vector. If a full Results-table row is supplied, the last
 #'   nine numeric values are interpreted as the three BoneJ unit vectors, and
 #'   the first of these vectors is used as the longitudinal axis.
-#' @param dicom_iop DICOM Image Orientation (Patient) information for the exact
-#'   stack used in BoneJ. Usually pasted directly as the full `(0020,0037)` line.
+#' @param dicom_orientation Combined DICOM orientation information for the exact
+#'   stack used in BoneJ. Supply one Image Orientation (Patient) `(0020,0037)`
+#'   line and Image Position (Patient) `(0020,0032)` lines from two consecutive
+#'   slices in BoneJ stack order. The recommended form is
+#'   `c(dicom_iop, dicom_ipp_1, dicom_ipp_2)`, so the three metadata lines can
+#'   still be defined separately in the calling script. The two IPP lines may
+#'   come from anywhere in the stack, but they must be consecutive and retain
+#'   their stack order. A single three-line character block is also accepted.
 #'   Required when `SOLID = FALSE`.
-#' @param dicom_ipp_1 DICOM Image Position (Patient) information from the first
-#'   of two consecutive slices selected from the exact stack used in BoneJ.
-#'   Usually pasted directly as the full `(0020,0032)` line. The two IPP lines
-#'   need not come from the first slices of the stack, but they must be
-#'   consecutive and supplied in stack order. Required when `SOLID = FALSE`.
-#' @param dicom_ipp_2 DICOM Image Position (Patient) information from the second
-#'   of the same two consecutive slices, supplied after `dicom_ipp_1` in the
-#'   order in which the slices occur in the BoneJ stack. Required when
-#'   `SOLID = FALSE`.
 #' @param landmarks_str Character string containing landmark coordinates. The
 #'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
 #'   coordinates and Slicer Markups-style rows are both accepted.
@@ -225,6 +222,7 @@
 #' dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 #' dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 #' dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+#' dicom_orientation <- c(dicom_iop_str, dicom_ipp_1, dicom_ipp_2)
 #'
 #' longitudinal_matrix_str <- "
 #' 0.008 0.017 1.000
@@ -239,9 +237,7 @@
 #' res <- orient_longbone(
 #'   mode = "TIBIA",
 #'   longitudinal_matrix_str = longitudinal_matrix_str,
-#'   dicom_iop = dicom_iop_str,
-#'   dicom_ipp_1 = dicom_ipp_1,
-#'   dicom_ipp_2 = dicom_ipp_2,
+#'   dicom_orientation = dicom_orientation,
 #'   landmarks_str = tibia_landmarks_str,
 #'   section_loc = 50,
 #'   individual_id = "TIBIA_001"
@@ -255,9 +251,7 @@
 #'
 orient_longbone <- function(mode,
                             longitudinal_matrix_str = NULL,
-                            dicom_iop = NULL,
-                            dicom_ipp_1 = NULL,
-                            dicom_ipp_2 = NULL,
+                            dicom_orientation = NULL,
                             landmarks_str = NULL,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
@@ -319,11 +313,11 @@ orient_longbone <- function(mode,
       stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
     }
 
-    if (is.null(dicom_iop) || is.null(dicom_ipp_1) || is.null(dicom_ipp_2)) {
+    if (is.null(dicom_orientation)) {
       stop(
         paste0(
-          "`dicom_iop`, `dicom_ipp_1`, and `dicom_ipp_2` are required when `SOLID = FALSE`. ",
-          "Use the IOP line plus Image Position (Patient) lines from two consecutive slices ",
+          "`dicom_orientation` is required when `SOLID = FALSE`. ",
+          "Combine the IOP line with Image Position (Patient) lines from two consecutive slices ",
           "in the exact order used in the BoneJ stack."
         ),
         call. = FALSE
@@ -334,10 +328,8 @@ orient_longbone <- function(mode,
     # the two in-plane directions, while the ordered consecutive IPP pair fixes
     # whether stack Z follows or opposes the IOP-derived normal.
     M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
-    bonej_transform_matrix <- dicom_geometry_to_bonej_transform(
-      dicom_iop = dicom_iop,
-      dicom_ipp_1 = dicom_ipp_1,
-      dicom_ipp_2 = dicom_ipp_2
+    bonej_transform_matrix <- dicom_orientation_to_bonej_transform(
+      dicom_orientation = dicom_orientation
     )
     M_internal <- bonej_transform_matrix %*% M_bonej
     L <- M_internal[, 1]

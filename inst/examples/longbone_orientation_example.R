@@ -20,11 +20,12 @@ library(OrientCSG)
 # from the Slicer Markups table rather than extracted as RAS world coordinates.
 
 
-# For every SOLID = FALSE call, also paste Image Position (Patient) from two
-# consecutive slices of the exact stack used in BoneJ. The two slices can be
-# anywhere in the stack, but dicom_ipp_1 must precede dicom_ipp_2 in stack order.
-# The values below are compact example geometry chosen to demonstrate the API;
-# replace IOP and both IPP lines together with values from your own DICOM stack.
+# For every SOLID = FALSE call, define the DICOM IOP line and Image Position
+# (Patient) lines from two consecutive slices of the exact stack used in BoneJ.
+# Keep the three values as separate objects if convenient, then combine them as
+# `dicom_orientation <- c(IOP, IPP1, IPP2)` before calling `orient_longbone()`.
+# The two IPP lines can come from anywhere in the stack, but must remain in stack
+# order. Replace IOP and both IPP lines together with values from your own stack.
 #
 # 1. TIBIA example ===========================================================
 #
@@ -40,6 +41,7 @@ library(OrientCSG)
 dicom_iop_str_tibia <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_tibia <- c(dicom_iop_str_tibia, dicom_ipp_1_tibia, dicom_ipp_2_tibia)
 
 longitudinal_matrix_str_tibia <- "
 [INFO] ||0.011|-0.780|-0.626||
@@ -56,9 +58,7 @@ tibia_landmarks_str_T108_Left_A <- "
 res_tibia <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-  dicom_iop = dicom_iop_str_tibia,
-  dicom_ipp_1 = dicom_ipp_1_tibia,
-  dicom_ipp_2 = dicom_ipp_2_tibia,
+  dicom_orientation = dicom_orientation_tibia,
   landmarks_str = tibia_landmarks_str_T108_Left_A,
   section_loc = 50,
   individual_id = "T108_Left",
@@ -83,6 +83,7 @@ copy_tcl(res_tibia, section = "SECTION_50")
 dicom_iop_str_tibia <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_tibia <- c(dicom_iop_str_tibia, dicom_ipp_1_tibia, dicom_ipp_2_tibia)
 
 longitudinal_matrix_str_tibia <- "
 [INFO] ||0.011|-0.780|-0.626||
@@ -99,9 +100,7 @@ tibia_landmarks_slicer_T108_Left_B <- "
 res_tibia_true_slicer <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-  dicom_iop = dicom_iop_str_tibia,
-  dicom_ipp_1 = dicom_ipp_1_tibia,
-  dicom_ipp_2 = dicom_ipp_2_tibia,
+  dicom_orientation = dicom_orientation_tibia,
   landmarks_str = tibia_landmarks_slicer_T108_Left_B,
   section_loc = 50,
   individual_id = "T108_Left",
@@ -177,6 +176,7 @@ if (file.exists(mesh_file_tibia)) {
 dicom_iop_str_humerus <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_humerus <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_humerus <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_humerus <- c(dicom_iop_str_humerus, dicom_ipp_1_humerus, dicom_ipp_2_humerus)
 
 longitudinal_matrix_str_humerus <- "
 ||0.023|0.973|0.231||
@@ -194,9 +194,7 @@ humerus_landmarks_str_H108_Right_A <- "
 res_humerus <- orient_longbone(
   mode = "HUMERUS",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-  dicom_iop = dicom_iop_str_humerus,
-  dicom_ipp_1 = dicom_ipp_1_humerus,
-  dicom_ipp_2 = dicom_ipp_2_humerus,
+  dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_landmarks_str_H108_Right_A,
   section_loc = c(35, 50),
   individual_id = "H108_Right",
@@ -222,6 +220,7 @@ copy_tcl(res_humerus, section = "SECTION_50")
 dicom_iop_str_humerus <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_humerus <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_humerus <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_humerus <- c(dicom_iop_str_humerus, dicom_ipp_1_humerus, dicom_ipp_2_humerus)
 
 longitudinal_matrix_str_humerus <- "
 ||0.023|0.973|0.231||
@@ -239,9 +238,7 @@ humerus_landmarks_slicer_H108_Right_B <- "
 res_humerus_true_slicer <- orient_longbone(
   mode = "HUMERUS",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-  dicom_iop = dicom_iop_str_humerus,
-  dicom_ipp_1 = dicom_ipp_1_humerus,
-  dicom_ipp_2 = dicom_ipp_2_humerus,
+  dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_landmarks_slicer_H108_Right_B,
   section_loc = c(35, 50),
   individual_id = "H108_Right",
@@ -319,6 +316,7 @@ if (file.exists(mesh_file_humerus)) {
 dicom_iop_str_femur <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_femur <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_femur <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_femur <- c(dicom_iop_str_femur, dicom_ipp_1_femur, dicom_ipp_2_femur)
 
 longitudinal_matrix_str_femur <- "
 -0.02411871280310699 -0.04950688973444657 0.9984825264177349
@@ -333,9 +331,7 @@ femur_landmarks_str_F324_Left_A <- "
 res_femur <- orient_longbone(
   mode = "FEMUR",
   longitudinal_matrix_str = longitudinal_matrix_str_femur,
-  dicom_iop = dicom_iop_str_femur,
-  dicom_ipp_1 = dicom_ipp_1_femur,
-  dicom_ipp_2 = dicom_ipp_2_femur,
+  dicom_orientation = dicom_orientation_femur,
   landmarks_str = femur_landmarks_str_F324_Left_A,
   section_loc = 50,
   individual_id = "F324_Left",
@@ -359,6 +355,7 @@ copy_tcl(res_femur, section = "SECTION_50")
 dicom_iop_str_femur <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_femur <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_femur <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_femur <- c(dicom_iop_str_femur, dicom_ipp_1_femur, dicom_ipp_2_femur)
 
 longitudinal_matrix_str_femur <- "
 AAM_T-324_fémur_I	57.46085720770676	74.30795885498785	253.907737301091	137317.32610560616	247.17118699005323	1691827.0417617331	1690769.8657119467	50641.81658958559	3065.504282644045	-39612.15593432332	-81494.7808522638	1695292.242516427	1692302.1959205428	45644.285626294324	-0.02411871280310699	-0.04950688973444657	0.9984825264177349	-0.9154090025393372	-0.4003318665483994	-0.041961347640542476	-0.4018017493275227	0.9150319472535892	0.035663563235422066
@@ -373,9 +370,7 @@ femur_landmarks_slicer_F324_Left_B <- "
 res_femur_true_slicer <- orient_longbone(
   mode = "FEMUR",
   longitudinal_matrix_str = longitudinal_matrix_str_femur,
-  dicom_iop = dicom_iop_str_femur,
-  dicom_ipp_1 = dicom_ipp_1_femur,
-  dicom_ipp_2 = dicom_ipp_2_femur,
+  dicom_orientation = dicom_orientation_femur,
   landmarks_str = femur_landmarks_slicer_F324_Left_B,
   section_loc = 50,
   individual_id = "F324_Left",
@@ -451,6 +446,7 @@ if (file.exists(mesh_file_femur)) {
 dicom_iop_str_radius <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_radius <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_radius <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_radius <- c(dicom_iop_str_radius, dicom_ipp_1_radius, dicom_ipp_2_radius)
 
 longitudinal_matrix_str_radius <- "
 AAM_T-324_radio_D	44.080015942418335	42.95720179215419	133.55952713852332	27089.50882590009	48.761115886621546	327980.4273665555	329095.261157972	3115.9014055120465	-162.16410856405977	-10145.27733217148	31.245220695520096	329126.5532500726	328265.66037740244	2799.3763025646913	0.031183739970721044	-1.1120859949082385E-4	-0.9995136627350755	-0.9811818843788818	0.19064031021506495	-0.03063301956731138	-0.19055100138321474	-0.981659951181544	-0.005835761998476635
@@ -466,9 +462,7 @@ radius_landmarks_str_R324_Right_A <- "
 res_radius <- orient_longbone(
   mode = "RADIUS",
   longitudinal_matrix_str = longitudinal_matrix_str_radius,
-  dicom_iop = dicom_iop_str_radius,
-  dicom_ipp_1 = dicom_ipp_1_radius,
-  dicom_ipp_2 = dicom_ipp_2_radius,
+  dicom_orientation = dicom_orientation_radius,
   landmarks_str = radius_landmarks_str_R324_Right_A,
   section_loc = c(35, 50),
   individual_id = "R324_Right",
@@ -494,6 +488,7 @@ copy_tcl(res_radius, section = "SECTION_50")
 dicom_iop_str_radius <- r"(0020,0037  Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_radius <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2_radius <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation_radius <- c(dicom_iop_str_radius, dicom_ipp_1_radius, dicom_ipp_2_radius)
 
 longitudinal_matrix_str_radius <- "
 AAM_T-324_radio_D	44.080015942418335	42.95720179215419	133.55952713852332	27089.50882590009	48.761115886621546	327980.4273665555	329095.261157972	3115.9014055120465	-162.16410856405977	-10145.27733217148	31.245220695520096	329126.5532500726	328265.66037740244	2799.3763025646913	0.031183739970721044	-1.1120859949082385E-4	-0.9995136627350755	-0.9811818843788818	0.19064031021506495	-0.03063301956731138	-0.19055100138321474	-0.981659951181544	-0.005835761998476635
@@ -509,9 +504,7 @@ radius_landmarks_slicer_R324_Right_B <- "
 res_radius_true_slicer <- orient_longbone(
   mode = "RADIUS",
   longitudinal_matrix_str = longitudinal_matrix_str_radius,
-  dicom_iop = dicom_iop_str_radius,
-  dicom_ipp_1 = dicom_ipp_1_radius,
-  dicom_ipp_2 = dicom_ipp_2_radius,
+  dicom_orientation = dicom_orientation_radius,
   landmarks_str = radius_landmarks_slicer_R324_Right_B,
   section_loc = c(35, 50),
   individual_id = "R324_Right",
@@ -595,9 +588,7 @@ humerus_table_landmarks_str_H108_Right_A <- "
 res_humerus_table <- orient_longbone(
   mode = "HUMERUS_TABLE",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-  dicom_iop = dicom_iop_str_humerus,
-  dicom_ipp_1 = dicom_ipp_1_humerus,
-  dicom_ipp_2 = dicom_ipp_2_humerus,
+  dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_table_landmarks_str_H108_Right_A,
   section_loc = c(35, 50),
   individual_id = "H108_Right_Table",

@@ -10,6 +10,7 @@ devtools::load_all()
 dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
 dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
+dicom_orientation <- c(dicom_iop_str, dicom_ipp_1, dicom_ipp_2)
 
 longitudinal_matrix_str_tibia <- "
 ||0.008|-0.758|-0.653||
@@ -39,9 +40,7 @@ tibia_landmarks_str <- "
 res_tibia <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
-  dicom_iop = dicom_iop_str,
-  dicom_ipp_1 = dicom_ipp_1,
-  dicom_ipp_2 = dicom_ipp_2,
+  dicom_orientation = dicom_orientation,
   landmarks_str = tibia_landmarks_str,
   section_loc = c(50),
   individual_id = "TIBIA_TEST_T108",
@@ -83,9 +82,7 @@ humerus_landmarks_str <- "
 res_humerus <- orient_longbone(
   mode = "HUMERUS",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-  dicom_iop = dicom_iop_str,
-  dicom_ipp_1 = dicom_ipp_1,
-  dicom_ipp_2 = dicom_ipp_2,
+  dicom_orientation = dicom_orientation,
   landmarks_str = humerus_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_TEST_T108",
@@ -132,9 +129,7 @@ humerus_table_landmarks_str <- "
 res_humerus_table <- orient_longbone(
   mode = "HUMERUS_TABLE",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
-  dicom_iop = dicom_iop_str,
-  dicom_ipp_1 = dicom_ipp_1,
-  dicom_ipp_2 = dicom_ipp_2,
+  dicom_orientation = dicom_orientation,
   landmarks_str = humerus_table_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_TABLE_TEST_T108",

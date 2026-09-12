@@ -2,7 +2,7 @@
 
 * Explicitly documented and regression-tested support for current BoneJ Moments of Inertia Log output pasted verbatim as three `[INFO] ||...||` eigenvector rows; no manual removal of console prefixes or pipe characters is required.
 * Corrected TRUE-volume BoneJ axis conversion by using DICOM Image Orientation (Patient) together with Image Position (Patient) from two consecutive slices in BoneJ stack order. The ordered IPP pair determines whether stack Z follows or opposes the IOP-derived normal.
-* Added required `dicom_ipp_1` and `dicom_ipp_2` arguments for every `SOLID = FALSE` long-bone workflow. The change is applied before anatomical section construction and therefore affects Avizo/Amira and 3D Slicer output consistently for all supported TRUE-volume long-bone modes.
+* Consolidated TRUE-volume DICOM metadata into the single `dicom_orientation` argument. IOP and the two consecutive IPP lines can still be defined separately in the calling script and combined with `c(dicom_iop, dicom_ipp_1, dicom_ipp_2)`; the ordered IPP pair continues to determine the stack-Z sign.
 * Updated long-bone result summaries: the former `Bio_length` column is now `Bio_Length_&_Orient`, containing biomechanical length followed by the IOP, IPP1, and IPP2 values used for TRUE-volume orientation. The numeric length is also retained as `res$biomechanical_length`.
 * Documented that anterior/posterior display in TRUE-volume long-bone workflows assumes standardized anatomical positioning of the dry specimen during CT acquisition.
 * Added regression coverage for opposite slice-order signs, including the T109 geometry that exposed the IOP-only ambiguity, and updated examples and documentation for the new DICOM inputs.

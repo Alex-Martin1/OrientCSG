@@ -20,6 +20,17 @@ dicom_ipp_2_flip_xy <- "0020,0032 Image Position (Patient): 0\\0\\0.3"
 dicom_ipp_1_carcavilla <- "0020,0032 Image Position (Patient): 0\\0\\0"
 dicom_ipp_2_carcavilla <- "0020,0032 Image Position (Patient): 0\\0\\-0.3"
 
+dicom_orientation_flip_xy <- c(
+  dicom_iop_flip_xy,
+  dicom_ipp_1_flip_xy,
+  dicom_ipp_2_flip_xy
+)
+dicom_orientation_carcavilla <- c(
+  dicom_iop_carcavilla,
+  dicom_ipp_1_carcavilla,
+  dicom_ipp_2_carcavilla
+)
+
 longitudinal_matrix_str_tibia <- "
 ||0.008|-0.758|-0.653||
 ||0.017|-0.652|0.758||
