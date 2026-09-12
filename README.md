@@ -10,7 +10,7 @@ The package was designed to generate consistent anatomical reference systems for
 
 OrientCSG computes section locations, anatomical vectors, camera/view parameters, summary tables, manual-orientation tables, Amira/Avizo TCL command blocks, and, where requested, 3D Slicer Python blocks.
 
-The anatomical logic for long bones follows criteria grounded in Ruff’s (2002) proposals for long-bone orientation. The mandibular workflow is broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019).
+The anatomical logic for long bones follows criteria grounded in Ruff’s (2003) proposals for long-bone orientation. The mandibular workflow is broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019).
 
 ## Installation
 
