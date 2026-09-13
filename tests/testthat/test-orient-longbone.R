@@ -586,3 +586,76 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_radius, "PROXIMAL_AXIS_POINT =")
   expect_contains_fixed(py_radius, "ANTERIOR_UP_SIGN = 1")
 })
+
+
+test_that("TRUE-volume tibial orientation is invariant to swapping plateau landmarks", {
+  xyz <- matrix_from_xyz_string(tibia_landmarks_str)
+  swapped <- xyz[c(2, 1, 3), , drop = FALSE]
+
+  res_a <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    lm_coord_system = "LPS",
+    section_loc = 50,
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+
+  res_b <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = paste(apply(swapped, 1, paste, collapse = " "), collapse = "\n"),
+    lm_coord_system = "LPS",
+    section_loc = 50,
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+
+  expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
+  expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
+  expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
+  expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+})
+
+test_that("TRUE-volume femoral orientation is invariant to swapping condylar landmarks", {
+  xyz <- matrix_from_xyz_string(femur_landmarks_str)
+  swapped <- xyz[c(2, 1, 3), , drop = FALSE]
+
+  res_a <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = femur_landmarks_str,
+    section_loc = 50,
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+
+  res_b <- orient_longbone(
+    mode = "FEMUR",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = paste(apply(swapped, 1, paste, collapse = " "), collapse = "\n"),
+    section_loc = 50,
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+
+  expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
+  expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
+  expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
+  expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+})
+
+test_that("tibial plain XYZ and Slicer-table inputs preserve the same landmark order", {
+  xyz <- matrix_from_xyz_string(tibia_landmarks_str)
+  slicer_table <- make_slicer_markup_table(xyz)
+
+  plain <- parse_landmarks(tibia_landmarks_str, n_landmarks = 3, context = "TIBIA")
+  table <- parse_landmarks(slicer_table, n_landmarks = 3, context = "TIBIA")
+
+  expect_equal(unname(plain), unname(table), tolerance = 1e-12)
+})

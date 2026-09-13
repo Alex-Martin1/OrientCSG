@@ -184,15 +184,17 @@ The \code{mode} argument determines how landmarks are interpreted and how the
 mediolateral axis is constructed.
 \itemize{
 \item \code{"TIBIA"} uses three landmarks: two plateau landmarks and one tibio-talar
-landmark. The midpoint between the plateau landmarks defines the proximal
-endpoint of biomechanical length.
+landmark. The plateau pair defines an undirected transverse axis, so swapping
+those two landmarks does not change TRUE-volume orientation. Their midpoint
+defines the proximal endpoint of biomechanical length.
 \item \code{"HUMERUS"} uses four landmarks: two distal landmarks defining the
 mediolateral reference direction, one distal landmark for biomechanical
 length, and one proximal landmark on the humeral head.
 \item \code{"FEMUR"} uses three landmarks: two distal condylar articular-centre
 landmarks and one proximal landmark on the superior femoral neck. The
-midpoint between the condylar landmarks defines the distal endpoint of
-biomechanical length.
+condylar pair defines an undirected transverse axis in TRUE-volume workflows,
+so swapping those two landmarks does not change the final orientation. The
+midpoint between them defines the distal endpoint of biomechanical length.
 \item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
 midpoint, the distal radiocarpal articular centre, and the proximal radial
 head articular centre.
@@ -234,8 +236,10 @@ retain the established OrientCSG acquisition convention: dry bones must be
 scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
 resolves the physical stack axes and slice-order sign; it cannot infer an
 anatomical anterior/posterior reversal caused by placing a specimen rotated
-180 degrees around its longitudinal axis. No additional landmarks are required
-when the scanning-position convention is followed consistently.
+180 degrees around its longitudinal axis. For TRUE-volume tibiae and femora,
+this acquisition convention also resolves the sign of the otherwise undirected
+plateau/condylar transverse axis. No additional landmarks are required when the
+scanning-position convention is followed consistently.
 }
 
 \section{Section locations}{

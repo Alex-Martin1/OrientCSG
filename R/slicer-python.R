@@ -44,8 +44,8 @@ emit_slicer_section_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_TibioTalar
     proximal_endpoint <- res$projected$Proj_Midpoint
-    # In the current tibial landmark convention, AP points posterior in the
-    # generated Slicer view; use -AP as screen-up so anterior appears at the top.
+    # TRUE-volume tibial AP sign is resolved from the CT acquisition convention;
+    # use the established -AP screen-up convention so anterior appears at the top.
     anterior_up_sign <- -1
     ml_right_sign <- 1
   } else if (identical(res$type, "HUMERUS")) {
@@ -490,9 +490,9 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_TibioTalar
     proximal_endpoint <- res$projected$Proj_Midpoint
-    # Match the existing Slicer long-bone camera convention: use -AP as
-    # screen-up so that the anterior aspect is displayed at the top for the
-    # current tibial landmark convention.
+    # TRUE-volume tibial AP sign is resolved from the CT acquisition convention;
+    # retain the established -AP screen-up convention so anterior is displayed
+    # at the top.
     anterior_up_sign <- -1
     ml_right_sign <- 1
   } else if (identical(res$type, "HUMERUS")) {

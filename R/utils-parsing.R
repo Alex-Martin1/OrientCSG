@@ -113,11 +113,8 @@ normalize_lm_coordinates <- function(coords, lm_coord_system = "LPS", arg = "lm_
 #   1. Plain XYZ coordinates, one landmark per line or as a numeric stream.
 #   2. Slicer-style rows, where columns 2:4 contain X, Y and Z coordinates.
 #
-# For tibial Slicer-style rows, the historical OrientCSG order is preserved:
-# row 1 = Plateau2, row 2 = Plateau1, row 3 = TibioTalar. The returned matrix is
-# reordered to the internal order Plateau1, Plateau2, TibioTalar.
+# Input format affects parsing only; it must not alter landmark order or geometry.
 parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
-  context_upper <- toupper(trimws(context))
   expected_n <- n_landmarks * 3
 
   lines <- clean_landmark_lines(landmarks_str)
@@ -175,10 +172,6 @@ parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
   }
 
   colnames(mat) <- c("x", "y", "z")
-
-  if (detected_table && identical(context_upper, "TIBIA") && nrow(mat) == 3L) {
-    mat <- mat[c(2, 1, 3), , drop = FALSE]
-  }
 
   mat
 }
