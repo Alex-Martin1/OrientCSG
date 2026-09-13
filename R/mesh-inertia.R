@@ -6,7 +6,8 @@
 # axis for elongated bones.
 compute_mesh_inertia_axes <- function(mesh_file,
                                       clean = FALSE,
-                                      stabilize_first_axis_negative_z = TRUE) {
+                                      stabilize_first_axis_negative_z = TRUE,
+                                      chunk_size = 250000L) {
   if (!requireNamespace("Rvcg", quietly = TRUE)) {
     stop(
       "Package 'Rvcg' is required for `SOLID = TRUE`. Install it with install.packages('Rvcg').",
@@ -22,36 +23,73 @@ compute_mesh_inertia_axes <- function(mesh_file,
     stop("Mesh file does not exist: ", mesh_file, call. = FALSE)
   }
 
-  mesh <- Rvcg::vcgImport(mesh_file, clean = clean, readcolor = FALSE, silent = TRUE)
+  chunk_size <- as.integer(chunk_size)
+  if (length(chunk_size) != 1L || is.na(chunk_size) || chunk_size < 1L) {
+    stop("`chunk_size` must be a positive integer.", call. = FALSE)
+  }
+
+  # Vertex normals are not used for the solid mass-property calculation, so
+  # avoid the potentially expensive normal recomputation during import.
+  mesh <- Rvcg::vcgImport(
+    mesh_file,
+    updateNormals = FALSE,
+    clean = clean,
+    readcolor = FALSE,
+    silent = TRUE
+  )
 
   if (is.null(mesh$vb) || is.null(mesh$it)) {
     stop("The imported mesh does not contain vertices and triangular faces.", call. = FALSE)
   }
 
-  vertices <- t(mesh$vb[1:3, , drop = FALSE])
-  faces <- t(mesh$it[1:3, , drop = FALSE])
+  n_faces <- ncol(mesh$it)
+  if (is.null(n_faces) || n_faces < 1L) {
+    stop("The imported mesh does not contain triangular faces.", call. = FALSE)
+  }
 
   mass <- 0
   first_moment <- c(0, 0, 0)
   second_moment <- matrix(0, nrow = 3, ncol = 3)
 
-  for (i in seq_len(nrow(faces))) {
-    a <- vertices[faces[i, 1], ]
-    b <- vertices[faces[i, 2], ]
-    c <- vertices[faces[i, 3], ]
+  # The original implementation accumulated the same signed-tetrahedron
+  # expressions one face at a time in R. Process faces in vectorized chunks
+  # instead. This preserves the same solid integral while avoiding millions of
+  # interpreted R-loop iterations and large full-mesh transpose copies.
+  starts <- seq.int(1L, n_faces, by = chunk_size)
 
-    V <- dot3(a, cross3(b, c)) / 6
+  for (start in starts) {
+    end <- min(start + chunk_size - 1L, n_faces)
+    idx <- start:end
+
+    f1 <- mesh$it[1L, idx]
+    f2 <- mesh$it[2L, idx]
+    f3 <- mesh$it[3L, idx]
+
+    a <- t(mesh$vb[1:3, f1, drop = FALSE])
+    b <- t(mesh$vb[1:3, f2, drop = FALSE])
+    c <- t(mesh$vb[1:3, f3, drop = FALSE])
+
+    # Row-wise dot(a, cross(b, c)) / 6.
+    volume6 <-
+      a[, 1L] * (b[, 2L] * c[, 3L] - b[, 3L] * c[, 2L]) +
+      a[, 2L] * (b[, 3L] * c[, 1L] - b[, 1L] * c[, 3L]) +
+      a[, 3L] * (b[, 1L] * c[, 2L] - b[, 2L] * c[, 1L])
+
+    V <- volume6 / 6
     S <- a + b + c
 
-    first_moment <- first_moment + V * S / 4
+    mass <- mass + sum(V)
+    first_moment <- first_moment + colSums(S * V) / 4
 
-    Q <- outer(a, a) +
-      outer(b, b) +
-      outer(c, c) +
-      outer(S, S)
-
-    second_moment <- second_moment + V * Q / 20
-    mass <- mass + V
+    # Sum V * [aa' + bb' + cc' + SS'] / 20 without constructing
+    # one 3 x 3 matrix per triangle. crossprod() performs the heavy work in
+    # compiled code.
+    second_moment <- second_moment + (
+      crossprod(a, a * V) +
+        crossprod(b, b * V) +
+        crossprod(c, c * V) +
+        crossprod(S, S * V)
+    ) / 20
   }
 
   if (abs(mass) < .Machine$double.eps) {
