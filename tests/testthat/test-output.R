@@ -115,6 +115,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mod
   expect_contains_fixed(py, "ORIENT_3D_CAMERA = True")
   expect_contains_fixed(py, "VIEW_FROM_PROXIMAL = True")
   expect_contains_fixed(py, "ANTERIOR_UP_SIGN = 1")
+  expect_contains_fixed(py, "ML_RIGHT_SIGN = 1")
   expect_contains_fixed(py, "def compute_camera_basis(L, ML, AP):")
   expect_contains_fixed(py, "camera = orient_3d_camera(volumeNode)")
   expect_contains_fixed(py, "restore_3d_camera()")
@@ -155,6 +156,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
   expect_contains_fixed(py, "ORIENT_3D_CAMERA = True")
   expect_contains_fixed(py, "VIEW_FROM_PROXIMAL = True")
   expect_contains_fixed(py, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py, "ML_RIGHT_SIGN = -1")
   expect_contains_fixed(py, "A proximal view places the camera on the proximal side")
   expect_contains_fixed(py, "camera.SetPosition")
   expect_contains_fixed(py, "camera.SetParallelScale(FIELD_OF_VIEW_MM / 2.0)")
@@ -185,8 +187,31 @@ test_that("solid-mesh Slicer Python uses restore_view as public helper", {
 
   py <- OrientCSG:::emit_slicer_section_python(res, section = "SECTION_50")
   expect_contains_fixed(py, "MODEL_NAME = \"T108_solid\"")
+  expect_contains_fixed(py, "VIEW_FROM_PROXIMAL = True")
+  expect_contains_fixed(py, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py, "ML_RIGHT_SIGN = -1")
   expect_contains_fixed(py, "def restore_view(modelNode=None):")
   expect_contains_fixed(py, "To restore this view later, run: restore_view()")
   expect_false(grepl("restore_orientcsg_camera_state", py, fixed = TRUE))
 })
 
+
+
+test_that("Slicer long-bone screen signs are shared across TRUE and SOLID backends", {
+  expect_equal(
+    OrientCSG:::slicer_longbone_screen_signs("TIBIA", TRUE),
+    list(anterior_up_sign = -1, ml_right_sign = -1)
+  )
+  expect_equal(
+    OrientCSG:::slicer_longbone_screen_signs("FEMUR", TRUE),
+    list(anterior_up_sign = -1, ml_right_sign = -1)
+  )
+  expect_equal(
+    OrientCSG:::slicer_longbone_screen_signs("HUMERUS", TRUE),
+    list(anterior_up_sign = 1, ml_right_sign = 1)
+  )
+  expect_equal(
+    OrientCSG:::slicer_longbone_screen_signs("RADIUS", TRUE),
+    list(anterior_up_sign = 1, ml_right_sign = 1)
+  )
+})

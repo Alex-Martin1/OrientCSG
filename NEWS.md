@@ -2,7 +2,7 @@
 
 * Corrected TRUE-volume tibial and femoral in-plane orientation so the two non-directional transverse landmarks define an undirected axis: swapping LM1 and LM2 no longer changes the final ML/AP vectors or the displayed anterior-up orientation.
 * Removed the historical tibial Slicer-table row swap from landmark parsing; identical coordinates now produce identical geometry whether supplied as plain XYZ rows or copied as a Slicer-style table.
-* Retained the established CT acquisition convention used to resolve anterior/posterior sign for tibiae and femora. Solid-mesh workflows are unchanged in this release.
+* Retained the established CT acquisition convention used to resolve anterior/posterior sign for tibiae and femora. The TRUE-volume and solid-mesh Slicer backends now share the same anatomical screen convention and preserve a proximal viewing side.
 
 # OrientCSG 1.0.1
 

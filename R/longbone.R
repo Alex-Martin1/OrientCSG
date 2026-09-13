@@ -122,8 +122,10 @@
 #' is omitted, the Python block first tries to use the background volume in the
 #' selected slice view and then the only scalar volume in the scene. When
 #' `SLICER = TRUE` and `SOLID = TRUE`, the generated Python code assumes that
-#' the corresponding model is loaded in 3D Slicer. If `model_name` is omitted,
-#' the function uses the basename of `mesh_file` when available. Landmark rows
+#' the corresponding model is loaded in 3D Slicer. Both Slicer routes use the
+#' same anatomical screen convention and display sections from the proximal side.
+#' If `model_name` is omitted, the function uses the basename of `mesh_file` when
+#' available. Landmark rows
 #' copied from a Slicer Markups table can be supplied through `landmarks_str`;
 #' however, the coordinate system must describe the numeric values that are
 #' actually pasted into R. In common Slicer Markups table/export workflows these

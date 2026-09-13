@@ -557,6 +557,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_femur, "DISTAL_AXIS_POINT =")
   expect_contains_fixed(py_femur, "PROXIMAL_AXIS_POINT =")
   expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py_femur, "ML_RIGHT_SIGN = -1")
 
   # The solid-mesh Slicer generator uses the same femoral screen-up convention.
   res_femur_solid <- res_femur
@@ -568,6 +569,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   )
   expect_contains_fixed(py_femur_solid, "MODEL_NAME = \"FEMUR_model\"")
   expect_contains_fixed(py_femur_solid, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py_femur_solid, "ML_RIGHT_SIGN = -1")
 
   res_radius <- orient_longbone(
     mode = "RADIUS",
@@ -585,6 +587,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_radius, "DISTAL_AXIS_POINT =")
   expect_contains_fixed(py_radius, "PROXIMAL_AXIS_POINT =")
   expect_contains_fixed(py_radius, "ANTERIOR_UP_SIGN = 1")
+  expect_contains_fixed(py_radius, "ML_RIGHT_SIGN = 1")
 })
 
 

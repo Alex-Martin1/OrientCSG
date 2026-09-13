@@ -1,5 +1,28 @@
 # Internal 3D Slicer Python generator ----------------------------------------
 #
+# Shared long-bone screen convention for both Slicer backends.
+#
+# The TRUE-volume and solid-mesh generators must use the same anatomical
+# screen basis. L is always distal-to-proximal and the generated view is from
+# the proximal side. These signs therefore control only the in-plane display.
+slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
+  if (!isTRUE(use_anat_orient)) {
+    return(list(anterior_up_sign = 1, ml_right_sign = 1))
+  }
+
+  switch(
+    type,
+    TIBIA = list(anterior_up_sign = -1, ml_right_sign = -1),
+    HUMERUS = list(anterior_up_sign = 1, ml_right_sign = 1),
+    FEMUR = list(anterior_up_sign = -1, ml_right_sign = -1),
+    RADIUS = list(anterior_up_sign = 1, ml_right_sign = 1),
+    stop(
+      sprintf("Unsupported anatomical Slicer long-bone mode: %s", type),
+      call. = FALSE
+    )
+  )
+}
+
 # Convert a long-bone orientation result into one Python block per requested
 # section. The generated block is intended to be pasted into the 3D Slicer
 # Python Interactor with the corresponding scalar volume or mesh model already
@@ -24,6 +47,10 @@ emit_slicer_section_python <- function(res, section = NULL) {
     )
   }
 
+  screen_signs <- slicer_longbone_screen_signs(res$type, res$USE_ANAT_ORIENT)
+  anterior_up_sign <- screen_signs$anterior_up_sign
+  ml_right_sign <- screen_signs$ml_right_sign
+
   if (!isTRUE(res$SOLID)) {
     return(emit_slicer_longbone_volume_python(res, section = section))
   }
@@ -36,44 +63,30 @@ emit_slicer_section_python <- function(res, section = NULL) {
     axis_len <- 80
     distal_endpoint <- section_point - 0.5 * axis_len * res$vectors$L
     proximal_endpoint <- section_point + 0.5 * axis_len * res$vectors$L
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   } else if (identical(res$type, "TIBIA")) {
     if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
       stop("Projected tibial endpoints are required for Slicer output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_TibioTalar
     proximal_endpoint <- res$projected$Proj_Midpoint
-    # TRUE-volume tibial AP sign is resolved from the CT acquisition convention;
-    # use the established -AP screen-up convention so anterior appears at the top.
-    anterior_up_sign <- -1
-    ml_right_sign <- 1
   } else if (identical(res$type, "HUMERUS")) {
     if (is.null(res$projected$Proj_LM3) || is.null(res$projected$Proj_LM4)) {
       stop("Projected humeral endpoints are required for Slicer output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_LM3
     proximal_endpoint <- res$projected$Proj_LM4
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   } else if (identical(res$type, "FEMUR")) {
     if (is.null(res$projected$Proj_CondyleMidpoint) || is.null(res$projected$Proj_SuperiorNeck)) {
       stop("Projected femoral endpoints are required for Slicer output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_CondyleMidpoint
     proximal_endpoint <- res$projected$Proj_SuperiorNeck
-    # Use -AP as screen-up so that the anterior femoral aspect is displayed at
-    # the top of the section, matching the Avizo/Amira capture convention.
-    anterior_up_sign <- -1
-    ml_right_sign <- 1
   } else if (identical(res$type, "RADIUS")) {
     if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {
       stop("Projected radial endpoints are required for Slicer output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_DistArticular
     proximal_endpoint <- res$projected$Proj_ProxArticular
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   }
 
   # OrientCSG stores long-bone geometry internally in the external mesh/LPS-like
@@ -474,6 +487,10 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     )
   }
 
+  screen_signs <- slicer_longbone_screen_signs(res$type, res$USE_ANAT_ORIENT)
+  anterior_up_sign <- screen_signs$anterior_up_sign
+  ml_right_sign <- screen_signs$ml_right_sign
+
   if (!isTRUE(res$USE_ANAT_ORIENT)) {
     if (is.null(res$vectors$X_screen) || is.null(res$vectors$Y_screen)) {
       stop("Screen-reference vectors are required for section-only Slicer volume output.", call. = FALSE)
@@ -482,45 +499,30 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     axis_len <- 80
     distal_endpoint <- section_point - 0.5 * axis_len * res$vectors$L
     proximal_endpoint <- section_point + 0.5 * axis_len * res$vectors$L
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   } else if (identical(res$type, "TIBIA")) {
     if (is.null(res$projected$Proj_TibioTalar) || is.null(res$projected$Proj_Midpoint)) {
       stop("Projected tibial endpoints are required for Slicer volume output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_TibioTalar
     proximal_endpoint <- res$projected$Proj_Midpoint
-    # TRUE-volume tibial AP sign is resolved from the CT acquisition convention;
-    # retain the established -AP screen-up convention so anterior is displayed
-    # at the top.
-    anterior_up_sign <- -1
-    ml_right_sign <- 1
   } else if (identical(res$type, "HUMERUS")) {
     if (is.null(res$projected$Proj_LM3) || is.null(res$projected$Proj_LM4)) {
       stop("Projected humeral endpoints are required for Slicer volume output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_LM3
     proximal_endpoint <- res$projected$Proj_LM4
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   } else if (identical(res$type, "FEMUR")) {
     if (is.null(res$projected$Proj_CondyleMidpoint) || is.null(res$projected$Proj_SuperiorNeck)) {
       stop("Projected femoral endpoints are required for Slicer volume output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_CondyleMidpoint
     proximal_endpoint <- res$projected$Proj_SuperiorNeck
-    # Use -AP as screen-up so that the anterior femoral aspect is displayed at
-    # the top of the section, matching the Avizo/Amira capture convention.
-    anterior_up_sign <- -1
-    ml_right_sign <- 1
   } else if (identical(res$type, "RADIUS")) {
     if (is.null(res$projected$Proj_DistArticular) || is.null(res$projected$Proj_ProxArticular)) {
       stop("Projected radial endpoints are required for Slicer volume output.", call. = FALSE)
     }
     distal_endpoint <- res$projected$Proj_DistArticular
     proximal_endpoint <- res$projected$Proj_ProxArticular
-    anterior_up_sign <- 1
-    ml_right_sign <- 1
   }
 
   # OrientCSG stores long-bone geometry internally in the external LPS-like
