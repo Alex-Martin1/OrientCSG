@@ -618,6 +618,12 @@ test_that("TRUE-volume tibial orientation is invariant to swapping plateau landm
   expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
   expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
   expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+
+  # The canonical TRUE-volume sign must agree with the established CT
+  # acquisition reference, not merely be invariant to landmark swapping.
+  ct_ap_reference <- c(0, -1, 0)
+  expect_gt(sum(res_a$vectors$AP * ct_ap_reference), 0)
+  expect_gt(sum(res_b$vectors$AP * ct_ap_reference), 0)
 })
 
 test_that("TRUE-volume femoral orientation is invariant to swapping condylar landmarks", {
@@ -648,6 +654,10 @@ test_that("TRUE-volume femoral orientation is invariant to swapping condylar lan
   expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
   expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
   expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+
+  ct_ap_reference <- c(0, -1, 0)
+  expect_gt(sum(res_a$vectors$AP * ct_ap_reference), 0)
+  expect_gt(sum(res_b$vectors$AP * ct_ap_reference), 0)
 })
 
 test_that("tibial plain XYZ and Slicer-table inputs preserve the same landmark order", {

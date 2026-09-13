@@ -452,15 +452,15 @@ orient_longbone <- function(mode,
     # transverse landmark pair. Swapping them reverses the provisional ML/AP
     # signs but must not change the anatomical result. Resolve that arbitrary
     # sign with the established CT acquisition convention. The legacy capture
-    # protocol uses (0, -1, 0) as the scanner/table AP reference and displays
-    # the opposite in-plane direction as anterior for these two elements.
+    # protocol uses (0, -1, 0) as the scanner/table AP reference; Slicer/Avizo
+    # then apply the established tibia/femur anterior-up screen convention.
     #
     # This is deliberately limited to SOLID = FALSE: mesh workflows may come
     # from acquisitions with different orientation assumptions and are left
     # unchanged here.
     if (!isTRUE(SOLID) && mode %in% c("TIBIA", "FEMUR")) {
       ct_ap_reference <- nrm(c(0, -1, 0))
-      if (dot3(APh, ct_ap_reference) > 0) {
+      if (dot3(APh, ct_ap_reference) < 0) {
         APh <- -APh
         MLh <- -MLh
       }
