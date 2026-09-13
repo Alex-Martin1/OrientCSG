@@ -1,3 +1,9 @@
+# OrientCSG 1.0.3
+
+* Added `flash_capture()`, a batch long-bone section-capture generator for the three primary workflows: Avizo/Amira + CT, 3D Slicer + CT, and 3D Slicer + SOLID mesh.
+* Flash Capture reuses a user-prepared reference view rather than recomputing anatomical orientation: Avizo/Amira moves only the Slice object, Slicer CT translates the prepared slice view and scale, and Slicer SOLID re-cuts the source mesh while preserving the prepared 3D camera.
+* Added Flash Capture documentation, regression tests, README guidance, and a tibial installed example using five sections (20, 35, 50, 65, and 80%).
+
 # OrientCSG 1.0.2
 
 * Corrected TRUE-volume tibial and femoral in-plane orientation so the two non-directional transverse landmarks define an undirected axis: swapping LM1 and LM2 no longer changes the final ML/AP vectors or the displayed anterior-up orientation.

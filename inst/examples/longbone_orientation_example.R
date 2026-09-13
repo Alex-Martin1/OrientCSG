@@ -77,8 +77,9 @@ copy_tcl(res_tibia, section = "SECTION_50")
 
 # 1B. TIBIA: CT/DICOM true cross-section + 3D Slicer workflow ================
 #
-# Same specimen and section location as in the main TIBIA example above, but
-# with the landmarks represented as if copied from the 3D Slicer Markups table.
+# Same specimen as in the main TIBIA example above, but with five section
+# locations for batch capture and landmarks represented as if copied from the
+# 3D Slicer Markups table.
 
 dicom_iop_str_tibia <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
 dicom_ipp_1_tibia <- r"(0020,0032 Image Position (Patient): 0\0\0)"
@@ -102,7 +103,7 @@ res_tibia_true_slicer <- orient_longbone(
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
   dicom_orientation = dicom_orientation_tibia,
   landmarks_str = tibia_landmarks_slicer_T108_Left_B,
-  section_loc = 50,
+  section_loc = c(20, 35, 50, 65, 80),
   individual_id = "T108_Left",
   SOLID = FALSE,
   SLICER = TRUE,
@@ -119,6 +120,15 @@ cat(get_slicer_py(res_tibia_true_slicer, section = "SECTION_50"))
 
 # To copy this Python block to the clipboard, run:
 copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
+
+# After pasting SECTION_50 in Slicer and configuring the desired view, one
+# Flash Capture block can export all five requested sections. Edit the output
+# directory before running this command:
+# flash_capture(
+#   res_tibia_true_slicer,
+#   output_dir = "C:/Users/Alex/Desktop/T108_Left_flash",
+#   file_name = "T108_Left"
+# )
 
 
 # 1C. TIBIA: solid mesh + 3D Slicer workflow =================================
