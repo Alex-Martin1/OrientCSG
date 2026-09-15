@@ -158,8 +158,13 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
   expect_contains_fixed(py, "ANTERIOR_UP_SIGN = -1")
   expect_contains_fixed(py, "ML_RIGHT_SIGN = -1")
   expect_contains_fixed(py, "A proximal view places the camera on the proximal side")
+  expect_contains_fixed(py, "CAMERA_DISTANCE = 1.000000")
+  expect_contains_fixed(py, "BASE_FIELD_OF_VIEW_Y_MM = 70.0")
+  expect_contains_fixed(py, "BASE_PARALLEL_SCALE_MM = 35.0")
+  expect_contains_fixed(py, "fov_y = BASE_FIELD_OF_VIEW_Y_MM * CAMERA_DISTANCE")
+  expect_contains_fixed(py, "fov_x = fov_y * aspect")
   expect_contains_fixed(py, "camera.SetPosition")
-  expect_contains_fixed(py, "camera.SetParallelScale(FIELD_OF_VIEW_MM / 2.0)")
+  expect_contains_fixed(py, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
   expect_contains_fixed(py, "restore_3d_camera()")
   expect_contains_fixed(py, "restore_view()")
   expect_false(grepl("restore_orientcsg_camera_state", py, fixed = TRUE))
@@ -182,11 +187,14 @@ test_that("solid-mesh Slicer Python uses restore_view as public helper", {
       Proj_Midpoint = c(10, 20, 100)
     ),
     model_name = "T108_solid",
-    camera_distance_mm = 300
+    camera_distance = 1
   )
 
   py <- OrientCSG:::emit_slicer_section_python(res, section = "SECTION_50")
   expect_contains_fixed(py, "MODEL_NAME = \"T108_solid\"")
+  expect_contains_fixed(py, "CAMERA_DISTANCE = 1.000000")
+  expect_contains_fixed(py, "BASE_PARALLEL_SCALE_MM = 35.0")
+  expect_contains_fixed(py, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
   expect_contains_fixed(py, "VIEW_FROM_PROXIMAL = True")
   expect_contains_fixed(py, "ANTERIOR_UP_SIGN = -1")
   expect_contains_fixed(py, "ML_RIGHT_SIGN = -1")
@@ -214,4 +222,50 @@ test_that("Slicer long-bone screen signs are shared across TRUE and SOLID backen
     OrientCSG:::slicer_longbone_screen_signs("RADIUS", TRUE),
     list(anterior_up_sign = 1, ml_right_sign = 1)
   )
+})
+
+
+test_that("camera_distance controls orthographic framing in all long-bone backends", {
+  res_avizo <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50,
+    camera_distance = 1.5
+  )
+  tcl <- get_tcl(res_avizo, section = "SECTION_50")
+  expect_contains_fixed(tcl, "setCameraType orthographic")
+  expect_contains_fixed(tcl, "setCameraHeight 150.000000")
+
+  res_true <- orient_longbone(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50,
+    camera_distance = 1.5,
+    SLICER = TRUE
+  )
+  py_true <- get_slicer_py(res_true, section = "SECTION_50")
+  expect_contains_fixed(py_true, "CAMERA_DISTANCE = 1.500000")
+  expect_contains_fixed(py_true, "BASE_FIELD_OF_VIEW_Y_MM = 70.0")
+  expect_contains_fixed(py_true, "fov_y = BASE_FIELD_OF_VIEW_Y_MM * CAMERA_DISTANCE")
+  expect_contains_fixed(py_true, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
+
+  res_solid <- list(
+    USE_ANAT_ORIENT = TRUE,
+    type = "TIBIA",
+    SOLID = TRUE,
+    section_points = list(SECTION_50 = c(10, 20, 30)),
+    vectors = list(L = c(0, 0, 1), ML = c(1, 0, 0), AP = c(0, 1, 0)),
+    projected = list(Proj_TibioTalar = c(10, 20, 0), Proj_Midpoint = c(10, 20, 100)),
+    model_name = "T108_solid",
+    camera_distance = 1.5
+  )
+  py_solid <- OrientCSG:::emit_slicer_section_python(res_solid, section = "SECTION_50")
+  expect_contains_fixed(py_solid, "CAMERA_DISTANCE = 1.500000")
+  expect_contains_fixed(py_solid, "BASE_PARALLEL_SCALE_MM = 35.0")
+  expect_contains_fixed(py_solid, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
+  expect_false(grepl("PARALLEL_SCALE_MARGIN", py_solid, fixed = TRUE))
 })

@@ -44,7 +44,7 @@ res_tibia <- orient_longbone(
   landmarks_str = tibia_landmarks_str,
   section_loc = c(50),
   individual_id = "TIBIA_TEST_T108",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 print(res_tibia)
@@ -86,7 +86,7 @@ res_humerus <- orient_longbone(
   landmarks_str = humerus_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_TEST_T108",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 print(res_humerus)
@@ -133,7 +133,7 @@ res_humerus_table <- orient_longbone(
   landmarks_str = humerus_table_landmarks_str,
   section_loc = c(35, 50),
   individual_id = "HUMERUS_TABLE_TEST_T108",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 print(res_humerus_table)

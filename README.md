@@ -106,6 +106,10 @@ When `SLICER = TRUE`, OrientCSG generates a 3D Slicer Python block that creates 
 
 It is intentionally not implemented for `HUMERUS_TABLE`, because that mode relies on a standardized scanner/table orientation rather than the landmark-based anatomical workflow used by the supported Slicer modes.
 
+### Viewing distance / zoom
+
+`camera_distance` is a relative visual-framing factor, not a physical camera distance in millimetres. The default `camera_distance = 1` uses the calibrated standard view. Values below `1` zoom in and values above `1` zoom out. For long-bone workflows, OrientCSG maps the same factor to the native orthographic zoom control of each backend: Avizo/Amira uses a base `CameraHeight` of 100, Slicer TRUE uses a base Red-slice vertical field of view of 70 mm, and Slicer 3D views (including SOLID sections and TRUE verification views) use a base `ParallelScale` of 35, corresponding to approximately 70 mm of visible vertical height. The Slicer TRUE horizontal field of view is derived from the current Red-view aspect ratio so physical X/Y scale remains consistent. Mandibular Slicer output retains its established 85 mm base vertical field of view (`ParallelScale = 42.5` in 3D), with the same relative `camera_distance` scaling.
+
 ## Coordinate conventions
 
 The classic Amira/Avizo workflow generally uses the external mesh/Avizo coordinate convention used in the input data.
@@ -217,7 +221,7 @@ res <- orient_longbone(
   landmarks_str = landmarks_str,
   section_loc = 50,
   individual_id = "T108_Left",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res$summary
@@ -238,7 +242,7 @@ cat(get_slicer_py(res, section = "SECTION_50"))
 - 3D Slicer + CT (`SLICER = TRUE`, `SOLID = FALSE`);
 - 3D Slicer + SOLID mesh (`SLICER = TRUE`, `SOLID = TRUE`).
 
-The function deliberately does not recompute anatomical orientation. First orient one reference section, usually `SECTION_50`, using the normal OrientCSG output and configure the visual appearance in the external application. Then generate the batch block:
+The function deliberately does not recompute anatomical orientation. First orient one reference section, usually `SECTION_50`, using the normal OrientCSG output. Its initial framing is set by `camera_distance`; any manual zoom/pan adjustment made afterwards becomes the reference view preserved by Flash Capture. Then generate the batch block:
 
 ```r
 # Prepare the reference section first:

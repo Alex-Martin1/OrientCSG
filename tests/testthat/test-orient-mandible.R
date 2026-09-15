@@ -2,7 +2,7 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   res <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
     individual_id = "MANDIBLE_TEST",
-    camera_distance_mm = 300,
+    camera_distance = 1,
     lm1_side = "RIGHT"
   )
 
@@ -83,7 +83,11 @@ test_that("orient_mandible() uses the same anatomical superoinferior sign for Av
 
   expect_equal(res_slicer$superoinferior_reference$source, "LM9_real_gonion")
   expect_gt(dot3(res_slicer$vectors$Vec_Penp, res_slicer$superoinferior_reference$reference_vector), 0)
-  expect_contains_fixed(get_slicer_py(res_slicer, section = "CS1"), "Y_PREFERRED =")
+  py_cs1 <- get_slicer_py(res_slicer, section = "CS1")
+  expect_contains_fixed(py_cs1, "Y_PREFERRED =")
+  expect_contains_fixed(py_cs1, "CAMERA_DISTANCE = 1.000000")
+  expect_contains_fixed(py_cs1, "BASE_FIELD_OF_VIEW_Y_MM = 85.0")
+  expect_contains_fixed(py_cs1, "BASE_PARALLEL_SCALE_MM = 42.5")
 })
 
 test_that("orient_mandible() generates expected TCL blocks", {
@@ -436,4 +440,19 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs3, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs3, "Run restore_view()")
   expect_false(grepl("translate_orientcsg_section", py_cs3, fixed = TRUE))
+})
+
+
+test_that("orient_mandible() validates and applies camera_distance", {
+  res <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    camera_distance = 1.25
+  )
+  expect_equal(res$camera_distance, 1.25)
+  expect_contains_fixed(get_tcl(res, section = "CS1"), "setCameraHeight 125.000000")
+
+  expect_error(
+    orient_mandible(landmarks_str = mandible_landmarks_str, camera_distance = 0),
+    "camera_distance"
+  )
 })

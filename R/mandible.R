@@ -73,9 +73,12 @@
 #'   spaces, tabs, commas, semicolons, or vertical bars.
 #' @param individual_id Character identifier for the specimen. This value is
 #'   copied into the output tables.
-#' @param camera_distance_mm Numeric value giving the approximate camera distance
-#'   used in the generated Avizo TCL commands. The default is `300`, which is a
-#'   practical value for the current image-capture workflow.
+#' @param camera_distance Positive numeric viewing-distance factor controlling
+#'   visual framing in generated Avizo/Amira and 3D Slicer output. The default
+#'   `1` uses the calibrated standard view; values below `1` zoom in and values
+#'   above `1` zoom out. The factor is mapped to an orthographic camera height
+#'   of 100 in Avizo/Amira. In Slicer mandibular workflows, `1` preserves the
+#'   established 85 mm vertical field of view (`ParallelScale = 42.5` in 3D).
 #' @param lm1_side Character value indicating the anatomical side on which `LM1`
 #'   was placed. Allowed values are `"RIGHT"` and `"LEFT"`. This argument
 #'   controls the anatomical right-left convention used for CS3. The viewing side
@@ -166,7 +169,7 @@
 #' res <- orient_mandible(
 #'   landmarks_str = landmarks_str,
 #'   individual_id = "MANDIBLE_001",
-#'   camera_distance_mm = 300,
+#'   camera_distance = 1,
 #'   lm1_side = "RIGHT"
 #' )
 #'
@@ -189,7 +192,7 @@
 #'
 orient_mandible <- function(landmarks_str = NULL,
                             individual_id = "MANDIBLE_001",
-                            camera_distance_mm = 300,
+                            camera_distance = 1,
                             lm1_side = c("RIGHT", "LEFT"),
                             complete_arch = FALSE,
                             estimate_lm10 = FALSE,
@@ -202,6 +205,10 @@ orient_mandible <- function(landmarks_str = NULL,
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
   SLICER <- assert_logical_scalar(SLICER, "SLICER")
+  if (!is.numeric(camera_distance) || length(camera_distance) != 1L ||
+      is.na(camera_distance) || !is.finite(camera_distance) || camera_distance <= 0) {
+    stop("`camera_distance` must be a single positive finite number.", call. = FALSE)
+  }
   lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
 
   landmarks_str <- resolve_landmarks_str(landmarks_str = landmarks_str)
@@ -450,7 +457,7 @@ orient_mandible <- function(landmarks_str = NULL,
     summary = summary_tbl,
     summary_coord_system = summary_coord_system,
     measurements = measurements,
-    camera_distance_mm = camera_distance_mm,
+    camera_distance = camera_distance,
     lm1_side = lm1_side,
     lm_coord_system = lm_coord_system,
     internal_coord_system = "LPS",
@@ -734,7 +741,7 @@ avizo_tcl_mandible <- function(res) {
   Anterior_ref <- res$vectors$Anterior_ref
   Vec_LandmarkedSide <- res$vectors$Vec_LandmarkedSide
   Vec_RightToLeft <- res$vectors$Vec_RightToLeft
-  camdist <- res$camera_distance_mm
+  camera_distance <- res$camera_distance
 
   arp_block <- function() {
     emit_plane_3points("ARP", LM1, LM2, LM1_Line, color = c(0, 1, 0), hide_points = TRUE)
@@ -774,7 +781,7 @@ avizo_tcl_mandible <- function(res) {
       paste(emit_optional_orthogonal_view(Psec, X_screen, section_label), collapse = "\n"),
       "",
       "# Camera: slice parallel to screen; ARP horizontal; view from anterior (LM0 -> LM2)",
-      paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
+      paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camera_distance = camera_distance), collapse = "\n")
     )
   }
 
@@ -797,7 +804,7 @@ avizo_tcl_mandible <- function(res) {
       paste(emit_optional_orthogonal_view(Psec, X_screen, "CS3"), collapse = "\n"),
       "",
       sprintf("# Camera: slice parallel to screen; ARP horizontal; LM1 side = %s", res$lm1_side),
-      paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camDist = camdist), collapse = "\n")
+      paste(emit_camera_from_basis(Psec, Z_camera, X_screen, Y_preferred = Vec_Penp, camera_distance = camera_distance), collapse = "\n")
     )
   }
 

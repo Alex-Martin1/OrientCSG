@@ -62,7 +62,7 @@ res_tibia <- orient_longbone(
   landmarks_str = tibia_landmarks_str_T108_Left_A,
   section_loc = 50,
   individual_id = "T108_Left",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res_tibia$summary
@@ -109,7 +109,7 @@ res_tibia_true_slicer <- orient_longbone(
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "T108_Left_DICOM_VOLUME",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm_coord_system = "LPS"
 )
 
@@ -156,7 +156,7 @@ if (file.exists(mesh_file_tibia)) {
     SOLID = TRUE,
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
-    camera_distance_mm = 300
+    camera_distance = 1
   )
   
   res_tibia_solid_slicer$summary
@@ -208,7 +208,7 @@ res_humerus <- orient_longbone(
   landmarks_str = humerus_landmarks_str_H108_Right_A,
   section_loc = c(35, 50),
   individual_id = "H108_Right",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res_humerus$summary
@@ -256,7 +256,7 @@ res_humerus_true_slicer <- orient_longbone(
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "H108_Right_DICOM_VOLUME",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm_coord_system = "LPS"
 )
 
@@ -295,7 +295,7 @@ if (file.exists(mesh_file_humerus)) {
     SOLID = TRUE,
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
-    camera_distance_mm = 300
+    camera_distance = 1
   )
   
   res_humerus_solid_slicer$summary
@@ -345,7 +345,7 @@ res_femur <- orient_longbone(
   landmarks_str = femur_landmarks_str_F324_Left_A,
   section_loc = 50,
   individual_id = "F324_Left",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res_femur$summary
@@ -388,7 +388,7 @@ res_femur_true_slicer <- orient_longbone(
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "AAM_T-324_fémur_I",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm_coord_system = "LPS"
 )
 
@@ -426,7 +426,7 @@ if (file.exists(mesh_file_femur)) {
     SOLID = TRUE,
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
-    camera_distance_mm = 300
+    camera_distance = 1
   )
   
   res_femur_solid_slicer$summary
@@ -476,7 +476,7 @@ res_radius <- orient_longbone(
   landmarks_str = radius_landmarks_str_R324_Right_A,
   section_loc = c(35, 50),
   individual_id = "R324_Right",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res_radius$summary
@@ -522,7 +522,7 @@ res_radius_true_slicer <- orient_longbone(
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "AAM_T-324_radio_D",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm_coord_system = "LPS"
 )
 
@@ -563,7 +563,7 @@ if (file.exists(mesh_file_radius)) {
     SOLID = TRUE,
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
-    camera_distance_mm = 300
+    camera_distance = 1
   )
   
   res_radius_solid_slicer$summary
@@ -602,7 +602,7 @@ res_humerus_table <- orient_longbone(
   landmarks_str = humerus_table_landmarks_str_H108_Right_A,
   section_loc = c(35, 50),
   individual_id = "H108_Right_Table",
-  camera_distance_mm = 300
+  camera_distance = 1
 )
 
 res_humerus_table$summary

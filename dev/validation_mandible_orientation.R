@@ -118,7 +118,7 @@ landmarks_9_CAF <- "
 res <- orient_mandible(
   landmarks_str = landmarks_11_CAF,
   individual_id = "MANDIBLE_11_CAF_CBT",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE
 )
@@ -138,7 +138,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAF,
   individual_id = "MANDIBLE_12_CAF_CBT",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE
 )
@@ -158,7 +158,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_9_CAF,
   individual_id = "MANDIBLE_9_CAF_CBT",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE
 )
@@ -178,7 +178,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_9_CAF,
   individual_id = "MANDIBLE_9_CAF_CBF",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   lm9_valid = FALSE
@@ -199,7 +199,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_11_CAT,
   individual_id = "MANDIBLE_11_CAT_CBT",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = TRUE
 )
@@ -219,7 +219,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAT,
   individual_id = "MANDIBLE_12_CAT_CBT",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = TRUE
 )
@@ -239,7 +239,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_11_CAF,
   individual_id = "MANDIBLE_11_CAF_ELM10",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   estimate_lm10 = TRUE
@@ -260,7 +260,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_11_CAT,
   individual_id = "MANDIBLE_11_CAT_ELM10",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = TRUE,
   estimate_lm10 = TRUE
@@ -281,7 +281,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAF,
   individual_id = "MANDIBLE_12_CAF_ELM10",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   estimate_lm10 = TRUE
@@ -302,7 +302,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAT,
   individual_id = "MANDIBLE_12_CAT_ELM10",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = TRUE,
   estimate_lm10 = TRUE
@@ -323,7 +323,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAF,
   individual_id = "MANDIBLE_12_CAF_CBF",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   lm9_valid = FALSE
@@ -344,7 +344,7 @@ copy_tcl(res, section = "CS3")
 res <- orient_mandible(
   landmarks_str = landmarks_12_CAT,
   individual_id = "MANDIBLE_12_CAT_CBF",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = TRUE,
   lm9_valid = FALSE

@@ -41,7 +41,7 @@ landmarks_str <- "
 res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_EXAMPLE",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
@@ -97,7 +97,7 @@ landmarks_str_slicer_mandible <- "
 res_slicer <- orient_mandible(
   landmarks_str = landmarks_str_slicer_mandible,
   individual_id = "MANDIBLE_EXAMPLE",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT",
   complete_arch = FALSE,
   estimate_lm10 = FALSE,

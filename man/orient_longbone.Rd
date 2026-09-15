@@ -11,7 +11,7 @@ orient_longbone(
   landmarks_str = NULL,
   section_loc = 50,
   individual_id = "LONG_BONE_001",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   SOLID = FALSE,
   SLICER = FALSE,
   USE_ANAT_ORIENT = TRUE,
@@ -54,8 +54,12 @@ percentages of biomechanical length.}
 \item{individual_id}{Character identifier for the specimen. This value is
 copied into the output tables.}
 
-\item{camera_distance_mm}{Numeric value giving the approximate camera distance
-used in the generated Avizo TCL commands or Slicer Python block.}
+\item{camera_distance}{Positive numeric viewing-distance factor controlling
+visual framing in generated Avizo/Amira and 3D Slicer output. The default
+\code{1} uses the calibrated standard view; values below \code{1} zoom in and values
+above \code{1} zoom out. The factor is mapped to an orthographic camera height
+of 100 in Avizo/Amira and an approximately 70 mm vertical field of view in
+Slicer (70 mm in TRUE Red views; \code{ParallelScale = 35} in 3D views).}
 
 \item{SOLID}{Logical. If \code{TRUE}, the longitudinal axis is computed directly
 from \code{mesh_file} by treating a watertight closed surface mesh as a

@@ -7,7 +7,7 @@
 orient_mandible(
   landmarks_str = NULL,
   individual_id = "MANDIBLE_001",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = c("RIGHT", "LEFT"),
   complete_arch = FALSE,
   estimate_lm10 = FALSE,
@@ -26,9 +26,12 @@ spaces, tabs, commas, semicolons, or vertical bars.}
 \item{individual_id}{Character identifier for the specimen. This value is
 copied into the output tables.}
 
-\item{camera_distance_mm}{Numeric value giving the approximate camera distance
-used in the generated Avizo TCL commands. The default is \code{300}, which is a
-practical value for the current image-capture workflow.}
+\item{camera_distance}{Positive numeric viewing-distance factor controlling
+visual framing in generated Avizo/Amira and 3D Slicer output. The default
+\code{1} uses the calibrated standard view; values below \code{1} zoom in and values
+above \code{1} zoom out. The factor is mapped to an orthographic camera height
+of 100 in Avizo/Amira. In Slicer mandibular workflows, \code{1} preserves the
+established 85 mm vertical field of view (\code{ParallelScale = 42.5} in 3D).}
 
 \item{lm1_side}{Character value indicating the anatomical side on which \code{LM1}
 was placed. Allowed values are \code{"RIGHT"} and \code{"LEFT"}. This argument
@@ -203,7 +206,7 @@ landmarks_str <- "
 res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
-  camera_distance_mm = 300,
+  camera_distance = 1,
   lm1_side = "RIGHT"
 )
 

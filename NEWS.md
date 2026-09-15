@@ -1,5 +1,6 @@
 # OrientCSG 1.0.3
 
+* Reworked the public camera control without changing the package version: `camera_distance` now controls visible orthographic framing consistently across the three primary long-bone backends. The default factor `1` maps to `CameraHeight = 100` in Avizo/Amira and approximately 70 mm of visible vertical height in Slicer TRUE/SOLID views; values below `1` zoom in and values above `1` zoom out. The previous `camera_distance_mm` argument, which changed physical camera position without changing orthographic zoom, was removed. Mandibular Slicer output uses the same relative factor while preserving its established 85 mm base field of view.
 * Added `flash_capture()`, a batch long-bone section-capture generator for the three primary workflows: Avizo/Amira + CT, 3D Slicer + CT, and 3D Slicer + SOLID mesh.
 * Flash Capture reuses a user-prepared reference view rather than recomputing anatomical orientation: Avizo/Amira moves only the Slice object, Slicer CT translates the prepared slice view and scale, and Slicer SOLID re-cuts the source mesh while preserving the prepared 3D camera.
 * Added Flash Capture documentation, regression tests, README guidance, and a tibial installed example using five sections (20, 35, 50, 65, and 80%).

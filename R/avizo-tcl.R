@@ -139,14 +139,20 @@ emit_slice_normal_point <- function(obj, P, N, digits = 6) {
 # orientation. The camera is set to orthographic view by default because that is
 # the appropriate projection for systematic image capture.
 emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
-                                   camDist = 300, viewer_id = 0,
+                                   camera_distance = 1, viewer_id = 0,
                                    orthographic = TRUE, digits = 6) {
   basis <- make_camera_basis(Z_axis = Z_axis, X_axis = X_axis, Y_preferred = Y_preferred)
   Xcam <- basis$Xcam
   Ycam <- basis$Ycam
   Zcam <- basis$Zcam
 
-  C <- P + camDist * Zcam
+  # In orthographic projection, moving the camera does not change visual zoom.
+  # Keep a stable internal camera position and map the public camera_distance
+  # factor to the orthographic view height instead.
+  camera_position_distance_mm <- 300
+  base_camera_height <- 100
+  camera_height <- base_camera_height * camera_distance
+  C <- P + camera_position_distance_mm * Zcam
   R_cam <- cbind(Xcam, Ycam, Zcam)
   aa <- rotmat_to_axis_angle(R_cam)
   ax <- aa$axis
@@ -166,14 +172,18 @@ emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
   )
 
   if (orthographic) {
-    out <- c(out, sprintf("viewer %d setCameraType orthographic", viewer_id))
+    out <- c(
+      out,
+      sprintf("viewer %d setCameraType orthographic", viewer_id),
+      sprintf("viewer %d setCameraHeight %s", viewer_id, fmt_num(camera_height, digits))
+    )
   }
 
   c(
     out,
-    sprintf('catch {viewer %d setCameraFocalDistance %s}', viewer_id, fmt_num(camDist, digits)),
+    sprintf('catch {viewer %d setCameraFocalDistance %s}', viewer_id, fmt_num(camera_position_distance_mm, digits)),
     sprintf('catch {viewer %d setCameraNearDistance 1}', viewer_id),
-    sprintf('catch {viewer %d setCameraFarDistance %s}', viewer_id, fmt_num(camDist * 4, digits)),
+    sprintf('catch {viewer %d setCameraFarDistance %s}', viewer_id, fmt_num(camera_position_distance_mm * 4, digits)),
     sprintf("viewer %d redraw", viewer_id)
   )
 }

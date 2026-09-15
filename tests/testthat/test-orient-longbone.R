@@ -672,3 +672,21 @@ test_that("tibial plain XYZ and Slicer-table inputs preserve the same landmark o
 
   expect_equal(unname(plain), unname(table), tolerance = 1e-12)
 })
+
+
+test_that("orient_longbone() validates camera_distance", {
+  base_args <- list(
+    mode = "TIBIA",
+    longitudinal_matrix_str = longitudinal_matrix_str_tibia,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = tibia_landmarks_str,
+    section_loc = 50
+  )
+
+  res <- do.call(orient_longbone, c(base_args, list(camera_distance = 0.8)))
+  expect_equal(res$camera_distance, 0.8)
+
+  expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = 0))), "camera_distance")
+  expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = -1))), "camera_distance")
+  expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = Inf))), "camera_distance")
+})

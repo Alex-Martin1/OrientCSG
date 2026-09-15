@@ -161,8 +161,12 @@
 #'   percentages of biomechanical length.
 #' @param individual_id Character identifier for the specimen. This value is
 #'   copied into the output tables.
-#' @param camera_distance_mm Numeric value giving the approximate camera distance
-#'   used in the generated Avizo TCL commands or Slicer Python block.
+#' @param camera_distance Positive numeric viewing-distance factor controlling
+#'   visual framing in generated Avizo/Amira and 3D Slicer output. The default
+#'   `1` uses the calibrated standard view; values below `1` zoom in and values
+#'   above `1` zoom out. The factor is mapped to an orthographic camera height
+#'   of 100 in Avizo/Amira and an approximately 70 mm vertical field of view in
+#'   Slicer (70 mm in TRUE Red views; `ParallelScale = 35` in 3D views).
 #' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
 #'   from `mesh_file` by treating a watertight closed surface mesh as a
 #'   homogeneous solid. If `FALSE`, the longitudinal axis is read from
@@ -261,7 +265,7 @@ orient_longbone <- function(mode,
                             landmarks_str = NULL,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
-                            camera_distance_mm = 300,
+                            camera_distance = 1,
                             SOLID = FALSE,
                             SLICER = FALSE,
                             USE_ANAT_ORIENT = TRUE,
@@ -284,6 +288,11 @@ orient_longbone <- function(mode,
 
   if (!is.logical(USE_ANAT_ORIENT) || length(USE_ANAT_ORIENT) != 1L || is.na(USE_ANAT_ORIENT)) {
     stop("`USE_ANAT_ORIENT` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (!is.numeric(camera_distance) || length(camera_distance) != 1L ||
+      is.na(camera_distance) || !is.finite(camera_distance) || camera_distance <= 0) {
+    stop("`camera_distance` must be a single positive finite number.", call. = FALSE)
   }
 
   if (isTRUE(SLICER) && mode == "HUMERUS_TABLE" && isTRUE(USE_ANAT_ORIENT)) {
@@ -636,7 +645,7 @@ orient_longbone <- function(mode,
     biomechanical_length = Bio_length,
     summary = summary_tbl,
     manual_orientation = manual_orientation,
-    camera_distance_mm = camera_distance_mm,
+    camera_distance = camera_distance,
     lm_coord_system = lm_coord_system,
     internal_coord_system = "LPS",
     SOLID = SOLID,
@@ -747,7 +756,7 @@ longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
 # Orient the camera so that the section is parallel to the screen and the
 # anatomical axes appear in a consistent orientation. Tibial sections are handled
 # with a sign convention that matches the established capture protocol.
-emit_longbone_camera <- function(P, L, ML, AP, mode, camDist = 300) {
+emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1) {
   Lc <- nrm(L)
   Lref <- nrm(c(0, 0, -1))
   if (dot3(Lc, Lref) < 0) Lc <- -Lc
@@ -770,9 +779,9 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camDist = 300) {
     # Tibial and femoral capture protocols use the opposite in-plane screen
     # direction so that the anterior aspect is displayed at the top. Flipping
     # both axes rotates the section by 180 degrees without mirroring it.
-    emit_camera_from_basis(P, Z_axis = Lc, X_axis = -MLc, Y_preferred = -APc, camDist = camDist)
+    emit_camera_from_basis(P, Z_axis = Lc, X_axis = -MLc, Y_preferred = -APc, camera_distance = camera_distance)
   } else {
-    emit_camera_from_basis(P, Z_axis = Lc, X_axis = MLc, Y_preferred = APc, camDist = camDist)
+    emit_camera_from_basis(P, Z_axis = Lc, X_axis = MLc, Y_preferred = APc, camera_distance = camera_distance)
   }
 }
 
@@ -830,7 +839,7 @@ avizo_tcl_longbone <- function(res) {
     block <- c(
       block,
       "",
-      paste(emit_longbone_camera(Psec, Lh, MLh, APh, mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY", camDist = res$camera_distance_mm), collapse = "\n")
+      paste(emit_longbone_camera(Psec, Lh, MLh, APh, mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY", camera_distance = res$camera_distance), collapse = "\n")
     )
 
     out[[key]] <- paste(block, collapse = "\n")

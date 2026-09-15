@@ -16,8 +16,11 @@
 #'
 #' Flash Capture deliberately does not recompute anatomical orientation. First
 #' prepare one reference section with [copy_tcl()] or [copy_slicer_py()] and
-#' configure the view in Avizo/Amira or 3D Slicer. Then run `flash_capture()` and
-#' paste the generated batch block into the same application.
+#' configure the view in Avizo/Amira or 3D Slicer. The initial generated framing
+#' reflects the `camera_distance` value stored in `res`; any subsequent manual
+#' zoom/pan adjustment becomes the reference view preserved by Flash Capture.
+#' Then run `flash_capture()` and paste the generated batch block into the same
+#' application.
 #'
 #' In the Avizo/Amira CT workflow, only the `Slice` position is moved; camera
 #' orientation, zoom, brightness/contrast, colormap, and scale settings are left

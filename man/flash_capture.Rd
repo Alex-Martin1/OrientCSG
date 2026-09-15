@@ -63,8 +63,11 @@ volume (\code{SLICER = FALSE}, \code{SOLID = FALSE}), 3D Slicer with a CT volume
 \details{
 Flash Capture deliberately does not recompute anatomical orientation. First
 prepare one reference section with \code{\link[=copy_tcl]{copy_tcl()}} or \code{\link[=copy_slicer_py]{copy_slicer_py()}} and
-configure the view in Avizo/Amira or 3D Slicer. Then run \code{flash_capture()} and
-paste the generated batch block into the same application.
+configure the view in Avizo/Amira or 3D Slicer. The initial generated framing
+reflects the \code{camera_distance} value stored in \code{res}; any subsequent manual
+zoom/pan adjustment becomes the reference view preserved by Flash Capture.
+Then run \code{flash_capture()} and paste the generated batch block into the same
+application.
 
 In the Avizo/Amira CT workflow, only the \code{Slice} position is moved; camera
 orientation, zoom, brightness/contrast, colormap, and scale settings are left
