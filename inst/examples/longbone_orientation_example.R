@@ -20,12 +20,21 @@ library(OrientCSG)
 # from the Slicer Markups table rather than extracted as RAS world coordinates.
 
 
-# For every SOLID = FALSE call, define the DICOM IOP line and Image Position
-# (Patient) lines from two consecutive slices of the exact stack used in BoneJ.
-# Keep the three values as separate objects if convenient, then combine them as
-# `dicom_orientation <- c(IOP, IPP1, IPP2)` before calling `orient_longbone()`.
-# The two IPP lines can come from anywhere in the stack, but must remain in stack
-# order. Replace IOP and both IPP lines together with values from your own stack.
+# For routine SOLID = FALSE calls, the recommended input is now `dicom_dir`,
+# pointing to the local directory containing the DICOM series used to build the
+# ImageJ/BoneJ stack. OrientCSG reads only the first two readable DICOM headers
+# in filename order, checks that their InstanceNumber values are consecutive,
+# orders that pair by InstanceNumber, and obtains IOP plus the ordered IPP pair
+# automatically. This route requires the suggested package `oro.dicom`.
+#
+# The executable examples below retain explicit `dicom_orientation` values so
+# they can run without access to a local CT directory. In real analyses, replace
+# `dicom_orientation = ...` with, for example:
+#
+#   dicom_dir = r"(D:\path\to\the\DICOM_series)"
+#
+# The IOP/IPP values actually selected by the automatic route are reported in
+# `res$summary` after orientation.
 #
 # 1. TIBIA example ===========================================================
 #
@@ -122,12 +131,14 @@ cat(get_slicer_py(res_tibia_true_slicer, section = "SECTION_50"))
 copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
 
 # After pasting SECTION_50 in Slicer and configuring the desired view, one
-# Flash Capture block can export all five requested sections. Edit the output
-# directory before running this command:
+# Flash Capture block can export all five requested sections. RGB is the default;
+# set color_mode = "grayscale" for a true one-channel TIFF in Slicer. Edit the
+# output directory before running this command:
 # flash_capture(
 #   res_tibia_true_slicer,
 #   output_dir = "C:/Users/Alex/Desktop/T108_Left_flash",
-#   file_name = "T108_Left"
+#   file_name = "T108_Left",
+#   color_mode = "grayscale"
 # )
 
 

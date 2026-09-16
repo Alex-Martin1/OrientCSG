@@ -31,6 +31,15 @@
 #' 3D camera orientation, proximal viewing side, parallel scale, and relative pan
 #' are preserved. The starting Slicer view is restored after batch capture.
 #'
+#' Flash Capture writes TIFF files in RGB mode by default. In 3D Slicer,
+#' `color_mode = "grayscale"` converts the rendered RGB buffer to a true
+#' single-channel luminance image before TIFF writing and uses lossless Deflate
+#' compression. Avizo/Amira scripted snapshots do not expose a reliable
+#' grayscale switch, so requesting grayscale there produces a warning and falls
+#' back to the native RGB snapshot. Avizo/Amira Flash Capture always uses viewer
+#' 0. Slicer reference-section detection uses a fixed 2 mm tolerance; these
+#' implementation constants are intentionally not public arguments.
+#'
 #' @param res An `orientcsg_longbone` result returned by [orient_longbone()].
 #' @param output_dir Directory in which the external application should save the
 #'   captured images. The directory is created by the generated TCL/Python block
@@ -40,16 +49,14 @@
 #' @param sections Optional section selection. Accepts numeric percentages such
 #'   as `c(20, 50, 80)` or names such as `c("SECTION_20", "SECTION_50")`.
 #'   If `NULL`, all section points in `res` are captured.
-#' @param viewer_id Integer Avizo/Amira viewer identifier. Used only when
-#'   `SLICER = FALSE`.
-#' @param extension File extension used for Avizo/Amira snapshots. The Slicer
-#'   branches currently save TIFF files and therefore require `"tif"` or
-#'   `"tiff"`.
+#' @param extension Output file extension. Slicer Flash Capture requires `"tif"`
+#'   or `"tiff"`; Avizo/Amira retains its native snapshot extension support.
 #' @param slice_view Name of the Slicer slice view used by the CT-volume branch;
 #'   defaults to `"Red"`.
-#' @param reference_tolerance_mm Positive tolerance, in millimetres, used by the
-#'   Slicer branches when identifying which OrientCSG section is currently being
-#'   used as the visual reference.
+#' @param color_mode Output color mode. `"rgb"` is the default. In 3D
+#'   Slicer, `"grayscale"` writes a true single-channel TIFF. In Avizo/Amira,
+#'   grayscale export is not reliably scriptable, so `"grayscale"` falls back
+#'   to the native RGB snapshot with a warning.
 #' @param copy Logical. If `TRUE`, copy the generated TCL/Python block to the
 #'   system clipboard using the same clipboard helper as [copy_tcl()] and
 #'   [copy_slicer_py()]. If `FALSE`, only return the generated block invisibly.
@@ -76,10 +83,9 @@ flash_capture <- function(
     output_dir,
     file_name = NULL,
     sections = NULL,
-    viewer_id = 0,
     extension = "tif",
     slice_view = "Red",
-    reference_tolerance_mm = 2,
+    color_mode = c("rgb", "grayscale"),
     copy = TRUE
 ) {
   if (!inherits(res, "orientcsg_longbone")) {
@@ -98,32 +104,34 @@ flash_capture <- function(
     stop("`res` does not contain valid named section points.", call. = FALSE)
   }
 
-  if (length(reference_tolerance_mm) != 1L ||
-      !is.finite(reference_tolerance_mm) || reference_tolerance_mm <= 0) {
-    stop("`reference_tolerance_mm` must be a positive number.", call. = FALSE)
-  }
-
-  if (!is.numeric(viewer_id) || length(viewer_id) != 1L ||
-      !is.finite(viewer_id) || viewer_id < 0 || viewer_id != as.integer(viewer_id)) {
-    stop("`viewer_id` must be a single non-negative integer.", call. = FALSE)
-  }
-  viewer_id <- as.integer(viewer_id)
-
   extension <- sub("^\\.", "", .flash_capture_validate_scalar_string(extension, "extension"))
   slice_view <- .flash_capture_validate_scalar_string(slice_view, "slice_view")
+  color_mode <- match.arg(color_mode)
+
+  if (isTRUE(res$SLICER) && !tolower(extension) %in% c("tif", "tiff")) {
+    stop("Slicer Flash Capture currently supports TIFF output only.", call. = FALSE)
+  }
+
+  if (!isTRUE(res$SLICER) && identical(color_mode, "grayscale")) {
+    warning(
+      paste0(
+        "Avizo/Amira `viewer snapshot` does not expose a reliable scripted ",
+        "grayscale mode; using the native RGB snapshot instead. Convert the ",
+        "captured TIFF to grayscale afterwards if needed."
+      ),
+      call. = FALSE
+    )
+    color_mode <- "rgb"
+  }
 
   if (isTRUE(res$SLICER)) {
-    if (!tolower(extension) %in% c("tif", "tiff")) {
-      stop("Slicer Flash Capture currently supports TIFF output only.", call. = FALSE)
-    }
-
     if (isTRUE(res$SOLID)) {
       return(.flash_capture_slicer_solid(
         res = res,
         file_name = file_name,
         output_dir = output_dir,
         sections = sections,
-        reference_tolerance_mm = reference_tolerance_mm,
+        color_mode = color_mode,
         copy = copy
       ))
     }
@@ -134,7 +142,7 @@ flash_capture <- function(
       output_dir = output_dir,
       sections = sections,
       slice_view = slice_view,
-      reference_tolerance_mm = reference_tolerance_mm,
+      color_mode = color_mode,
       copy = copy
     ))
   }
@@ -144,7 +152,6 @@ flash_capture <- function(
     file_name = file_name,
     output_dir = output_dir,
     sections = sections,
-    viewer_id = viewer_id,
     extension = extension,
     copy = copy
   )
@@ -202,7 +209,6 @@ flash_capture <- function(
     file_name,
     output_dir,
     sections = NULL,
-    viewer_id = 0,
     extension = "tif",
     copy = TRUE
 ) {
@@ -221,6 +227,9 @@ flash_capture <- function(
       call. = FALSE
     )
   }
+
+  # Fixed implementation detail: Flash Capture uses the main viewer.
+  viewer_id <- 0L
 
   extension <- sub("^\\.", "", extension)
   if (!nzchar(extension)) {
@@ -317,9 +326,12 @@ flash_capture <- function(
     output_dir,
     sections = NULL,
     slice_view = "Red",
-    reference_tolerance_mm = 2,
+    color_mode = c("rgb", "grayscale"),
     copy = TRUE
 ) {
+
+  reference_tolerance_mm <- 2
+  color_mode <- match.arg(color_mode)
 
   # ----------------------------------------------------------
   # CHECK RESULT TYPE / WORKFLOW
@@ -559,6 +571,11 @@ flash_capture <- function(
     ),
 
     paste0(
+      "FLASH_COLOR_MODE = ",
+      py_string(color_mode)
+    ),
+
+    paste0(
       "FLASH_SLICE_VIEW = ",
       py_string(slice_view)
     ),
@@ -795,7 +812,16 @@ flash_capture <- function(
     "",
     "    writer = vtk.vtkTIFFWriter()",
     "    writer.SetFileName(filename)",
-    "    writer.SetInputConnection(w2i.GetOutputPort())",
+    "",
+    "    if FLASH_COLOR_MODE == 'grayscale':",
+    "        luminance = vtk.vtkImageLuminance()",
+    "        luminance.SetInputConnection(w2i.GetOutputPort())",
+    "        luminance.Update()",
+    "        writer.SetInputConnection(luminance.GetOutputPort())",
+    "        writer.SetCompressionToDeflate()",
+    "    else:",
+    "        writer.SetInputConnection(w2i.GetOutputPort())",
+    "",
     "    writer.Write()",
     "",
 
@@ -972,9 +998,12 @@ flash_capture <- function(
     file_name,
     output_dir,
     sections = NULL,
-    reference_tolerance_mm = 2,
+    color_mode = c("rgb", "grayscale"),
     copy = TRUE
 ) {
+
+  reference_tolerance_mm <- 2
+  color_mode <- match.arg(color_mode)
 
   if (!inherits(res, "orientcsg_longbone")) {
     stop("`res` must be an OrientCSG long-bone result.", call. = FALSE)
@@ -1110,6 +1139,7 @@ flash_capture <- function(
     paste0("FLASH_MODEL_NAME = ", py_string(model_name)),
     paste0("FLASH_OUTPUT_DIR = ", py_string(output_dir)),
     paste0("FLASH_FILE_NAME = ", py_string(file_name)),
+    paste0("FLASH_COLOR_MODE = ", py_string(color_mode)),
     paste0("FLASH_NORMAL = ", py_vec(L_ras)),
     paste0("FLASH_REFERENCE_TOLERANCE_MM = ", fmt_num(reference_tolerance_mm)),
     "",
@@ -1318,7 +1348,16 @@ flash_capture <- function(
     "",
     "    writer = vtk.vtkTIFFWriter()",
     "    writer.SetFileName(filename)",
-    "    writer.SetInputConnection(w2i.GetOutputPort())",
+    "",
+    "    if FLASH_COLOR_MODE == 'grayscale':",
+    "        luminance = vtk.vtkImageLuminance()",
+    "        luminance.SetInputConnection(w2i.GetOutputPort())",
+    "        luminance.Update()",
+    "        writer.SetInputConnection(luminance.GetOutputPort())",
+    "        writer.SetCompressionToDeflate()",
+    "    else:",
+    "        writer.SetInputConnection(w2i.GetOutputPort())",
+    "",
     "    writer.Write()",
     "",
     "def flash_capture():",

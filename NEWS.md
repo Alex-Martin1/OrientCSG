@@ -1,3 +1,10 @@
+# OrientCSG 1.0.4
+
+* Added automatic TRUE-volume DICOM metadata input through `dicom_dir`. OrientCSG now opens only enough files to obtain two readable DICOM headers, never loads pixel data, verifies that the selected `InstanceNumber` values are consecutive, orders the pair by `InstanceNumber`, and derives the IOP/ordered IPP pair required by the existing BoneJ-to-LPS transform. Manual `dicom_orientation` input remains supported. The automatic reader is internal; the IOP/IPP values actually used continue to be reported in `res$summary`.
+* Simplified the public `flash_capture()` API by making Avizo/Amira viewer 0 and the 2 mm Slicer reference-section tolerance fixed implementation details rather than public arguments.
+* Added `color_mode = c("rgb", "grayscale")` to `flash_capture()`, with RGB as the default. In 3D Slicer CT and SOLID workflows, grayscale mode converts the rendered RGB buffer to true single-channel luminance and writes a lossless Deflate-compressed TIFF. Avizo/Amira retains its native RGB `viewer snapshot` route; requesting grayscale there warns and falls back to RGB because the scripted snapshot interface does not expose a reliable grayscale selector.
+* Updated regression tests, installed examples, README guidance, and function documentation for the 1.0.4 workflow.
+
 # OrientCSG 1.0.3
 
 * Reworked the public camera control without changing the package version: `camera_distance` now controls visible orthographic framing consistently across the three primary long-bone backends. The default factor `1` maps to `CameraHeight = 100` in Avizo/Amira and approximately 70 mm of visible vertical height in Slicer TRUE/SOLID views; values below `1` zoom in and values above `1` zoom out. The previous `camera_distance_mm` argument, which changed physical camera position without changing orthographic zoom, was removed. Mandibular Slicer output uses the same relative factor while preserving its established 85 mm base field of view.

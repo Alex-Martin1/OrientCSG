@@ -24,7 +24,17 @@ make_flash_capture_result <- function(SLICER = FALSE, SOLID = FALSE) {
   )
 }
 
-test_that("flash_capture() generates Avizo/Amira CT batch TCL without changing the camera", {
+
+test_that("flash_capture() public API keeps viewer/tolerance internal", {
+  args <- names(formals(flash_capture))
+  expect_true("color_mode" %in% args)
+  expect_false("viewer_id" %in% args)
+  expect_false("reference_tolerance_mm" %in% args)
+  expect_identical(eval(formals(flash_capture)$color_mode), c("rgb", "grayscale"))
+})
+
+
+test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
   res <- make_flash_capture_result(SLICER = FALSE, SOLID = FALSE)
 
   txt <- flash_capture(
@@ -42,62 +52,115 @@ test_that("flash_capture() generates Avizo/Amira CT batch TCL without changing t
   expect_contains_fixed(txt, "T109_80.tif")
   expect_false(grepl("T109_35.tif", txt, fixed = TRUE))
   expect_contains_fixed(txt, '"Slice" origin setCoord')
-  expect_contains_fixed(txt, "viewer 0 snapshot")
+  expect_contains_fixed(txt, "viewer 0 snapshot $OrientCSG_file")
+  expect_false(grepl("vtkImageLuminance", txt, fixed = TRUE))
+  expect_false(grepl("orientcsg_tmp", txt, fixed = TRUE))
   expect_false(grepl("setCameraPosition", txt, fixed = TRUE))
   expect_false(grepl("setCameraOrientation", txt, fixed = TRUE))
 })
 
-test_that("flash_capture() generates Slicer CT Python from the prepared slice view", {
+
+test_that("Avizo/Amira grayscale request warns and falls back to RGB", {
+  res <- make_flash_capture_result(SLICER = FALSE, SOLID = FALSE)
+
+  expect_warning(
+    txt <- flash_capture(
+      res,
+      output_dir = "C:/captures",
+      sections = 50,
+      color_mode = "grayscale",
+      copy = FALSE
+    ),
+    "using the native RGB snapshot"
+  )
+
+  expect_contains_fixed(txt, "viewer 0 snapshot $OrientCSG_file")
+  expect_false(grepl("vtkImageLuminance", txt, fixed = TRUE))
+  expect_false(grepl("orientcsg_tmp", txt, fixed = TRUE))
+})
+
+
+test_that("Slicer CT Flash Capture supports RGB and true grayscale output", {
   res <- make_flash_capture_result(SLICER = TRUE, SOLID = FALSE)
 
-  txt <- flash_capture(
+  txt_rgb <- flash_capture(
     res,
     output_dir = "C:/captures",
     file_name = "T109_CT",
     sections = c(20, 80),
     slice_view = "Red",
-    reference_tolerance_mm = 1.5,
     copy = FALSE
   )
 
-  expect_contains_fixed(txt, "# 3D Slicer / CT volume")
-  expect_contains_fixed(txt, "FLASH_SLICE_VIEW = 'Red'")
-  expect_contains_fixed(txt, "FLASH_REFERENCE_TOLERANCE_MM = 1.500000000")
-  expect_contains_fixed(txt, "FLASH_CAPTURE_SECTIONS = [")
-  expect_contains_fixed(txt, "'SECTION_20',")
-  expect_contains_fixed(txt, "'SECTION_80',")
-  expect_contains_fixed(txt, "'SECTION_50': np.array")
-  expect_contains_fixed(txt, "sliceNode.GetSliceToRAS().DeepCopy(matrix)")
-  expect_contains_fixed(txt, "baselineFOV")
-  expect_contains_fixed(txt, "FLASH_FILE_NAME = 'T109_CT'")
-  expect_false(grepl("vtkCutter", txt, fixed = TRUE))
+  expect_contains_fixed(txt_rgb, "# 3D Slicer / CT volume")
+  expect_contains_fixed(txt_rgb, "FLASH_SLICE_VIEW = 'Red'")
+  expect_contains_fixed(txt_rgb, "FLASH_REFERENCE_TOLERANCE_MM = 2.000000000")
+  expect_contains_fixed(txt_rgb, "FLASH_COLOR_MODE = 'rgb'")
+  expect_contains_fixed(txt_rgb, "FLASH_CAPTURE_SECTIONS = [")
+  expect_contains_fixed(txt_rgb, "'SECTION_20',")
+  expect_contains_fixed(txt_rgb, "'SECTION_80',")
+  expect_contains_fixed(txt_rgb, "'SECTION_50': np.array")
+  expect_contains_fixed(txt_rgb, "sliceNode.GetSliceToRAS().DeepCopy(matrix)")
+  expect_contains_fixed(txt_rgb, "baselineFOV")
+  expect_contains_fixed(txt_rgb, "FLASH_FILE_NAME = 'T109_CT'")
+  expect_false(grepl("vtkCutter", txt_rgb, fixed = TRUE))
+
+  txt_gray <- flash_capture(
+    res,
+    output_dir = "C:/captures",
+    file_name = "T109_CT",
+    sections = 50,
+    color_mode = "grayscale",
+    copy = FALSE
+  )
+
+  expect_contains_fixed(txt_gray, "FLASH_COLOR_MODE = 'grayscale'")
+  expect_contains_fixed(txt_gray, "vtk.vtkImageLuminance()")
+  expect_contains_fixed(txt_gray, "writer.SetInputConnection(luminance.GetOutputPort())")
+  expect_contains_fixed(txt_gray, "writer.SetCompressionToDeflate()")
 })
 
-test_that("flash_capture() generates Slicer SOLID Python that re-cuts the mesh and preserves the camera", {
+
+test_that("Slicer SOLID Flash Capture supports RGB and true grayscale output", {
   res <- make_flash_capture_result(SLICER = TRUE, SOLID = TRUE)
 
-  txt <- flash_capture(
+  txt_rgb <- flash_capture(
     res,
     output_dir = "C:/captures",
     sections = c(35, 50, 65),
-    reference_tolerance_mm = 2,
     copy = FALSE
   )
 
-  expect_contains_fixed(txt, "# 3D Slicer / SOLID mesh")
-  expect_contains_fixed(txt, "FLASH_MODEL_NAME = 'T109_solid'")
-  expect_contains_fixed(txt, "vtk.vtkCutter()")
-  expect_contains_fixed(txt, "vtk.vtkContourTriangulator()")
-  expect_contains_fixed(txt, "baselinePosition = np.array(camera.GetPosition()")
-  expect_contains_fixed(txt, "baselineParallelScale")
-  expect_contains_fixed(txt, "baselinePosition + delta")
-  expect_contains_fixed(txt, "sectionNode.SetAndObservePolyData(filled)")
-  expect_contains_fixed(txt, "FLASH_FILE_NAME = 'T109'")
-  expect_contains_fixed(txt, "'SECTION_35',")
-  expect_contains_fixed(txt, "'SECTION_65',")
+  expect_contains_fixed(txt_rgb, "# 3D Slicer / SOLID mesh")
+  expect_contains_fixed(txt_rgb, "FLASH_MODEL_NAME = 'T109_solid'")
+  expect_contains_fixed(txt_rgb, "FLASH_REFERENCE_TOLERANCE_MM = 2.000000000")
+  expect_contains_fixed(txt_rgb, "FLASH_COLOR_MODE = 'rgb'")
+  expect_contains_fixed(txt_rgb, "vtk.vtkCutter()")
+  expect_contains_fixed(txt_rgb, "vtk.vtkContourTriangulator()")
+  expect_contains_fixed(txt_rgb, "baselinePosition = np.array(camera.GetPosition()")
+  expect_contains_fixed(txt_rgb, "baselineParallelScale")
+  expect_contains_fixed(txt_rgb, "baselinePosition + delta")
+  expect_contains_fixed(txt_rgb, "sectionNode.SetAndObservePolyData(filled)")
+  expect_contains_fixed(txt_rgb, "FLASH_FILE_NAME = 'T109'")
+  expect_contains_fixed(txt_rgb, "'SECTION_35',")
+  expect_contains_fixed(txt_rgb, "'SECTION_65',")
+
+  txt_gray <- flash_capture(
+    res,
+    output_dir = "C:/captures",
+    sections = 50,
+    color_mode = "grayscale",
+    copy = FALSE
+  )
+
+  expect_contains_fixed(txt_gray, "FLASH_COLOR_MODE = 'grayscale'")
+  expect_contains_fixed(txt_gray, "vtk.vtkImageLuminance()")
+  expect_contains_fixed(txt_gray, "writer.SetInputConnection(luminance.GetOutputPort())")
+  expect_contains_fixed(txt_gray, "writer.SetCompressionToDeflate()")
 })
 
-test_that("flash_capture() validates workflow and section arguments", {
+
+test_that("flash_capture() validates workflow, section, color, and extension arguments", {
   expect_error(
     flash_capture(list(), output_dir = "C:/captures", copy = FALSE)
   )
@@ -106,6 +169,16 @@ test_that("flash_capture() validates workflow and section arguments", {
   expect_error(
     flash_capture(res, output_dir = "C:/captures", sections = 25, copy = FALSE),
     "Unknown section"
+  )
+
+  expect_error(
+    flash_capture(res, output_dir = "C:/captures", color_mode = "cmyk", copy = FALSE),
+    "arg"
+  )
+
+  # Avizo/Amira retains its native extension flexibility.
+  expect_silent(
+    flash_capture(res, output_dir = "C:/captures", extension = "png", copy = FALSE)
   )
 
   res_slicer <- make_flash_capture_result(SLICER = TRUE, SOLID = FALSE)

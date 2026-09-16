@@ -24,8 +24,11 @@
 #'   unit-vector columns recorded. The direct vector, or the first BoneJ vector
 #'   in matrix/table input, is interpreted as the longitudinal axis after
 #'   conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
-#'   convention. The conversion uses DICOM Image Orientation (Patient) plus
-#'   Image Position (Patient) from two consecutive slices in BoneJ stack order.
+#'   convention. The recommended workflow supplies `dicom_dir`, allowing
+#'   OrientCSG to read DICOM Image Orientation (Patient), Image Position
+#'   (Patient), and InstanceNumber directly from the local CT series without
+#'   opening Fiji. Manual `dicom_orientation` input remains available for
+#'   compatibility and validation.
 #' - `SOLID = TRUE` implements the solid-mesh workflow. In this mode, `mesh_file`
 #'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
 #'   is treated as a homogeneous closed solid, and the eigenvector associated
@@ -78,11 +81,15 @@
 #' values are interpreted as the three BoneJ unit vectors, and the first of
 #' these vectors is treated as the longitudinal axis. A direct three-component
 #' input is treated as that same first BoneJ vector. By default, the BoneJ
-#' vector or vectors are transformed using `dicom_orientation`, which contains
-#' DICOM Image Orientation (Patient) together with Image Position (Patient)
-#' from two consecutive slices copied in BoneJ stack order. IOP defines the
-#' in-plane axes, while the ordered IPP pair determines the actual
-#' sign of the stack Z axis. This makes the transformation independent of
+#' vector or vectors are transformed using DICOM orientation metadata. With the
+#' recommended `dicom_dir` workflow, OrientCSG opens only enough files to obtain
+#' two readable CT headers, verifies that their DICOM InstanceNumber values are
+#' consecutive, orders that pair by InstanceNumber, and uses Image Orientation
+#' (Patient) together with their Image Position (Patient) values. Manual
+#' `dicom_orientation` input remains supported when
+#' an exact IOP/IPP triplet is already known. IOP defines the in-plane axes,
+#' while the ordered IPP pair determines the actual sign of the stack Z axis.
+#' This makes the transformation independent of
 #' whether slice indices progress with or against the IOP-derived normal. When `SOLID = TRUE`, the
 #' longitudinal axis is estimated directly from the closed mesh by volumetric
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
@@ -145,15 +152,20 @@
 #'   the longitudinal vector. If a full Results-table row is supplied, the last
 #'   nine numeric values are interpreted as the three BoneJ unit vectors, and
 #'   the first of these vectors is used as the longitudinal axis.
-#' @param dicom_orientation Combined DICOM orientation information for the exact
-#'   stack used in BoneJ. Supply one Image Orientation (Patient) `(0020,0037)`
-#'   line and Image Position (Patient) `(0020,0032)` lines from two consecutive
-#'   slices in BoneJ stack order. The recommended form is
-#'   `c(dicom_iop, dicom_ipp_1, dicom_ipp_2)`, so the three metadata lines can
-#'   still be defined separately in the calling script. The two IPP lines may
-#'   come from anywhere in the stack, but they must be consecutive and retain
-#'   their stack order. A single three-line character block is also accepted.
-#'   Required when `SOLID = FALSE`.
+#' @param dicom_orientation Optional manual DICOM orientation information for the
+#'   exact stack used in BoneJ. Supply one Image Orientation (Patient)
+#'   `(0020,0037)` line and Image Position (Patient) `(0020,0032)` lines from two
+#'   consecutive slices in BoneJ stack order. This remains supported for
+#'   compatibility and validation; for routine TRUE-volume workflows,
+#'   `dicom_dir` is recommended instead. Do not supply both arguments.
+#' @param dicom_dir Optional path to the local directory containing the DICOM CT
+#'   series used to build the ImageJ/BoneJ stack. When supplied with
+#'   `SOLID = FALSE`, OrientCSG reads only the first two readable DICOM headers in filename order,
+#'   verifies that their InstanceNumber `(0020,0013)` values are consecutive,
+#'   orders that pair by InstanceNumber, and obtains IOP plus the ordered IPP
+#'   pair automatically. This route requires
+#'   the suggested package `oro.dicom`. Either `dicom_dir` or
+#'   `dicom_orientation` is required when `SOLID = FALSE`.
 #' @param landmarks_str Character string containing landmark coordinates. The
 #'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
 #'   coordinates and Slicer Markups-style rows are both accepted.
@@ -222,17 +234,17 @@
 #'   - `slicer_py`: Named list of 3D Slicer Python command blocks, when
 #'     `SLICER = TRUE`.
 #'   - `mesh_axes`: Mesh-derived inertia information, when `SOLID = TRUE`.
+#'   - `dicom_dir`: Normalized DICOM directory path when TRUE-volume metadata
+#'     were read automatically; otherwise `NULL`.
 #'   - `bonej`: BoneJ eigenvector and coordinate-transform information, when
-#'     `SOLID = FALSE`.
+#'     `SOLID = FALSE`, including whether DICOM metadata came from `dicom_dir`
+#'     or manual input and the automatic metadata diagnostics when available.
 #'   - `longitudinal_axis_check`: Axial angle between the transformed
 #'     longitudinal vector and the anatomical distal-proximal reference.
 #'
 #' @examples
 #' \dontrun{
-#' dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
-#' dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
-#' dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
-#' dicom_orientation <- c(dicom_iop_str, dicom_ipp_1, dicom_ipp_2)
+#' dicom_dir <- "C:/CT/TIBIA_001"
 #'
 #' longitudinal_matrix_str <- "
 #' 0.008 0.017 1.000
@@ -247,7 +259,7 @@
 #' res <- orient_longbone(
 #'   mode = "TIBIA",
 #'   longitudinal_matrix_str = longitudinal_matrix_str,
-#'   dicom_orientation = dicom_orientation,
+#'   dicom_dir = dicom_dir,
 #'   landmarks_str = tibia_landmarks_str,
 #'   section_loc = 50,
 #'   individual_id = "TIBIA_001"
@@ -272,7 +284,8 @@ orient_longbone <- function(mode,
                             mesh_file = NULL,
                             lm_coord_system = "LPS",
                             model_name = NULL,
-                            volume_name = NULL) {
+                            volume_name = NULL,
+                            dicom_dir = NULL) {
   mode <- toupper(trimws(mode))
   if (!mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
     stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", or "HUMERUS_TABLE".', call. = FALSE)
@@ -315,6 +328,8 @@ orient_longbone <- function(mode,
   }
 
   mesh_axes <- NULL
+  dicom_metadata <- NULL
+  dicom_source <- NULL
 
   if (isTRUE(SOLID)) {
     if (is.null(mesh_file)) {
@@ -328,15 +343,30 @@ orient_longbone <- function(mode,
       stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
     }
 
-    if (is.null(dicom_orientation)) {
+    if (!is.null(dicom_dir) && !is.null(dicom_orientation)) {
       stop(
-        paste0(
-          "`dicom_orientation` is required when `SOLID = FALSE`. ",
-          "Combine the IOP line with Image Position (Patient) lines from two consecutive slices ",
-          "in the exact order used in the BoneJ stack."
-        ),
+        "Supply only one of `dicom_dir` or `dicom_orientation` when `SOLID = FALSE`.",
         call. = FALSE
       )
+    }
+
+    if (!is.null(dicom_dir)) {
+      dicom_metadata <- .read_dicom_orientation(dicom_dir)
+      dicom_orientation_used <- dicom_metadata$dicom_orientation
+      dicom_source <- "directory"
+    } else {
+      if (is.null(dicom_orientation)) {
+        stop(
+          paste0(
+            "Either `dicom_dir` or `dicom_orientation` is required when `SOLID = FALSE`. ",
+            "Use `dicom_dir` to read the CT metadata automatically, or supply the manual ",
+            "IOP plus two consecutive IPP lines in BoneJ stack order."
+          ),
+          call. = FALSE
+        )
+      }
+      dicom_orientation_used <- dicom_orientation
+      dicom_source <- "manual"
     }
 
     # BoneJ reports principal-axis vectors in the ImageJ stack basis. IOP fixes
@@ -344,7 +374,7 @@ orient_longbone <- function(mode,
     # whether stack Z follows or opposes the IOP-derived normal.
     M_bonej <- parse_bonej_eigenvectors(longitudinal_matrix_str)
     bonej_transform_matrix <- dicom_orientation_to_bonej_transform(
-      dicom_orientation = dicom_orientation
+      dicom_orientation = dicom_orientation_used
     )
     M_internal <- bonej_transform_matrix %*% M_bonej
     L <- M_internal[, 1]
@@ -654,9 +684,12 @@ orient_longbone <- function(mode,
     mesh_file = mesh_file,
     model_name = model_name,
     volume_name = volume_name,
+    dicom_dir = if (!is.null(dicom_metadata$dicom_dir)) dicom_metadata$dicom_dir else NULL,
     mesh_axes = mesh_axes,
     bonej = if (isTRUE(SOLID)) NULL else list(
       coord_transform = "dicom_iop_ipp",
+      dicom_source = dicom_source,
+      dicom_metadata = dicom_metadata,
       dicom_iop = attr(bonej_transform_matrix, "dicom_iop"),
       dicom_ipp_1 = attr(bonej_transform_matrix, "dicom_ipp_1"),
       dicom_ipp_2 = attr(bonej_transform_matrix, "dicom_ipp_2"),

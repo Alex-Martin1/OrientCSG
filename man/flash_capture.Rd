@@ -9,10 +9,9 @@ flash_capture(
   output_dir,
   file_name = NULL,
   sections = NULL,
-  viewer_id = 0,
   extension = "tif",
   slice_view = "Red",
-  reference_tolerance_mm = 2,
+  color_mode = c("rgb", "grayscale"),
   copy = TRUE
 )
 }
@@ -30,19 +29,16 @@ if needed.}
 as \code{c(20, 50, 80)} or names such as \code{c("SECTION_20", "SECTION_50")}.
 If \code{NULL}, all section points in \code{res} are captured.}
 
-\item{viewer_id}{Integer Avizo/Amira viewer identifier. Used only when
-\code{SLICER = FALSE}.}
-
-\item{extension}{File extension used for Avizo/Amira snapshots. The Slicer
-branches currently save TIFF files and therefore require \code{"tif"} or
-\code{"tiff"}.}
+\item{extension}{Output file extension. Slicer Flash Capture requires \code{"tif"}
+or \code{"tiff"}; Avizo/Amira retains its native snapshot extension support.}
 
 \item{slice_view}{Name of the Slicer slice view used by the CT-volume branch;
 defaults to \code{"Red"}.}
 
-\item{reference_tolerance_mm}{Positive tolerance, in millimetres, used by the
-Slicer branches when identifying which OrientCSG section is currently being
-used as the visual reference.}
+\item{color_mode}{Output color mode. \code{"rgb"} is the default. In 3D
+Slicer, \code{"grayscale"} writes a true single-channel TIFF. In Avizo/Amira,
+grayscale export is not reliably scriptable, so \code{"grayscale"} falls back
+to the native RGB snapshot with a warning.}
 
 \item{copy}{Logical. If \code{TRUE}, copy the generated TCL/Python block to the
 system clipboard using the same clipboard helper as \code{\link[=copy_tcl]{copy_tcl()}} and
@@ -77,6 +73,15 @@ scale are translated between requested section points. In the 3D Slicer SOLID
 workflow, the source mesh is re-cut at each requested section while the current
 3D camera orientation, proximal viewing side, parallel scale, and relative pan
 are preserved. The starting Slicer view is restored after batch capture.
+
+Flash Capture writes TIFF files in RGB mode by default. In 3D Slicer,
+\code{color_mode = "grayscale"} converts the rendered RGB buffer to a true
+single-channel luminance image before TIFF writing and uses lossless Deflate
+compression. Avizo/Amira scripted snapshots do not expose a reliable
+grayscale switch, so requesting grayscale there produces a warning and falls
+back to the native RGB snapshot. Avizo/Amira Flash Capture always uses viewer
+0. Slicer reference-section detection uses a fixed 2 mm tolerance; these
+implementation constants are intentionally not public arguments.
 }
 \examples{
 \dontrun{

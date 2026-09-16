@@ -22,10 +22,11 @@ remotes::install_github("Alex-Martin1/OrientCSG")
 library(OrientCSG)
 ```
 
-The solid mesh workflow uses `Rvcg` when `SOLID = TRUE`. If it is not already installed, install it with:
+The solid mesh workflow uses `Rvcg` when `SOLID = TRUE`. Automatic DICOM metadata extraction through `dicom_dir` uses `oro.dicom`. Install either suggested package when you need that workflow:
 
 ```r
 install.packages("Rvcg")
+install.packages("oro.dicom")
 ```
 
 ## What OrientCSG does
@@ -140,7 +141,7 @@ for i in range(markupsNode.GetNumberOfControlPoints()):
     print(i + 1, label, p[0], p[1], p[2])
 ```
 
-For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. BoneJ eigenvectors are transformed from stack coordinates to the internal DICOM/LPS basis using the single `dicom_orientation` argument. The recommended workflow is to define the IOP and the two consecutive IPP lines as separate objects and combine them with `c(dicom_iop, dicom_ipp_1, dicom_ipp_2)`. The IPP values must be supplied in the order in which those slices occur in the exact stack analysed by BoneJ. The result object stores the parsed DICOM orientation, inferred slice direction, transformation matrix, and transformed eigenvectors in `res$bonej`, and reports a longitudinal-axis check in `res$longitudinal_axis_check`.
+For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. For routine TRUE-volume analyses, the recommended workflow is now to supply `dicom_dir`, pointing to the local DICOM directory used to build the ImageJ/BoneJ stack. OrientCSG reads only enough files to obtain two readable DICOM headers, never loads pixel data, verifies that the selected `InstanceNumber` values are consecutive, orders the pair by `InstanceNumber`, and derives Image Orientation (Patient) plus the ordered Image Position (Patient) pair automatically. The full CT series is not read. Manual `dicom_orientation = c(IOP, IPP1, IPP2)` remains supported for legacy or validation workflows. The IOP/IPP values actually used are reported in `res$summary`, while additional transformation diagnostics remain available in `res$bonej`.
 
 ## Preservation requirements
 
@@ -206,18 +207,15 @@ file.edit(mandible_example)
 source(mandible_example)
 ```
 
-A minimal TRUE-volume long-bone call has the following general structure. The three DICOM metadata lines can be kept as separate objects in the script and then combined into `dicom_orientation`. The two IPP values can come from any two consecutive slices, provided they are copied in the same order in which those slices occur in the BoneJ stack:
+A minimal TRUE-volume long-bone call now points OrientCSG directly to the local DICOM series. The automatic route requires the suggested package `oro.dicom` (install it once with `install.packages("oro.dicom")`):
 
 ```r
-dicom_iop_str <- r"(0020,0037 Image Orientation (Patient): -1\0\0\0\-1\0)"
-dicom_ipp_1 <- r"(0020,0032 Image Position (Patient): 0\0\0)"
-dicom_ipp_2 <- r"(0020,0032 Image Position (Patient): 0\0\0.3)"
-dicom_orientation <- c(dicom_iop_str, dicom_ipp_1, dicom_ipp_2)
+dicom_dir <- r"(D:\path\to\the\DICOM_series)"
 
 res <- orient_longbone(
   mode = "TIBIA",
   longitudinal_matrix_str = longitudinal_matrix_str,
-  dicom_orientation = dicom_orientation,
+  dicom_dir = dicom_dir,
   landmarks_str = landmarks_str,
   section_loc = 50,
   individual_id = "T108_Left",
@@ -227,6 +225,8 @@ res <- orient_longbone(
 res$summary
 cat(get_tcl(res, section = "SECTION_50"))
 ```
+
+The automatic DICOM reader is internal rather than a separate public function. The IOP, IPP1, and IPP2 values actually used are written into the `Bio_Length_&_Orient` column of `res$summary`. For speed, only two readable headers are opened; the selected slices must have consecutive `InstanceNumber` values. If a directory does not meet that assumption, supply the established manual `dicom_orientation = c(IOP, IPP1, IPP2)` input instead.
 
 For 3D Slicer workflows, use `SLICER = TRUE` and inspect the generated Python block with:
 
@@ -256,7 +256,9 @@ flash_capture(
 )
 ```
 
-If `file_name` is omitted, `res$individual_id` is used. The generated files are named with the requested section percentage, for example `T109_20.tif`, `T109_35.tif`, and `T109_50.tif`.
+If `file_name` is omitted, `res$individual_id` is used. The generated files are named with the requested section percentage, for example `T109_20.tif`, `T109_35.tif`, and `T109_50.tif`. RGB is the default capture mode. In 3D Slicer, `color_mode = "grayscale"` converts the rendered RGB buffer to a true one-channel luminance image and writes a lossless Deflate-compressed TIFF. In Avizo/Amira, the scripted `viewer snapshot` interface does not expose a reliable grayscale switch; requesting `color_mode = "grayscale"` therefore warns and falls back to the native RGB snapshot.
+
+`viewer_id` and `reference_tolerance_mm` are no longer public arguments. Flash Capture uses Avizo/Amira viewer 0 and a fixed 2 mm Slicer reference-section tolerance internally.
 
 In Avizo/Amira, Flash Capture changes only the `Slice` position and preserves the view that the user prepared. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
 
@@ -345,7 +347,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Version 1.0.3 adds `flash_capture()` for batch export of long-bone sections in Avizo/Amira CT, 3D Slicer CT, and 3D Slicer SOLID workflows, reusing a prepared reference view rather than recalculating orientation. Version 1.0.2 makes TRUE-volume `TIBIA` and `FEMUR` orientation invariant to swapping their two non-directional transverse landmarks and removes the historical tibial Slicer-table row swap. TRUE-volume and solid-mesh Slicer output now share the same anatomical screen convention and preserve a proximal viewing side. Version 1.0.1 corrects TRUE-volume BoneJ-to-DICOM orientation by combining Image Orientation (Patient) with an ordered pair of consecutive Image Position (Patient) values, so the sign of the stack Z axis is recovered rather than assumed. It also explicitly supports current BoneJ Log eigenvector output pasted verbatim as three `[INFO] ||...||` rows, alongside the direct-vector, legacy matrix, and Results-table formats. The change applies before section construction and therefore propagates consistently to Avizo/Amira and 3D Slicer output for every `SOLID = FALSE` long-bone mode. Version 1.0.0 adds femoral and radial long-bone modes for Avizo/Amira TCL and 3D Slicer Python workflows, including projected biomechanical-length calculation and distal-to-proximal axis checks for both elements. Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
+Version 1.0.4 adds fast automatic DICOM metadata extraction through `dicom_dir`, simplifies the public `flash_capture()` API, and adds true single-channel grayscale TIFF output for Slicer CT and SOLID captures while retaining native RGB capture in Avizo/Amira. Version 1.0.3 adds `flash_capture()` for batch export of long-bone sections in Avizo/Amira CT, 3D Slicer CT, and 3D Slicer SOLID workflows, reusing a prepared reference view rather than recalculating orientation. Version 1.0.2 makes TRUE-volume `TIBIA` and `FEMUR` orientation invariant to swapping their two non-directional transverse landmarks and removes the historical tibial Slicer-table row swap. TRUE-volume and solid-mesh Slicer output now share the same anatomical screen convention and preserve a proximal viewing side. Version 1.0.1 corrects TRUE-volume BoneJ-to-DICOM orientation by combining Image Orientation (Patient) with an ordered pair of consecutive Image Position (Patient) values, so the sign of the stack Z axis is recovered rather than assumed. It also explicitly supports current BoneJ Log eigenvector output pasted verbatim as three `[INFO] ||...||` rows, alongside the direct-vector, legacy matrix, and Results-table formats. The change applies before section construction and therefore propagates consistently to Avizo/Amira and 3D Slicer output for every `SOLID = FALSE` long-bone mode. Version 1.0.0 adds femoral and radial long-bone modes for Avizo/Amira TCL and 3D Slicer Python workflows, including projected biomechanical-length calculation and distal-to-proximal axis checks for both elements. Version 0.3.3 clarifies Slicer coordinate handling: coordinates copied/exported from Slicer Markups may paste as LPS even when the interface displays R/A/S columns, whereas explicitly extracted world coordinates should be treated as RAS. It also fixes the tibial longitudinal-axis sign so tibial mesh workflows use a distal-to-proximal axis, and it orients the mandibular ARP normal anatomically from inferior toward superior for both Avizo/Amira and Slicer outputs. Version 0.3.1 updates the mandibular 3D Slicer backend so that in-plane slice orientation is defined anatomically: the screen vertical axis is now derived from the ARP normal projected into the section plane, forcing the ARP to appear horizontal in the captured slice. This improves agreement with the Amira/Avizo-oriented section views. Version 0.3.0 added the validated 3D Slicer backend for mandibular volume workflows. The generated mandibular blocks orient CS1, CS2, and CS3 in the Red slice view, create ARP and `LM1_Line` verification objects, use the `CT-AAA2` volume-rendering preset, provide a 3D verification view, and include `restore_view()` and `refresh_orientcsg_scale()` helper commands.
 
 Version 0.2.0 added the solid surface mesh workflow and 3D Slicer Python output for tibial and humeral sections.
 

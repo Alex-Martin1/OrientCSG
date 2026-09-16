@@ -1,3 +1,7 @@
+# NOTE: Validation fixtures deliberately keep explicit DICOM metadata so
+# expected transforms are reproducible. For routine TRUE-volume use,
+# prefer `dicom_dir` and let OrientCSG read IOP/IPP automatically.
+
 devtools::load_all()
 
 # ============================================================
