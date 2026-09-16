@@ -226,6 +226,8 @@ res$summary
 cat(get_tcl(res, section = "SECTION_50"))
 ```
 
+On Windows, raw strings such as `r"(D:\path\to\folder)"` are recommended for file and directory paths. This allows paths copied directly from File Explorer to be pasted without escaping backslashes; paths using forward slashes also remain valid inside a raw string.
+
 The automatic DICOM reader is internal rather than a separate public function. The IOP, IPP1, and IPP2 values actually used are written into the `Bio_Length_&_Orient` column of `res$summary`. For speed, only two readable headers are opened; the selected slices must have consecutive `InstanceNumber` values. If a directory does not meet that assumption, supply the established manual `dicom_orientation = c(IOP, IPP1, IPP2)` input instead.
 
 For 3D Slicer workflows, use `SLICER = TRUE` and inspect the generated Python block with:
@@ -236,13 +238,13 @@ cat(get_slicer_py(res, section = "SECTION_50"))
 
 ## Batch capture with `flash_capture()`
 
-`flash_capture()` generates one batch command block for several long-bone sections after a reference view has been prepared manually. It currently supports the three primary long-bone capture routes:
+`flash_capture()` generates one batch command block for several long-bone sections. It currently supports the three primary long-bone capture routes:
 
 - Avizo/Amira + CT (`SLICER = FALSE`, `SOLID = FALSE`);
 - 3D Slicer + CT (`SLICER = TRUE`, `SOLID = FALSE`);
 - 3D Slicer + SOLID mesh (`SLICER = TRUE`, `SOLID = TRUE`).
 
-The function deliberately does not recompute anatomical orientation. First orient one reference section, usually `SECTION_50`, using the normal OrientCSG output. Its initial framing is set by `camera_distance`; any manual zoom/pan adjustment made afterwards becomes the reference view preserved by Flash Capture. Then generate the batch block:
+In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required.
 
 ```r
 # Prepare the reference section first:
@@ -251,7 +253,7 @@ copy_slicer_py(res, section = "SECTION_50")
 # After pasting that block in Slicer and configuring the view:
 flash_capture(
   res,
-  output_dir = "C:/OrientCSG/captures",
+  output_dir = r"(C:\OrientCSG\captures)",
   sections = c(20, 35, 50, 65, 80)
 )
 ```

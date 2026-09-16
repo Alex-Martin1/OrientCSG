@@ -61,8 +61,8 @@ Slicer (70 mm in TRUE Red views; \code{ParallelScale = 35} in 3D views).}
 
 \item{SOLID}{Logical. If \code{TRUE}, the longitudinal axis is computed directly
 from \code{mesh_file} by treating a watertight closed surface mesh as a
-homogeneous solid. If \code{FALSE}, the longitudinal axis is read from
-\code{longitudinal_matrix_str}.}
+homogeneous solid. Solid-mesh workflows require \code{SLICER = TRUE}. If
+\code{FALSE}, the longitudinal axis is read from \code{longitudinal_matrix_str}.}
 
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
@@ -174,7 +174,7 @@ compatibility and validation.
 must point to a watertight \code{.ply}, \code{.stl}, or \code{.obj} surface mesh. The mesh
 is treated as a homogeneous closed solid, and the eigenvector associated
 with the smallest principal moment of inertia is used as the longitudinal
-axis. This workflow requires the suggested package Rvcg.
+axis. This workflow requires \code{SLICER = TRUE} and the suggested package Rvcg.
 }
 }
 
@@ -182,9 +182,10 @@ axis. This workflow requires the suggested package Rvcg.
 
 The \code{SLICER} argument controls the type of capture script returned.
 \itemize{
-\item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks. This is the default backend
-and is compatible with \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
-\code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "HUMERUS_TABLE"}.
+\item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks for \code{SOLID = FALSE}. This is
+the default backend and is compatible with \code{mode = "TIBIA"},
+\code{mode = "HUMERUS"}, \code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and
+\code{mode = "HUMERUS_TABLE"}.
 \item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{SOLID = FALSE},
 these blocks orient a Slicer slice view on a scalar volume node. When
 \code{SOLID = TRUE}, they cut and display the corresponding model node. This

@@ -33,14 +33,15 @@
 #'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
 #'   is treated as a homogeneous closed solid, and the eigenvector associated
 #'   with the smallest principal moment of inertia is used as the longitudinal
-#'   axis. This workflow requires the suggested package Rvcg.
+#'   axis. This workflow requires `SLICER = TRUE` and the suggested package Rvcg.
 #'
 #' @section Output backends:
 #' The `SLICER` argument controls the type of capture script returned.
 #'
-#' - `SLICER = FALSE` returns Avizo/Amira TCL blocks. This is the default backend
-#'   and is compatible with `mode = "TIBIA"`, `mode = "HUMERUS"`,
-#'   `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "HUMERUS_TABLE"`.
+#' - `SLICER = FALSE` returns Avizo/Amira TCL blocks for `SOLID = FALSE`. This is
+#'   the default backend and is compatible with `mode = "TIBIA"`,
+#'   `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`, and
+#'   `mode = "HUMERUS_TABLE"`.
 #' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `SOLID = FALSE`,
 #'   these blocks orient a Slicer slice view on a scalar volume node. When
 #'   `SOLID = TRUE`, they cut and display the corresponding model node. This
@@ -181,8 +182,8 @@
 #'   Slicer (70 mm in TRUE Red views; `ParallelScale = 35` in 3D views).
 #' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
 #'   from `mesh_file` by treating a watertight closed surface mesh as a
-#'   homogeneous solid. If `FALSE`, the longitudinal axis is read from
-#'   `longitudinal_matrix_str`.
+#'   homogeneous solid. Solid-mesh workflows require `SLICER = TRUE`. If
+#'   `FALSE`, the longitudinal axis is read from `longitudinal_matrix_str`.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
 #'   implemented for tibiae, humeri, femora, and radii; `HUMERUS_TABLE` is
@@ -297,6 +298,10 @@ orient_longbone <- function(mode,
 
   if (!is.logical(SLICER) || length(SLICER) != 1L || is.na(SLICER)) {
     stop("`SLICER` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (isTRUE(SOLID) && !isTRUE(SLICER)) {
+    stop("`SOLID = TRUE` requires `SLICER = TRUE`.", call. = FALSE)
   }
 
   if (!is.logical(USE_ANAT_ORIENT) || length(USE_ANAT_ORIENT) != 1L || is.na(USE_ANAT_ORIENT)) {
@@ -649,16 +654,16 @@ orient_longbone <- function(mode,
   numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
   manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
 
-  if (is.null(model_name) || length(model_name) != 1L || is.na(model_name) || !nzchar(model_name)) {
-    if (!is.null(mesh_file)) {
+  if (isTRUE(SOLID)) {
+    if (is.null(model_name) || length(model_name) != 1L || is.na(model_name) || !nzchar(model_name)) {
       model_name <- tools::file_path_sans_ext(basename(mesh_file))
-    } else {
-      model_name <- "Segment_1_solid"
     }
-  }
-
-  if (is.null(volume_name) || length(volume_name) != 1L || is.na(volume_name) || !nzchar(volume_name)) {
-    volume_name <- ""
+    volume_name <- NULL
+  } else {
+    model_name <- NULL
+    if (is.null(volume_name) || length(volume_name) != 1L || is.na(volume_name) || !nzchar(volume_name)) {
+      volume_name <- ""
+    }
   }
 
   res <- list(

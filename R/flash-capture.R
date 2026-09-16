@@ -14,13 +14,10 @@
 #' (`SLICER = TRUE`, `SOLID = FALSE`), and 3D Slicer with a solid surface mesh
 #' (`SLICER = TRUE`, `SOLID = TRUE`).
 #'
-#' Flash Capture deliberately does not recompute anatomical orientation. First
-#' prepare one reference section with [copy_tcl()] or [copy_slicer_py()] and
-#' configure the view in Avizo/Amira or 3D Slicer. The initial generated framing
-#' reflects the `camera_distance` value stored in `res`; any subsequent manual
-#' zoom/pan adjustment becomes the reference view preserved by Flash Capture.
-#' Then run `flash_capture()` and paste the generated batch block into the same
-#' application.
+#' Flash Capture deliberately does not recompute anatomical orientation. In 3D
+#' Slicer, first run one reference section with [copy_slicer_py()] and configure
+#' the desired view; Flash Capture preserves that prepared view across the batch.
+#' In Avizo/Amira, no prior [copy_tcl()] step is required.
 #'
 #' In the Avizo/Amira CT workflow, only the `Slice` position is moved; camera
 #' orientation, zoom, brightness/contrast, colormap, and scale settings are left

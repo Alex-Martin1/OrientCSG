@@ -15,6 +15,7 @@ test_that("orient_longbone() works for TIBIA mode", {
   expect_equal(res$individual_id, "TIBIA_TEST")
   expect_equal(names(res$avizo_tcl), "SECTION_50")
   expect_equal(names(res$section_points), "SECTION_50")
+  expect_null(res$model_name)
 
   expect_true(is.data.frame(res$summary))
   expect_true(is.data.frame(res$manual_orientation))
@@ -689,4 +690,16 @@ test_that("orient_longbone() validates camera_distance", {
   expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = 0))), "camera_distance")
   expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = -1))), "camera_distance")
   expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = Inf))), "camera_distance")
+})
+
+test_that("SOLID workflows require SLICER = TRUE", {
+  expect_error(
+    orient_longbone(
+      mode = "TIBIA",
+      SOLID = TRUE,
+      SLICER = FALSE
+    ),
+    "`SOLID = TRUE` requires `SLICER = TRUE`.",
+    fixed = TRUE
+  )
 })

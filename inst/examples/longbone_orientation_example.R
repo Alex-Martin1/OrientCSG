@@ -18,6 +18,11 @@ library(OrientCSG)
 # in table format. These examples use lm_coord_system = "LPS", matching the
 # coordinate convention expected by the workflow when coordinates are copied
 # from the Slicer Markups table rather than extracted as RAS world coordinates.
+#
+# On Windows, raw strings such as r"(D:\path\to\folder)" are used for file
+# and directory paths so paths copied directly from File Explorer can be pasted
+# without escaping backslashes. Forward-slash paths also remain valid inside a
+# raw string.
 
 
 # For routine SOLID = FALSE calls, the recommended input is now `dicom_dir`,
@@ -35,6 +40,10 @@ library(OrientCSG)
 #
 # The IOP/IPP values actually selected by the automatic route are reported in
 # `res$summary` after orientation.
+#
+# In 3D Slicer, run one section with copy_slicer_py() before flash_capture() so
+# the batch can preserve that prepared reference view. Avizo/Amira does not
+# require a prior copy_tcl() step.
 #
 # 1. TIBIA example ===========================================================
 #
@@ -136,7 +145,7 @@ copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
 # output directory before running this command:
 # flash_capture(
 #   res_tibia_true_slicer,
-#   output_dir = "C:/Users/Alex/Desktop/T108_Left_flash",
+#   output_dir = r"(C:\Users\Alex\Desktop\T108_Left_flash)",
 #   file_name = "T108_Left",
 #   color_mode = "grayscale"
 # )
@@ -147,7 +156,7 @@ copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
 # This workflow is intended for closed surface meshes (.ply, .stl, .obj).
 # Replace mesh_file_tibia with the full path to your own watertight mesh file.
 
-mesh_file_tibia <- "C:/Users/Alex/Desktop/T108_Left_solid.ply"
+mesh_file_tibia <- r"(C:\Users\Alex\Desktop\T108_Left_solid.ply)"
 
 tibia_landmarks_slicer_T108_Left_C <- "
 1 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-1 2 0
@@ -285,7 +294,7 @@ copy_slicer_py(res_humerus_true_slicer, section = "SECTION_50")
 #
 # Replace mesh_file_humerus with the full path to your own watertight mesh file.
 
-mesh_file_humerus <- "C:/Users/Alex/Desktop/H108_Right_solid.ply"
+mesh_file_humerus <- r"(C:\Users\Alex\Desktop\H108_Right_solid.ply)"
 
 humerus_landmarks_slicer_H108_Right_C <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
@@ -417,7 +426,7 @@ copy_slicer_py(res_femur_true_slicer, section = "SECTION_50")
 # surface mesh. The directory is illustrative; the file name is kept
 # consistent with the femoral example above.
 
-mesh_file_femur <- "C:/Users/Alex/Desktop/AAM_T-324_fémur_I.ply"
+mesh_file_femur <- r"(C:\Users\Alex\Desktop\AAM_T-324_fémur_I.ply)"
 
 femur_landmarks_slicer_F324_Left_C <- "
 1 -177.140548706055 12.686900138855  -28.967437744141 0 0 0 1 1 1 0 F-1 2 0
@@ -553,7 +562,7 @@ copy_slicer_py(res_radius_true_slicer, section = "SECTION_50")
 # surface mesh. The directory is illustrative; the file name is kept
 # consistent with the radial example above.
 
-mesh_file_radius <- "C:/Users/Alex/Desktop/AAM_T-324_radio_D.ply"
+mesh_file_radius <- r"(C:\Users\Alex\Desktop\AAM_T-324_radio_D.ply)"
 
 radius_landmarks_slicer_R324_Right_C <- "
 1  -83.089904785156 -9.098584175110  -89.785583496094 0 0 0 1 1 1 0 F-1 2 0
