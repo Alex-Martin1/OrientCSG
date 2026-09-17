@@ -140,11 +140,31 @@ emit_slice_normal_point <- function(obj, P, N, digits = 6) {
 # the appropriate projection for systematic image capture.
 emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
                                    camera_distance = 1, viewer_id = 0,
-                                   orthographic = TRUE, digits = 6) {
+                                   orthographic = TRUE, orientation_only = FALSE,
+                                   digits = 6) {
   basis <- make_camera_basis(Z_axis = Z_axis, X_axis = X_axis, Y_preferred = Y_preferred)
   Xcam <- basis$Xcam
   Ycam <- basis$Ycam
   Zcam <- basis$Zcam
+
+  R_cam <- cbind(Xcam, Ycam, Zcam)
+  aa <- rotmat_to_axis_angle(R_cam)
+  ax <- aa$axis
+  ang <- aa$angle
+
+  orientation_cmd <- sprintf(
+    "viewer %d setCameraOrientation %s %s %s %s",
+    viewer_id,
+    fmt_num(ax[1], digits), fmt_num(ax[2], digits), fmt_num(ax[3], digits),
+    fmt_num(ang, digits)
+  )
+
+  # Flash Capture can request orientation-only output so that the current
+  # camera position, projection type, and zoom/framing are preserved while
+  # the camera is rotated perpendicular to the current section.
+  if (isTRUE(orientation_only)) {
+    return(c(orientation_cmd, sprintf("viewer %d redraw", viewer_id)))
+  }
 
   # In orthographic projection, moving the camera does not change visual zoom.
   # Keep a stable internal camera position and map the public camera_distance
@@ -153,22 +173,13 @@ emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
   base_camera_height <- 100
   camera_height <- base_camera_height * camera_distance
   C <- P + camera_position_distance_mm * Zcam
-  R_cam <- cbind(Xcam, Ycam, Zcam)
-  aa <- rotmat_to_axis_angle(R_cam)
-  ax <- aa$axis
-  ang <- aa$angle
 
   out <- c(
     sprintf("set Cx %s", fmt_num(C[1], digits)),
     sprintf("set Cy %s", fmt_num(C[2], digits)),
     sprintf("set Cz %s", fmt_num(C[3], digits)),
     sprintf("viewer %d setCameraPosition $Cx $Cy $Cz", viewer_id),
-    sprintf(
-      "viewer %d setCameraOrientation %s %s %s %s",
-      viewer_id,
-      fmt_num(ax[1], digits), fmt_num(ax[2], digits), fmt_num(ax[3], digits),
-      fmt_num(ang, digits)
-    )
+    orientation_cmd
   )
 
   if (orthographic) {

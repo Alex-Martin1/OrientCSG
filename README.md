@@ -244,7 +244,7 @@ cat(get_slicer_py(res, section = "SECTION_50"))
 - 3D Slicer + CT (`SLICER = TRUE`, `SOLID = FALSE`);
 - 3D Slicer + SOLID mesh (`SLICER = TRUE`, `SOLID = TRUE`).
 
-In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required: Flash Capture initializes the first requested section with the current result's Slice, AP/ML planes, and standardized camera orientation before capturing the batch.
+In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required: Flash Capture initializes the first requested section with the current result's Slice and AP/ML planes and rotates the existing camera perpendicular to the section while preserving its position and zoom.
 
 ```r
 # Prepare the reference section first:
@@ -262,7 +262,7 @@ If `file_name` is omitted, `res$individual_id` is used. The generated files are 
 
 `viewer_id` and `reference_tolerance_mm` are no longer public arguments. Flash Capture uses Avizo/Amira viewer 0 and a fixed 2 mm Slicer reference-section tolerance internally.
 
-In Avizo/Amira, Flash Capture fully initializes the first requested section using the orientation stored in `res`: it updates the Slice, AP/ML visual planes, and standardized orthographic camera once, then reuses that camera while moving the Slice through the remaining sections. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
+In Avizo/Amira, Flash Capture initializes the first requested section using the orientation stored in `res`: it updates the Slice and AP/ML visual planes and rotates the existing camera perpendicular to the section once, while preserving camera position, projection type, and zoom/framing. It then reuses that camera while moving the Slice through the remaining sections. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
 
 ## Working with Slicer Python output
 
@@ -333,7 +333,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - `HUMERUS_TABLE` was used even though scan orientation was not anatomically standardized;
 - `SLICER = TRUE` was requested with `HUMERUS_TABLE`, which is not supported;
 - section names were typed incorrectly when using `get_tcl()`, `copy_tcl()`, `write_tcl()`, `get_slicer_py()`, `copy_slicer_py()`, or `flash_capture()`;
-- `flash_capture()` was run before a normal OrientCSG reference section had been pasted and configured in Avizo/Amira or Slicer.
+- in 3D Slicer, `flash_capture()` was run before a normal OrientCSG reference section had been pasted and configured.
 
 ## Utility function
 

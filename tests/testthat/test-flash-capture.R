@@ -56,20 +56,23 @@ test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
   expect_contains_fixed(txt, "# INITIAL ORIENTATION FROM SECTION_20")
   expect_contains_fixed(txt, '"ML" origin setCoord')
   expect_contains_fixed(txt, '"AP" origin setCoord')
-  expect_contains_fixed(txt, "viewer 0 setCameraPosition")
   expect_contains_fixed(txt, "viewer 0 setCameraOrientation")
-  expect_contains_fixed(txt, "viewer 0 setCameraType orthographic")
-  expect_contains_fixed(txt, "viewer 0 setCameraHeight 100.000000")
+  expect_false(grepl("viewer 0 setCameraPosition", txt, fixed = TRUE))
+  expect_false(grepl("viewer 0 setCameraType", txt, fixed = TRUE))
+  expect_false(grepl("viewer 0 setCameraHeight", txt, fixed = TRUE))
+  expect_false(grepl("setCameraFocalDistance", txt, fixed = TRUE))
+  expect_false(grepl("setCameraNearDistance", txt, fixed = TRUE))
+  expect_false(grepl("setCameraFarDistance", txt, fixed = TRUE))
   expect_contains_fixed(txt, "viewer 0 snapshot $OrientCSG_file")
   expect_false(grepl("vtkImageLuminance", txt, fixed = TRUE))
   expect_false(grepl("orientcsg_tmp", txt, fixed = TRUE))
 
-  camera_pos <- regexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)[1]
+  camera_orientation <- regexpr("viewer 0 setCameraOrientation", txt, fixed = TRUE)[1]
   first_snapshot <- regexpr("viewer 0 snapshot $OrientCSG_file", txt, fixed = TRUE)[1]
-  expect_gt(camera_pos, 0)
-  expect_gt(first_snapshot, camera_pos)
+  expect_gt(camera_orientation, 0)
+  expect_gt(first_snapshot, camera_orientation)
   expect_identical(
-    lengths(regmatches(txt, gregexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)))[[1]],
+    lengths(regmatches(txt, gregexpr("viewer 0 setCameraOrientation", txt, fixed = TRUE)))[[1]],
     1L
   )
 })

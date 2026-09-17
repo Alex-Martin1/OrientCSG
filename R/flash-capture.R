@@ -19,13 +19,12 @@
 #' orientation: first run one reference section with [copy_slicer_py()] and
 #' configure the desired view; Flash Capture preserves that prepared view across
 #' the batch. In Avizo/Amira, no prior [copy_tcl()] step is required: Flash
-#' Capture initializes the first requested section with the same Slice, AP/ML
-#' planes, and standardized camera orientation used by [copy_tcl()], then reuses
-#' that camera while moving the Slice through the remaining requested sections.
-#'
-#' In the Avizo/Amira CT workflow, this initial orientation resets the camera
-#' position/orientation and orthographic framing from the current result, while
-#' brightness/contrast, colormap, and scale settings are left unchanged. In the
+#' Capture initializes the first requested section with the same Slice and AP/ML
+#' orientation used by [copy_tcl()] and rotates the existing camera so it is
+#' perpendicular to the section. The current camera position, projection type,
+#' and zoom/framing are preserved, and that oriented camera is then reused while
+#' the Slice moves through the remaining requested sections. Brightness/contrast,
+#' colormap, and scale settings are also left unchanged. In the
 #' 3D Slicer CT workflow, the current slice matrix and field of
 #' view are used as the visual reference while the section plane and OrientCSG
 #' scale are translated between requested section points. In the 3D Slicer SOLID
@@ -263,12 +262,6 @@ flash_capture <- function(
     stop("`res` does not contain valid transverse orientation vectors.", call. = FALSE)
   }
 
-  camera_distance <- res$camera_distance
-  if (is.null(camera_distance) || length(camera_distance) != 1L ||
-      !is.finite(camera_distance) || camera_distance <= 0) {
-    camera_distance <- 1
-  }
-
   reference_section <- selected[[1L]]
   P_ref <- res$section_points[[reference_section]]
   ML_normal <- nrm(cross3(L, ML))
@@ -279,7 +272,7 @@ flash_capture <- function(
     sprintf("# INITIAL ORIENTATION FROM %s", reference_section),
     "# ------------------------------------------------------------",
     "# Apply the current result's section orientation before capture.",
-    "# The camera is initialized once and then reused for the batch.",
+    "# Rotate the camera once while preserving its position and zoom.",
     "",
     emit_normal_point_plane("Slice", P_ref, L)
   )
@@ -306,7 +299,7 @@ flash_capture <- function(
     emit_longbone_camera(
       P_ref, L, ML, AP,
       mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY",
-      camera_distance = camera_distance
+      orientation_only = TRUE
     ),
     ""
   )
@@ -318,8 +311,9 @@ flash_capture <- function(
     "# ============================================================",
     "#",
     "# The first requested section initializes Slice orientation,",
-    "# AP/ML visual planes (when available), and the standardized",
-    "# camera. The camera is then reused while Slice moves through",
+    "# AP/ML visual planes (when available), and camera orientation.",
+    "# Camera position, projection type, and zoom/framing are preserved.",
+    "# The oriented camera is then reused while Slice moves through",
     "# the remaining requested sections.",
     "# Brightness/contrast, colormap, and scale settings are unchanged.",
     "# ============================================================",

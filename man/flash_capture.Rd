@@ -61,13 +61,12 @@ In 3D Slicer, Flash Capture deliberately does not recompute anatomical
 orientation: first run one reference section with \code{\link[=copy_slicer_py]{copy_slicer_py()}} and
 configure the desired view; Flash Capture preserves that prepared view across
 the batch. In Avizo/Amira, no prior \code{\link[=copy_tcl]{copy_tcl()}} step is required: Flash
-Capture initializes the first requested section with the same Slice, AP/ML
-planes, and standardized camera orientation used by \code{\link[=copy_tcl]{copy_tcl()}}, then reuses
-that camera while moving the Slice through the remaining requested sections.
-
-In the Avizo/Amira CT workflow, this initial orientation resets the camera
-position/orientation and orthographic framing from the current result, while
-brightness/contrast, colormap, and scale settings are left unchanged. In the
+Capture initializes the first requested section with the same Slice and AP/ML
+orientation used by \code{\link[=copy_tcl]{copy_tcl()}} and rotates the existing camera so it is
+perpendicular to the section. The current camera position, projection type,
+and zoom/framing are preserved, and that oriented camera is then reused while
+the Slice moves through the remaining requested sections. Brightness/contrast,
+colormap, and scale settings are also left unchanged. In the
 3D Slicer CT workflow, the current slice matrix and field of
 view are used as the visual reference while the section plane and OrientCSG
 scale are translated between requested section points. In the 3D Slicer SOLID
