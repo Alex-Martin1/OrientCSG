@@ -794,7 +794,10 @@ longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
 # Orient the camera so that the section is parallel to the screen and the
 # anatomical axes appear in a consistent orientation. Tibial sections are handled
 # with a sign convention that matches the established capture protocol.
-emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1, orientation_only = FALSE) {
+emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1,
+                                 orientation_only = FALSE,
+                                 preserve_screen_position = FALSE,
+                                 anchor_expr = NULL) {
   Lc <- nrm(L)
   Lref <- nrm(c(0, 0, -1))
   if (dot3(Lc, Lref) < 0) Lc <- -Lc
@@ -817,9 +820,17 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1, orient
     # Tibial and femoral capture protocols use the opposite in-plane screen
     # direction so that the anterior aspect is displayed at the top. Flipping
     # both axes rotates the section by 180 degrees without mirroring it.
-    emit_camera_from_basis(P, Z_axis = Lc, X_axis = -MLc, Y_preferred = -APc, camera_distance = camera_distance, orientation_only = orientation_only)
+    emit_camera_from_basis(P, Z_axis = Lc, X_axis = -MLc, Y_preferred = -APc,
+                           camera_distance = camera_distance,
+                           orientation_only = orientation_only,
+                           preserve_screen_position = preserve_screen_position,
+                           anchor_expr = anchor_expr)
   } else {
-    emit_camera_from_basis(P, Z_axis = Lc, X_axis = MLc, Y_preferred = APc, camera_distance = camera_distance, orientation_only = orientation_only)
+    emit_camera_from_basis(P, Z_axis = Lc, X_axis = MLc, Y_preferred = APc,
+                           camera_distance = camera_distance,
+                           orientation_only = orientation_only,
+                           preserve_screen_position = preserve_screen_position,
+                           anchor_expr = anchor_expr)
   }
 }
 

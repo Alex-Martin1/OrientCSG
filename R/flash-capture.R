@@ -269,12 +269,24 @@ flash_capture <- function(
 
   initial_orientation <- c(
     "# ------------------------------------------------------------",
-    sprintf("# INITIAL ORIENTATION FROM %s", reference_section),
+    "# INITIAL ORIENTATION FROM CURRENT SLICE",
     "# ------------------------------------------------------------",
-    "# Apply the current result's section orientation before capture.",
-    "# Rotate the camera once while preserving its position and zoom.",
+    "# Use the current Slice origin as the framing anchor when available.",
+    "# If that query fails, fall back to the first requested section.",
+    "if {[catch {\"Slice\" origin getCoord 0} OrientCSG_anchorP]} {",
+    sprintf("  set OrientCSG_anchorP {%s}", fmt_vec(P_ref)),
+    "}",
     "",
-    emit_normal_point_plane("Slice", P_ref, L)
+    "# Reorient the current Slice before batch capture.",
+    "\"Slice\" planeDefinition setValue 0",
+    "eval {\"Slice\" origin setCoord 0 $OrientCSG_anchorP}",
+    sprintf("\"Slice\" normal setCoord 0 %s", fmt_vec(L)),
+    "catch {\"Slice\" origin showPoints 0}",
+    "catch {\"Slice\" point showPoints 0}",
+    "catch {\"Slice\" planePoint1 showPoints 0}",
+    "catch {\"Slice\" planePoint2 showPoints 0}",
+    "catch {\"Slice\" planePoint3 showPoints 0}",
+    "\"Slice\" fire"
   )
 
   if (isTRUE(res$USE_ANAT_ORIENT)) {
@@ -282,14 +294,28 @@ flash_capture <- function(
       initial_orientation,
       "",
       "# ML visual plane",
-      emit_normal_point_plane(
-        "ML", P_ref, ML_normal, color = c(0, 1, 0), hide_points = TRUE
-      ),
+      "\"ML\" planeDefinition setValue 0",
+      "eval {\"ML\" origin setCoord 0 $OrientCSG_anchorP}",
+      sprintf("\"ML\" normal setCoord 0 %s", fmt_vec(ML_normal)),
+      "catch {\"ML\" origin showPoints 0}",
+      "catch {\"ML\" point showPoints 0}",
+      "catch {\"ML\" planePoint1 showPoints 0}",
+      "catch {\"ML\" planePoint2 showPoints 0}",
+      "catch {\"ML\" planePoint3 showPoints 0}",
+      "catch {\"ML\" frameSettings setState item 0 1 item 2 1 color 3 0.000 1.000 0.000 0}",
+      "\"ML\" fire",
       "",
       "# AP visual plane",
-      emit_normal_point_plane(
-        "AP", P_ref, AP_normal, color = c(0, 0, 1), hide_points = TRUE
-      )
+      "\"AP\" planeDefinition setValue 0",
+      "eval {\"AP\" origin setCoord 0 $OrientCSG_anchorP}",
+      sprintf("\"AP\" normal setCoord 0 %s", fmt_vec(AP_normal)),
+      "catch {\"AP\" origin showPoints 0}",
+      "catch {\"AP\" point showPoints 0}",
+      "catch {\"AP\" planePoint1 showPoints 0}",
+      "catch {\"AP\" planePoint2 showPoints 0}",
+      "catch {\"AP\" planePoint3 showPoints 0}",
+      "catch {\"AP\" frameSettings setState item 0 1 item 2 1 color 3 0.000 0.000 1.000 0}",
+      "\"AP\" fire"
     )
   }
 
@@ -299,7 +325,8 @@ flash_capture <- function(
     emit_longbone_camera(
       P_ref, L, ML, AP,
       mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY",
-      orientation_only = TRUE
+      preserve_screen_position = TRUE,
+      anchor_expr = "$OrientCSG_anchorP"
     ),
     ""
   )
@@ -310,11 +337,12 @@ flash_capture <- function(
     "# Avizo/Amira / CT volume",
     "# ============================================================",
     "#",
-    "# The first requested section initializes Slice orientation,",
+    "# The current Slice initializes Slice orientation,",
     "# AP/ML visual planes (when available), and camera orientation.",
-    "# Camera position, projection type, and zoom/framing are preserved.",
+    "# Zoom/projection are preserved; camera position is minimally adjusted",
+    "# so the current Slice stays at the same screen location.",
     "# The oriented camera is then reused while Slice moves through",
-    "# the remaining requested sections.",
+    "# the requested output sections.",
     "# Brightness/contrast, colormap, and scale settings are unchanged.",
     "# ============================================================",
     "",

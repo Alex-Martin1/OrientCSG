@@ -141,6 +141,8 @@ emit_slice_normal_point <- function(obj, P, N, digits = 6) {
 emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
                                    camera_distance = 1, viewer_id = 0,
                                    orthographic = TRUE, orientation_only = FALSE,
+                                   preserve_screen_position = FALSE,
+                                   anchor_expr = NULL,
                                    digits = 6) {
   basis <- make_camera_basis(Z_axis = Z_axis, X_axis = X_axis, Y_preferred = Y_preferred)
   Xcam <- basis$Xcam
@@ -158,6 +160,49 @@ emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
     fmt_num(ax[1], digits), fmt_num(ax[2], digits), fmt_num(ax[3], digits),
     fmt_num(ang, digits)
   )
+
+  # Flash Capture can preserve the visual location of the reference section
+  # while rotating to a new anatomical basis. The current camera position and
+  # orientation are queried at runtime. The reference point keeps the same X/Y
+  # screen coordinates and depth in the new camera basis. Camera height/zoom,
+  # projection type, focal distance, and clipping distances are not touched.
+  if (isTRUE(preserve_screen_position)) {
+    Dcam <- -Zcam
+    pref_cmd <- if (is.null(anchor_expr)) {
+      sprintf("set OrientCSG_Pref {%s}", fmt_vec(P, digits))
+    } else {
+      sprintf("set OrientCSG_Pref %s", anchor_expr)
+    }
+    return(c(
+      pref_cmd,
+      sprintf("set OrientCSG_Xnew {%s}", fmt_vec(Xcam, digits)),
+      sprintf("set OrientCSG_Ynew {%s}", fmt_vec(Ycam, digits)),
+      sprintf("set OrientCSG_Dnew {%s}", fmt_vec(Dcam, digits)),
+      "proc _orientcsg_dot {a b} {expr {[lindex $a 0]*[lindex $b 0] + [lindex $a 1]*[lindex $b 1] + [lindex $a 2]*[lindex $b 2]}}",
+      "proc _orientcsg_cross {a b} {list [expr {[lindex $a 1]*[lindex $b 2] - [lindex $a 2]*[lindex $b 1]}] [expr {[lindex $a 2]*[lindex $b 0] - [lindex $a 0]*[lindex $b 2]}] [expr {[lindex $a 0]*[lindex $b 1] - [lindex $a 1]*[lindex $b 0]}]}",
+      "proc _orientcsg_scale {v s} {list [expr {[lindex $v 0]*$s}] [expr {[lindex $v 1]*$s}] [expr {[lindex $v 2]*$s}]}",
+      "proc _orientcsg_add {a b} {list [expr {[lindex $a 0]+[lindex $b 0]}] [expr {[lindex $a 1]+[lindex $b 1]}] [expr {[lindex $a 2]+[lindex $b 2]}]}",
+      "proc _orientcsg_sub {a b} {list [expr {[lindex $a 0]-[lindex $b 0]}] [expr {[lindex $a 1]-[lindex $b 1]}] [expr {[lindex $a 2]-[lindex $b 2]}]}",
+      "proc _orientcsg_norm {v} {set n [expr {sqrt([_orientcsg_dot $v $v])}]; if {$n < 1e-12} {return {0 0 1}}; list [expr {[lindex $v 0]/$n}] [expr {[lindex $v 1]/$n}] [expr {[lindex $v 2]/$n}]}",
+      "proc _orientcsg_rotate_axis_angle {v axis angle} {set u [_orientcsg_norm $axis]; set c [expr {cos($angle)}]; set s [expr {sin($angle)}]; set t1 [_orientcsg_scale $v $c]; set t2 [_orientcsg_scale [_orientcsg_cross $u $v] $s]; set t3 [_orientcsg_scale $u [expr {[_orientcsg_dot $u $v] * (1.0 - $c)}]]; _orientcsg_add [_orientcsg_add $t1 $t2] $t3}",
+      sprintf("set OrientCSG_camPos [viewer %d getCameraPosition]", viewer_id),
+      sprintf("set OrientCSG_camOri [viewer %d getCameraOrientation]", viewer_id),
+      "set OrientCSG_axis [lrange $OrientCSG_camOri 0 2]",
+      "set OrientCSG_ang [lindex $OrientCSG_camOri 3]",
+      "set OrientCSG_Xold [_orientcsg_rotate_axis_angle {1 0 0} $OrientCSG_axis $OrientCSG_ang]",
+      "set OrientCSG_Yold [_orientcsg_rotate_axis_angle {0 1 0} $OrientCSG_axis $OrientCSG_ang]",
+      "set OrientCSG_Dold [_orientcsg_rotate_axis_angle {0 0 -1} $OrientCSG_axis $OrientCSG_ang]",
+      "set OrientCSG_dold [_orientcsg_sub $OrientCSG_Pref $OrientCSG_camPos]",
+      "set OrientCSG_keepX [_orientcsg_dot $OrientCSG_dold $OrientCSG_Xold]",
+      "set OrientCSG_keepY [_orientcsg_dot $OrientCSG_dold $OrientCSG_Yold]",
+      "set OrientCSG_keepD [_orientcsg_dot $OrientCSG_dold $OrientCSG_Dold]",
+      "set OrientCSG_offset [_orientcsg_add [_orientcsg_add [_orientcsg_scale $OrientCSG_Xnew $OrientCSG_keepX] [_orientcsg_scale $OrientCSG_Ynew $OrientCSG_keepY]] [_orientcsg_scale $OrientCSG_Dnew $OrientCSG_keepD]]",
+      "set OrientCSG_Cnew [_orientcsg_sub $OrientCSG_Pref $OrientCSG_offset]",
+      sprintf("viewer %d setCameraPosition [lindex $OrientCSG_Cnew 0] [lindex $OrientCSG_Cnew 1] [lindex $OrientCSG_Cnew 2]", viewer_id),
+      orientation_cmd,
+      sprintf("viewer %d redraw", viewer_id)
+    ))
+  }
 
   # Flash Capture can request orientation-only output so that the current
   # camera position, projection type, and zoom/framing are preserved while

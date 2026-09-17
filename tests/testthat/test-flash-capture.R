@@ -53,11 +53,18 @@ test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
   expect_contains_fixed(txt, "T109_80.tif")
   expect_false(grepl("T109_35.tif", txt, fixed = TRUE))
   expect_contains_fixed(txt, '"Slice" origin setCoord')
-  expect_contains_fixed(txt, "# INITIAL ORIENTATION FROM SECTION_20")
+  expect_contains_fixed(txt, "# INITIAL ORIENTATION FROM CURRENT SLICE")
   expect_contains_fixed(txt, '"ML" origin setCoord')
   expect_contains_fixed(txt, '"AP" origin setCoord')
+  expect_contains_fixed(txt, "viewer 0 getCameraPosition")
+  expect_contains_fixed(txt, "viewer 0 getCameraOrientation")
+  expect_contains_fixed(txt, "viewer 0 setCameraPosition")
   expect_contains_fixed(txt, "viewer 0 setCameraOrientation")
-  expect_false(grepl("viewer 0 setCameraPosition", txt, fixed = TRUE))
+  expect_contains_fixed(txt, "catch {\"Slice\" origin getCoord 0} OrientCSG_anchorP")
+  expect_contains_fixed(txt, "eval {\"Slice\" origin setCoord 0 $OrientCSG_anchorP}")
+  expect_contains_fixed(txt, "set OrientCSG_keepX")
+  expect_contains_fixed(txt, "set OrientCSG_keepY")
+  expect_contains_fixed(txt, "set OrientCSG_keepD")
   expect_false(grepl("viewer 0 setCameraType", txt, fixed = TRUE))
   expect_false(grepl("viewer 0 setCameraHeight", txt, fixed = TRUE))
   expect_false(grepl("setCameraFocalDistance", txt, fixed = TRUE))
@@ -67,10 +74,18 @@ test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
   expect_false(grepl("vtkImageLuminance", txt, fixed = TRUE))
   expect_false(grepl("orientcsg_tmp", txt, fixed = TRUE))
 
+  camera_get <- regexpr("viewer 0 getCameraPosition", txt, fixed = TRUE)[1]
+  camera_set <- regexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)[1]
   camera_orientation <- regexpr("viewer 0 setCameraOrientation", txt, fixed = TRUE)[1]
   first_snapshot <- regexpr("viewer 0 snapshot $OrientCSG_file", txt, fixed = TRUE)[1]
-  expect_gt(camera_orientation, 0)
+  expect_gt(camera_get, 0)
+  expect_gt(camera_set, camera_get)
+  expect_gt(camera_orientation, camera_set)
   expect_gt(first_snapshot, camera_orientation)
+  expect_identical(
+    lengths(regmatches(txt, gregexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)))[[1]],
+    1L
+  )
   expect_identical(
     lengths(regmatches(txt, gregexpr("viewer 0 setCameraOrientation", txt, fixed = TRUE)))[[1]],
     1L
