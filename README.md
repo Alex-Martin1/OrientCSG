@@ -244,7 +244,7 @@ cat(get_slicer_py(res, section = "SECTION_50"))
 - 3D Slicer + CT (`SLICER = TRUE`, `SOLID = FALSE`);
 - 3D Slicer + SOLID mesh (`SLICER = TRUE`, `SOLID = TRUE`).
 
-In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required.
+In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required: Flash Capture initializes the first requested section with the current result's Slice, AP/ML planes, and standardized camera orientation before capturing the batch.
 
 ```r
 # Prepare the reference section first:
@@ -262,7 +262,7 @@ If `file_name` is omitted, `res$individual_id` is used. The generated files are 
 
 `viewer_id` and `reference_tolerance_mm` are no longer public arguments. Flash Capture uses Avizo/Amira viewer 0 and a fixed 2 mm Slicer reference-section tolerance internally.
 
-In Avizo/Amira, Flash Capture changes only the `Slice` position and preserves the view that the user prepared. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
+In Avizo/Amira, Flash Capture fully initializes the first requested section using the orientation stored in `res`: it updates the Slice, AP/ML visual planes, and standardized orthographic camera once, then reuses that camera while moving the Slice through the remaining sections. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
 
 ## Working with Slicer Python output
 

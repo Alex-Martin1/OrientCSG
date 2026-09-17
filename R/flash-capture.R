@@ -2,8 +2,9 @@
 #
 # Internal generators live in this file because Flash Capture is deliberately
 # separated from the orientation backends. orient_longbone() establishes the
-# geometry and a reference view; flash_capture() reuses that prepared view to
-# export multiple requested sections.
+# geometry; flash_capture() either initializes the Avizo/Amira view from that
+# geometry or reuses a prepared 3D Slicer reference view to export multiple
+# requested sections.
 
 #' Batch-capture long-bone cross-sections
 #'
@@ -14,14 +15,18 @@
 #' (`SLICER = TRUE`, `SOLID = FALSE`), and 3D Slicer with a solid surface mesh
 #' (`SLICER = TRUE`, `SOLID = TRUE`).
 #'
-#' Flash Capture deliberately does not recompute anatomical orientation. In 3D
-#' Slicer, first run one reference section with [copy_slicer_py()] and configure
-#' the desired view; Flash Capture preserves that prepared view across the batch.
-#' In Avizo/Amira, no prior [copy_tcl()] step is required.
+#' In 3D Slicer, Flash Capture deliberately does not recompute anatomical
+#' orientation: first run one reference section with [copy_slicer_py()] and
+#' configure the desired view; Flash Capture preserves that prepared view across
+#' the batch. In Avizo/Amira, no prior [copy_tcl()] step is required: Flash
+#' Capture initializes the first requested section with the same Slice, AP/ML
+#' planes, and standardized camera orientation used by [copy_tcl()], then reuses
+#' that camera while moving the Slice through the remaining requested sections.
 #'
-#' In the Avizo/Amira CT workflow, only the `Slice` position is moved; camera
-#' orientation, zoom, brightness/contrast, colormap, and scale settings are left
-#' unchanged. In the 3D Slicer CT workflow, the current slice matrix and field of
+#' In the Avizo/Amira CT workflow, this initial orientation resets the camera
+#' position/orientation and orthographic framing from the current result, while
+#' brightness/contrast, colormap, and scale settings are left unchanged. In the
+#' 3D Slicer CT workflow, the current slice matrix and field of
 #' view are used as the visual reference while the section plane and OrientCSG
 #' scale are translated between requested section points. In the 3D Slicer SOLID
 #' workflow, the source mesh is re-cut at each requested section while the current
@@ -245,7 +250,66 @@ flash_capture <- function(
     formatC(as.numeric(x), format = "f", digits = 6, drop0trailing = FALSE)
   }
   fmt_vec <- function(x) paste(fmt(x), collapse = " ")
+
   L <- res$vectors$L
+  if (isTRUE(res$USE_ANAT_ORIENT)) {
+    ML <- res$vectors$ML
+    AP <- res$vectors$AP
+  } else {
+    ML <- res$vectors$X_screen
+    AP <- res$vectors$Y_screen
+  }
+  if (is.null(ML) || length(ML) != 3L || is.null(AP) || length(AP) != 3L) {
+    stop("`res` does not contain valid transverse orientation vectors.", call. = FALSE)
+  }
+
+  camera_distance <- res$camera_distance
+  if (is.null(camera_distance) || length(camera_distance) != 1L ||
+      !is.finite(camera_distance) || camera_distance <= 0) {
+    camera_distance <- 1
+  }
+
+  reference_section <- selected[[1L]]
+  P_ref <- res$section_points[[reference_section]]
+  ML_normal <- nrm(cross3(L, ML))
+  AP_normal <- nrm(cross3(L, AP))
+
+  initial_orientation <- c(
+    "# ------------------------------------------------------------",
+    sprintf("# INITIAL ORIENTATION FROM %s", reference_section),
+    "# ------------------------------------------------------------",
+    "# Apply the current result's section orientation before capture.",
+    "# The camera is initialized once and then reused for the batch.",
+    "",
+    emit_normal_point_plane("Slice", P_ref, L)
+  )
+
+  if (isTRUE(res$USE_ANAT_ORIENT)) {
+    initial_orientation <- c(
+      initial_orientation,
+      "",
+      "# ML visual plane",
+      emit_normal_point_plane(
+        "ML", P_ref, ML_normal, color = c(0, 1, 0), hide_points = TRUE
+      ),
+      "",
+      "# AP visual plane",
+      emit_normal_point_plane(
+        "AP", P_ref, AP_normal, color = c(0, 0, 1), hide_points = TRUE
+      )
+    )
+  }
+
+  initial_orientation <- c(
+    initial_orientation,
+    "",
+    emit_longbone_camera(
+      P_ref, L, ML, AP,
+      mode = if (isTRUE(res$USE_ANAT_ORIENT)) res$type else "SECTION_ONLY",
+      camera_distance = camera_distance
+    ),
+    ""
+  )
 
   out <- c(
     "# ============================================================",
@@ -253,15 +317,17 @@ flash_capture <- function(
     "# Avizo/Amira / CT volume",
     "# ============================================================",
     "#",
-    "# This block changes only the position of the Slice object.",
-    "# It does NOT modify camera position/orientation, zoom,",
-    "# brightness/contrast, colormap, or the scale bar.",
-    "# Configure the desired view before running this block.",
+    "# The first requested section initializes Slice orientation,",
+    "# AP/ML visual planes (when available), and the standardized",
+    "# camera. The camera is then reused while Slice moves through",
+    "# the remaining requested sections.",
+    "# Brightness/contrast, colormap, and scale settings are unchanged.",
     "# ============================================================",
     "",
     sprintf("set OrientCSG_output_dir {%s}", output_dir),
     "file mkdir $OrientCSG_output_dir",
-    ""
+    "",
+    initial_orientation
   )
 
   for (sec in selected) {

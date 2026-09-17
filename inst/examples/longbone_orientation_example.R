@@ -43,7 +43,8 @@ library(OrientCSG)
 #
 # In 3D Slicer, run one section with copy_slicer_py() before flash_capture() so
 # the batch can preserve that prepared reference view. Avizo/Amira does not
-# require a prior copy_tcl() step.
+# require a prior copy_tcl() step: Flash Capture initializes Slice, AP/ML, and
+# the standardized camera from the current result before the batch starts.
 #
 # 1. TIBIA example ===========================================================
 #

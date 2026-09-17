@@ -18,6 +18,7 @@ make_flash_capture_result <- function(SLICER = FALSE, SOLID = FALSE) {
       SLICER = SLICER,
       SOLID = SOLID,
       USE_ANAT_ORIENT = TRUE,
+      camera_distance = 1,
       model_name = "T109_solid"
     ),
     class = c("orientcsg_longbone", "orientcsg_orientation")
@@ -52,11 +53,25 @@ test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
   expect_contains_fixed(txt, "T109_80.tif")
   expect_false(grepl("T109_35.tif", txt, fixed = TRUE))
   expect_contains_fixed(txt, '"Slice" origin setCoord')
+  expect_contains_fixed(txt, "# INITIAL ORIENTATION FROM SECTION_20")
+  expect_contains_fixed(txt, '"ML" origin setCoord')
+  expect_contains_fixed(txt, '"AP" origin setCoord')
+  expect_contains_fixed(txt, "viewer 0 setCameraPosition")
+  expect_contains_fixed(txt, "viewer 0 setCameraOrientation")
+  expect_contains_fixed(txt, "viewer 0 setCameraType orthographic")
+  expect_contains_fixed(txt, "viewer 0 setCameraHeight 100.000000")
   expect_contains_fixed(txt, "viewer 0 snapshot $OrientCSG_file")
   expect_false(grepl("vtkImageLuminance", txt, fixed = TRUE))
   expect_false(grepl("orientcsg_tmp", txt, fixed = TRUE))
-  expect_false(grepl("setCameraPosition", txt, fixed = TRUE))
-  expect_false(grepl("setCameraOrientation", txt, fixed = TRUE))
+
+  camera_pos <- regexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)[1]
+  first_snapshot <- regexpr("viewer 0 snapshot $OrientCSG_file", txt, fixed = TRUE)[1]
+  expect_gt(camera_pos, 0)
+  expect_gt(first_snapshot, camera_pos)
+  expect_identical(
+    lengths(regmatches(txt, gregexpr("viewer 0 setCameraPosition", txt, fixed = TRUE)))[[1]],
+    1L
+  )
 })
 
 

@@ -57,14 +57,18 @@ volume (\code{SLICER = FALSE}, \code{SOLID = FALSE}), 3D Slicer with a CT volume
 (\code{SLICER = TRUE}, \code{SOLID = TRUE}).
 }
 \details{
-Flash Capture deliberately does not recompute anatomical orientation. In 3D
-Slicer, first run one reference section with \code{\link[=copy_slicer_py]{copy_slicer_py()}} and configure
-the desired view; Flash Capture preserves that prepared view across the batch.
-In Avizo/Amira, no prior \code{\link[=copy_tcl]{copy_tcl()}} step is required.
+In 3D Slicer, Flash Capture deliberately does not recompute anatomical
+orientation: first run one reference section with \code{\link[=copy_slicer_py]{copy_slicer_py()}} and
+configure the desired view; Flash Capture preserves that prepared view across
+the batch. In Avizo/Amira, no prior \code{\link[=copy_tcl]{copy_tcl()}} step is required: Flash
+Capture initializes the first requested section with the same Slice, AP/ML
+planes, and standardized camera orientation used by \code{\link[=copy_tcl]{copy_tcl()}}, then reuses
+that camera while moving the Slice through the remaining requested sections.
 
-In the Avizo/Amira CT workflow, only the \code{Slice} position is moved; camera
-orientation, zoom, brightness/contrast, colormap, and scale settings are left
-unchanged. In the 3D Slicer CT workflow, the current slice matrix and field of
+In the Avizo/Amira CT workflow, this initial orientation resets the camera
+position/orientation and orthographic framing from the current result, while
+brightness/contrast, colormap, and scale settings are left unchanged. In the
+3D Slicer CT workflow, the current slice matrix and field of
 view are used as the visual reference while the section plane and OrientCSG
 scale are translated between requested section points. In the 3D Slicer SOLID
 workflow, the source mesh is re-cut at each requested section while the current
