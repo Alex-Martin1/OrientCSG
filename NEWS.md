@@ -1,3 +1,8 @@
+# OrientCSG 1.0.5
+
+* Refined the regression test suite.
+* Improved Avizo/Amira humeral visualization.
+
 # OrientCSG 1.0.4
 
 * Added automatic TRUE-volume DICOM metadata input through `dicom_dir`. OrientCSG now opens only enough files to obtain two readable DICOM headers, never loads pixel data, verifies that the selected `InstanceNumber` values are consecutive, orders the pair by `InstanceNumber`, and derives the IOP/ordered IPP pair required by the existing BoneJ-to-LPS transform. Manual `dicom_orientation` input remains supported. The automatic reader is internal; the IOP/IPP values actually used continue to be reported in `res$summary`.

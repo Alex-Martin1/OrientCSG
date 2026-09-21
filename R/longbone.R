@@ -859,6 +859,13 @@ avizo_tcl_longbone <- function(res) {
     ML_normal <- nrm(cross3(Lh, MLh))
     AP_normal <- nrm(cross3(Lh, APh))
 
+    visual_plane_origin <- Psec
+    if (isTRUE(res$USE_ANAT_ORIENT) &&
+        identical(res$type, "HUMERUS") &&
+        !is.null(res$projected$Proj_LM4)) {
+      visual_plane_origin <- res$projected$Proj_LM4
+    }
+
     block <- c(
       "# ============================================================",
       sprintf("# SECTION %s%%", label),
@@ -872,10 +879,10 @@ avizo_tcl_longbone <- function(res) {
         block,
         "",
         "# ML visual plane: normal & point",
-        paste(emit_normal_point_plane("ML", Psec, ML_normal, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
+        paste(emit_normal_point_plane("ML", visual_plane_origin, ML_normal, color = c(0, 1, 0), hide_points = TRUE), collapse = "\n"),
         "",
         "# AP visual plane: normal & point",
-        paste(emit_normal_point_plane("AP", Psec, AP_normal, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n")
+        paste(emit_normal_point_plane("AP", visual_plane_origin, AP_normal, color = c(0, 0, 1), hide_points = TRUE), collapse = "\n")
       )
     } else {
       block <- c(

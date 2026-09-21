@@ -267,6 +267,22 @@ flash_capture <- function(
   ML_normal <- nrm(cross3(L, ML))
   AP_normal <- nrm(cross3(L, AP))
 
+  use_proximal_visual_origin <- isTRUE(res$USE_ANAT_ORIENT) &&
+    identical(res$type, "HUMERUS") &&
+    !is.null(res$projected$Proj_LM4)
+
+  ML_origin_command <- if (use_proximal_visual_origin) {
+    sprintf('"ML" origin setCoord 0 %s', fmt_vec(res$projected$Proj_LM4))
+  } else {
+    'eval {"ML" origin setCoord 0 $OrientCSG_anchorP}'
+  }
+
+  AP_origin_command <- if (use_proximal_visual_origin) {
+    sprintf('"AP" origin setCoord 0 %s', fmt_vec(res$projected$Proj_LM4))
+  } else {
+    'eval {"AP" origin setCoord 0 $OrientCSG_anchorP}'
+  }
+
   initial_orientation <- c(
     "# ------------------------------------------------------------",
     "# INITIAL ORIENTATION FROM CURRENT SLICE",
@@ -295,7 +311,7 @@ flash_capture <- function(
       "",
       "# ML visual plane",
       "\"ML\" planeDefinition setValue 0",
-      "eval {\"ML\" origin setCoord 0 $OrientCSG_anchorP}",
+      ML_origin_command,
       sprintf("\"ML\" normal setCoord 0 %s", fmt_vec(ML_normal)),
       "catch {\"ML\" origin showPoints 0}",
       "catch {\"ML\" point showPoints 0}",
@@ -307,7 +323,7 @@ flash_capture <- function(
       "",
       "# AP visual plane",
       "\"AP\" planeDefinition setValue 0",
-      "eval {\"AP\" origin setCoord 0 $OrientCSG_anchorP}",
+      AP_origin_command,
       sprintf("\"AP\" normal setCoord 0 %s", fmt_vec(AP_normal)),
       "catch {\"AP\" origin showPoints 0}",
       "catch {\"AP\" point showPoints 0}",

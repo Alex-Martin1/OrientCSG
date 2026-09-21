@@ -11,7 +11,6 @@ make_test_dicom_header <- function(instance, z, series_uid = "1.2.3.4", iop = "-
   )
 }
 
-
 test_that("DICOM headers are ordered by InstanceNumber and converted to OrientCSG input", {
   headers <- list(
     slice_3 = make_test_dicom_header(3, 0.6),
@@ -39,7 +38,6 @@ test_that("DICOM headers are ordered by InstanceNumber and converted to OrientCS
   expect_match(info$dicom_orientation[3], "10\\20\\0.3", fixed = TRUE)
 })
 
-
 test_that("automatic DICOM metadata reading refuses ambiguous series or ordering", {
   multiple_series <- list(
     a = make_test_dicom_header(1, 0.0, series_uid = "SERIES_A"),
@@ -59,7 +57,6 @@ test_that("automatic DICOM metadata reading refuses ambiguous series or ordering
     "unique InstanceNumber"
   )
 })
-
 
 test_that("orient_longbone() accepts one DICOM source at a time", {
   expect_error(
@@ -84,7 +81,6 @@ test_that("orient_longbone() accepts one DICOM source at a time", {
     "Either `dicom_dir` or `dicom_orientation`"
   )
 })
-
 
 test_that("automatic DICOM reader remains internal", {
   expect_false("read_dicom_orientation" %in% getNamespaceExports("OrientCSG"))

@@ -37,7 +37,6 @@ longitudinal_matrix_str_tibia <- "
 ||1.000|0.017|-0.008||
 "
 
-
 bonej_results_row_tibia <- paste(
   "AAM_T-181_tibia",
   "56.49443288729984",
@@ -181,3 +180,44 @@ radius_landmarks_str <- "
   0 0 0
   0 5 200
 "
+
+extract_python_vector <- function(code, variable) {
+  lines <- strsplit(code, "\n", fixed = TRUE)[[1]]
+  pattern <- paste0("^", variable, " = np\\.array\\(\\[")
+  hit <- grep(pattern, lines, value = TRUE)
+  if (length(hit) != 1L) {
+    stop("Could not extract a unique Python vector: ", variable)
+  }
+  body <- sub(
+    paste0("^", variable, " = np\\.array\\(\\[([^]]+)\\].*$"),
+    "\\1",
+    hit
+  )
+  as.numeric(trimws(strsplit(body, ",", fixed = TRUE)[[1]]))
+}
+
+extract_tcl_camera_position <- function(tcl) {
+  lines <- strsplit(tcl, "\n", fixed = TRUE)[[1]]
+  extract_component <- function(name) {
+    hit <- grep(paste0("^set ", name, " "), lines, value = TRUE)
+    if (length(hit) != 1L) {
+      stop("Could not extract a unique TCL camera component: ", name)
+    }
+    as.numeric(sub(paste0("^set ", name, "[[:space:]]+"), "", hit))
+  }
+  c(
+    extract_component("Cx"),
+    extract_component("Cy"),
+    extract_component("Cz")
+  )
+}
+
+extract_tcl_plane_origin <- function(tcl, object) {
+  lines <- strsplit(tcl, "\n", fixed = TRUE)[[1]]
+  prefix <- paste0('"', object, '" origin setCoord 0 ')
+  hit <- grep(prefix, lines, value = TRUE, fixed = TRUE)
+  if (length(hit) != 1L) {
+    stop("Could not extract a unique TCL plane origin for: ", object)
+  }
+  scan(text = sub(prefix, "", hit, fixed = TRUE), quiet = TRUE)
+}

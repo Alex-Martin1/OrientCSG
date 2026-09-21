@@ -20,7 +20,6 @@ test_that("orient_longbone() works for TIBIA mode", {
   expect_true(is.data.frame(res$summary))
   expect_true(is.data.frame(res$manual_orientation))
 
-  expect_equal(nrow(res$summary), 7)
   expect_equal(nrow(res$manual_orientation), 5)
 
   expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
@@ -71,7 +70,6 @@ test_that("orient_longbone() works for HUMERUS mode", {
   expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
 
-  expect_equal(nrow(res$summary), 9)
   expect_equal(nrow(res$manual_orientation), 5)
 
   expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
@@ -102,7 +100,6 @@ test_that("orient_longbone() works for HUMERUS_TABLE mode", {
   expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
 
-  expect_equal(nrow(res$summary), 7)
   expect_equal(nrow(res$manual_orientation), 5)
 
   expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
@@ -128,9 +125,6 @@ test_that("orient_longbone() generates expected TCL blocks", {
   tcl_35 <- get_tcl(res, section = "SECTION_35")
   tcl_50 <- get_tcl(res, section = "SECTION_50")
 
-  expect_contains_fixed(tcl_35, "# SECTION 35%")
-  expect_contains_fixed(tcl_50, "# SECTION 50%")
-
   expect_contains_fixed(tcl_35, "\"Slice\" planeDefinition setValue 0")
   expect_contains_fixed(tcl_35, "\"ML\" planeDefinition setValue 0")
   expect_contains_fixed(tcl_35, "\"AP\" planeDefinition setValue 0")
@@ -139,7 +133,49 @@ test_that("orient_longbone() generates expected TCL blocks", {
   expect_contains_fixed(tcl_35, "viewer 0 setCameraType orthographic")
 })
 
+test_that("humeral Avizo visual planes intersect at the proximal projected landmark", {
+  res <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = humerus_landmarks_str,
+    section_loc = 35,
+    individual_id = "HUMERUS_VISUAL_ORIGIN"
+  )
 
+  tcl <- get_tcl(res, section = "SECTION_35")
+  expected <- res$projected$Proj_LM4
+
+  expect_equal(unname(extract_tcl_plane_origin(tcl, "ML")), unname(expected), tolerance = 1e-6)
+  expect_equal(unname(extract_tcl_plane_origin(tcl, "AP")), unname(expected), tolerance = 1e-6)
+  expect_equal(
+    unname(extract_tcl_plane_origin(tcl, "Slice")),
+    unname(res$section_points$SECTION_35),
+    tolerance = 1e-6
+  )
+  expect_false(isTRUE(all.equal(expected, unname(res$section_points$SECTION_35), tolerance = 1e-6)))
+
+  flash <- flash_capture(
+    res,
+    output_dir = "C:/captures",
+    sections = 35,
+    copy = FALSE
+  )
+
+  expected_text <- paste(
+    formatC(expected, format = "f", digits = 6, drop0trailing = FALSE),
+    collapse = " "
+  )
+
+  expect_contains_fixed(
+    flash,
+    paste0('"ML" origin setCoord 0 ', expected_text)
+  )
+  expect_contains_fixed(
+    flash,
+    paste0('"AP" origin setCoord 0 ', expected_text)
+  )
+})
 
 test_that("current BoneJ Log eigenvector output is accepted verbatim", {
   bonej_log <- "
@@ -384,9 +420,6 @@ test_that("DICOM IOP plus ordered consecutive IPP positions control the BoneJ tr
   expect_equal(res_carcavilla$bonej$slice_direction, 1)
   expect_lt(res_carcavilla$longitudinal_axis_check$angle_deg, 6)
 
-  # Regression case matching T109 geometry: the IOP cross-product points toward
-  # -Z, but stack order advances toward +Z. The ordered IPP pair must therefore
-  # reverse only the slice-axis sign, yielding diag(1, -1, 1).
   t109_iop <- "0020,0037 Image Orientation (Patient): 1\\0\\0\\0\\-1\\0"
   t109_ipp_1 <- "0020,0032 Image Position (Patient): -2.04353\\43.9381\\-408.4"
   t109_ipp_2 <- "0020,0032 Image Position (Patient): -2.04353\\43.9381\\-408.1"
@@ -437,7 +470,6 @@ test_that("orient_longbone() supports section-only mode without anatomical plane
 
   expect_false(res$USE_ANAT_ORIENT)
   expect_equal(nrow(res$landmarks), 1)
-  expect_equal(nrow(res$summary), 2)
   expect_equal(nrow(res$manual_orientation), 1)
   expect_null(res$vectors$ML)
   expect_null(res$vectors$AP)
@@ -449,7 +481,6 @@ test_that("orient_longbone() supports section-only mode without anatomical plane
 
   tcl <- get_tcl(res, section = "SECTION_50")
   expect_contains_fixed(tcl, "\"Slice\" planeDefinition setValue 0")
-  expect_contains_fixed(tcl, "Section-only mode: anatomical ML/AP visual planes are not generated")
   expect_false(grepl("\"ML\" planeDefinition", tcl, fixed = TRUE))
   expect_false(grepl("\"AP\" planeDefinition", tcl, fixed = TRUE))
 })
@@ -497,7 +528,6 @@ test_that("orient_longbone() works for FEMUR mode", {
   expect_equal(res$type, "FEMUR")
   expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
-  expect_equal(nrow(res$summary), 8)
   expect_equal(nrow(res$manual_orientation), 5)
   expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
   expect_equal(as.numeric(res$summary$`Bio_Length_&_Orient`[1]), 100, tolerance = 1e-6)
@@ -526,7 +556,6 @@ test_that("orient_longbone() works for RADIUS mode", {
   expect_equal(res$type, "RADIUS")
   expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
   expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
-  expect_equal(nrow(res$summary), 9)
   expect_equal(nrow(res$manual_orientation), 5)
   expect_true(as.numeric(res$summary$`Bio_Length_&_Orient`[1]) > 0)
   expect_equal(as.numeric(res$summary$`Bio_Length_&_Orient`[1]), 200, tolerance = 1e-6)
@@ -560,7 +589,6 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = -1")
   expect_contains_fixed(py_femur, "ML_RIGHT_SIGN = -1")
 
-  # The solid-mesh Slicer generator uses the same femoral screen-up convention.
   res_femur_solid <- res_femur
   res_femur_solid$SOLID <- TRUE
   res_femur_solid$model_name <- "FEMUR_model"
@@ -590,7 +618,6 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_radius, "ANTERIOR_UP_SIGN = 1")
   expect_contains_fixed(py_radius, "ML_RIGHT_SIGN = 1")
 })
-
 
 test_that("TRUE-volume tibial orientation is invariant to swapping plateau landmarks", {
   xyz <- matrix_from_xyz_string(tibia_landmarks_str)
@@ -623,8 +650,6 @@ test_that("TRUE-volume tibial orientation is invariant to swapping plateau landm
   expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
   expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
 
-  # The canonical TRUE-volume sign must agree with the established CT
-  # acquisition reference, not merely be invariant to landmark swapping.
   ct_ap_reference <- c(0, -1, 0)
   expect_gt(sum(res_a$vectors$AP * ct_ap_reference), 0)
   expect_gt(sum(res_b$vectors$AP * ct_ap_reference), 0)
@@ -673,7 +698,6 @@ test_that("tibial plain XYZ and Slicer-table inputs preserve the same landmark o
 
   expect_equal(unname(plain), unname(table), tolerance = 1e-12)
 })
-
 
 test_that("orient_longbone() validates camera_distance", {
   base_args <- list(

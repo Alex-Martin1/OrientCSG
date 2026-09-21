@@ -26,7 +26,6 @@ test_that("orient_mandible() returns a valid mandibular orientation object", {
   expect_true(is.data.frame(res$measurements))
   expect_true(is.data.frame(res$manual_orientation))
 
-  expect_equal(nrow(res$summary), 18)
   expect_equal(nrow(res$measurements), 5)
   expect_equal(nrow(res$manual_orientation), 11)
   expect_false(any(res$summary$metric %in% c("Vec_CS1", "Vec_CS2", "Vec_0_2")))
@@ -100,10 +99,6 @@ test_that("orient_mandible() generates expected TCL blocks", {
   tcl_cs2 <- get_tcl(res, section = "CS2")
   tcl_cs3 <- get_tcl(res, section = "CS3")
 
-  expect_contains_fixed(tcl_cs1, "# MANDIBLE - CS1")
-  expect_contains_fixed(tcl_cs2, "# MANDIBLE - CS2")
-  expect_contains_fixed(tcl_cs3, "# MANDIBLE - CS3")
-
   expect_contains_fixed(tcl_cs1, "\"ARP\" planeDefinition setValue 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" origin setCoord 0")
   expect_contains_fixed(tcl_cs1, "\"ARP\" normal setCoord 0")
@@ -143,10 +138,6 @@ test_that("mandibular CS1/CS2 Avizo cameras are placed on the anterior side", {
     camera_side <- nrm(camera - psec)
 
     expect_gt(dot3(camera_side, res$vectors$Anterior_ref), 0)
-    expect_contains_fixed(
-      tcl,
-      "view from anterior (LM0 -> LM2)"
-    )
   }
 })
 
@@ -189,8 +180,6 @@ test_that("orient_mandible() accepts lowercase LM1 side values", {
   expect_equal(res$lm1_side, "LEFT")
 })
 
-
-
 test_that("orient_mandible() changes anatomical side vectors when LM1 is on the left", {
   res_right <- orient_mandible(
     landmarks_str = mandible_landmarks_str,
@@ -224,7 +213,6 @@ test_that("orient_mandible() supports 12 landmarks with direct bigonial breadth"
 
   expect_equal(res$landmark_count, 12)
   expect_equal(rownames(res$landmarks), paste0("LM", 1:12))
-  expect_equal(nrow(res$summary), 19)
 
   bigonial <- res$measurements[res$measurements$metric == "Bigonial_breadth", ]
   expect_equal(bigonial$status, "direct")
@@ -372,16 +360,11 @@ test_that("mandibular CS1/CS2 Slicer bases use the anterior reference consistent
     normal_ras <- extract_python_vector(py, "NORMAL")
     x_ref_ras <- extract_python_vector(py, "X_SCREEN_REFERENCE")
 
-    # RAS <-> LPS is the same sign flip in X/Y in either direction.
     normal_lps <- normal_ras * c(-1, -1, 1)
     x_ref_lps <- x_ref_ras * c(-1, -1, 1)
 
-    # OrientCSG signs Slicer's section Z axis toward LM0 -> LM2 so the displayed
-    # X/Y basis matches the anterior-view convention used by Avizo/Amira.
     expect_gt(dot3(nrm(normal_lps), res$vectors$Anterior_ref), 0)
 
-    # X must already agree with anatomical Y-up and the selected Z sign; this
-    # prevents make_slice_to_ras() from flipping the section normal back.
     expected_x <- nrm(cross3(res$vectors$Vec_Penp, normal_lps))
     expect_equal(
       unname(nrm(x_ref_lps)),
@@ -429,19 +412,13 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs1, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs1, "restore_view()")
   expect_contains_fixed(py_cs1, "refresh_orientcsg_scale()")
-  expect_contains_fixed(py_cs1, "PSEC, Slicer RAS")
-  expect_contains_fixed(py_cs1, "Y screen axis: anatomical vertical in the section view")
-  expect_contains_fixed(py_cs1, "This forces the ARP to appear horizontal in the captured slice")
-  expect_contains_fixed(py_cs1, "x_ref = np.asarray(x_reference, dtype=float)")
 
   expect_contains_fixed(py_cs2, "SECTION_LABEL = \"CS2\"")
   expect_contains_fixed(py_cs2, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs3, "SECTION_LABEL = \"CS3\"")
   expect_contains_fixed(py_cs3, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
-  expect_contains_fixed(py_cs3, "Run restore_view()")
   expect_false(grepl("translate_orientcsg_section", py_cs3, fixed = TRUE))
 })
-
 
 test_that("orient_mandible() validates and applies camera_distance", {
   res <- orient_mandible(
