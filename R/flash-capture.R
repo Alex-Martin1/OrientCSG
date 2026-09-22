@@ -269,16 +269,17 @@ flash_capture <- function(
 
   use_proximal_visual_origin <- isTRUE(res$USE_ANAT_ORIENT) &&
     identical(res$type, "HUMERUS") &&
-    !is.null(res$projected$Proj_LM4)
+    !is.null(res$landmarks) &&
+    "P4" %in% rownames(res$landmarks)
 
   ML_origin_command <- if (use_proximal_visual_origin) {
-    sprintf('"ML" origin setCoord 0 %s', fmt_vec(res$projected$Proj_LM4))
+    sprintf('"ML" origin setCoord 0 %s', fmt_vec(res$landmarks["P4", ]))
   } else {
     'eval {"ML" origin setCoord 0 $OrientCSG_anchorP}'
   }
 
   AP_origin_command <- if (use_proximal_visual_origin) {
-    sprintf('"AP" origin setCoord 0 %s', fmt_vec(res$projected$Proj_LM4))
+    sprintf('"AP" origin setCoord 0 %s', fmt_vec(res$landmarks["P4", ]))
   } else {
     'eval {"AP" origin setCoord 0 $OrientCSG_anchorP}'
   }

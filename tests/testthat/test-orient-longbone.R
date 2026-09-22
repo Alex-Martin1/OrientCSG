@@ -133,7 +133,7 @@ test_that("orient_longbone() generates expected TCL blocks", {
   expect_contains_fixed(tcl_35, "viewer 0 setCameraType orthographic")
 })
 
-test_that("humeral Avizo visual planes intersect at the proximal projected landmark", {
+test_that("humeral Avizo visual planes intersect exactly at LM4", {
   res <- orient_longbone(
     mode = "HUMERUS",
     longitudinal_matrix_str = longitudinal_matrix_str_humerus,
@@ -144,7 +144,9 @@ test_that("humeral Avizo visual planes intersect at the proximal projected landm
   )
 
   tcl <- get_tcl(res, section = "SECTION_35")
-  expected <- res$projected$Proj_LM4
+  expected <- res$landmarks["P4", ]
+
+  expect_false(isTRUE(all.equal(unname(expected), unname(res$projected$Proj_LM4), tolerance = 1e-6)))
 
   expect_equal(unname(extract_tcl_plane_origin(tcl, "ML")), unname(expected), tolerance = 1e-6)
   expect_equal(unname(extract_tcl_plane_origin(tcl, "AP")), unname(expected), tolerance = 1e-6)

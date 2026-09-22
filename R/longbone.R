@@ -862,8 +862,9 @@ avizo_tcl_longbone <- function(res) {
     visual_plane_origin <- Psec
     if (isTRUE(res$USE_ANAT_ORIENT) &&
         identical(res$type, "HUMERUS") &&
-        !is.null(res$projected$Proj_LM4)) {
-      visual_plane_origin <- res$projected$Proj_LM4
+        !is.null(res$landmarks) &&
+        "P4" %in% rownames(res$landmarks)) {
+      visual_plane_origin <- as.numeric(res$landmarks["P4", ])
     }
 
     block <- c(
