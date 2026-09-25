@@ -2,7 +2,7 @@
 #'
 #' `orient_longbone()` implements the long-bone orientation workflows used by
 #' OrientCSG. It computes biomechanical length, cross-sectional locations, and
-#' anatomical orientation vectors for tibiae, humeri, femora, and radii from a small set of
+#' anatomical orientation vectors for tibiae, humeri, femora, radii, and ulnae from a small set of
 #' anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 #' or a closed surface mesh. The BoneJ input can be supplied as a direct
 #' three-component longitudinal vector, current Log output copied verbatim
@@ -40,13 +40,13 @@
 #'
 #' - `SLICER = FALSE` returns Avizo/Amira TCL blocks for `SOLID = FALSE`. This is
 #'   the default backend and is compatible with `mode = "TIBIA"`,
-#'   `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`, and
-#'   `mode = "HUMERUS_TABLE"`.
+#'   `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`,
+#'   `mode = "ULNA"`, and `mode = "HUMERUS_TABLE"`.
 #' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `SOLID = FALSE`,
 #'   these blocks orient a Slicer slice view on a scalar volume node. When
 #'   `SOLID = TRUE`, they cut and display the corresponding model node. This
 #'   backend is implemented for `mode = "TIBIA"`, `mode = "HUMERUS"`,
-#'   `mode = "FEMUR"`, and `mode = "RADIUS"`. It is intentionally not
+#'   `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "ULNA"`. It is intentionally not
 #'   implemented for `mode = "HUMERUS_TABLE"`, because
 #'   surface scans do not preserve a reliable scanner/table orientation.
 #'
@@ -69,6 +69,20 @@
 #' - `"RADIUS"` uses four landmarks: the radial styloid tip, the ulnar-notch
 #'   midpoint, the distal radiocarpal articular centre, and the proximal radial
 #'   head articular centre.
+#' - `"ULNA"` uses four landmarks. `TrochlearWaistLat` (LM1) is the lateral
+#'   point of the narrowest waist of the trochlear notch, placed on the trochlear
+#'   articular edge. `TrochlearWaistMed` (LM2) is the corresponding medial point;
+#'   if the articular edge disappears at the waist, its AP depth is taken from the
+#'   adjacent trochlear articular edge immediately proximal to the waist.
+#'   `RadialTrochlearBorder` (LM3) lies on the border between the radial and
+#'   trochlear articular surfaces, as far toward the centre of the overall
+#'   olecranon articular surface as possible while remaining on that border.
+#'   `UlnarHeadDistal` (LM4) is the most distal point of the articular portion of
+#'   the ulnar head, excluding the styloid process. LM1 and LM2 are interchangeable
+#'   and define ML. The sign of AP is resolved from LM2 toward LM3, which is
+#'   expected to run posterior-to-anterior; LM3 is also checked to lie anterior to
+#'   LM1. Biomechanical length is the projected distance along the longitudinal
+#'   axis from distal LM4 to proximal LM3.
 #' - `"HUMERUS_TABLE"` uses two landmarks defining humeral biomechanical length.
 #'   The mediolateral direction is derived from the scanner X axis. This mode is
 #'   intended for humeri scanned in a standardized table position and is only
@@ -97,7 +111,7 @@
 #' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
 #' reference is defined from the tibio-talar landmark to the midpoint of the two
 #' plateau landmarks. Equivalent distal-to-proximal references are defined for
-#' humeri, femora, radii, and table-position humeri from their biomechanical
+#' humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 #' length landmarks.
 #'
 #' @section TRUE-volume acquisition orientation:
@@ -144,7 +158,7 @@
 #' `GetNthControlPointPositionWorld()`.
 #'
 #' @param mode Character value indicating the orientation mode. Must be one of
-#'   `"TIBIA"`, `"HUMERUS"`, `"FEMUR"`, `"RADIUS"`, or `"HUMERUS_TABLE"`.
+#'   `"TIBIA"`, `"HUMERUS"`, `"FEMUR"`, `"RADIUS"`, `"ULNA"`, or `"HUMERUS_TABLE"`.
 #' @param longitudinal_matrix_str Character string containing either three
 #'   numeric components of the BoneJ longitudinal vector, current BoneJ Log
 #'   output copied verbatim (three `[INFO] ||...||` rows), the legacy compact
@@ -186,7 +200,7 @@
 #'   `FALSE`, the longitudinal axis is read from `longitudinal_matrix_str`.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
-#'   implemented for tibiae, humeri, femora, and radii; `HUMERUS_TABLE` is
+#'   implemented for tibiae, humeri, femora, radii, and ulnae; `HUMERUS_TABLE` is
 #'   intentionally not supported for Slicer output when `USE_ANAT_ORIENT = TRUE`.
 #' @param USE_ANAT_ORIENT Logical. If `TRUE` (default), use the full anatomical
 #'   orientation workflow for the selected `mode`, including the anatomical
@@ -288,8 +302,8 @@ orient_longbone <- function(mode,
                             volume_name = NULL,
                             dicom_dir = NULL) {
   mode <- toupper(trimws(mode))
-  if (!mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
-    stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", or "HUMERUS_TABLE".', call. = FALSE)
+  if (!mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA", "HUMERUS_TABLE")) {
+    stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA", or "HUMERUS_TABLE".', call. = FALSE)
   }
 
   if (!is.logical(SOLID) || length(SOLID) != 1L || is.na(SOLID)) {
@@ -317,8 +331,8 @@ orient_longbone <- function(mode,
     stop('`SLICER = TRUE` is not implemented for `mode = "HUMERUS_TABLE"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
   }
 
-  if (isTRUE(SLICER) && isTRUE(USE_ANAT_ORIENT) && !mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
-    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"`, `mode = "HUMERUS"`, `mode = "FEMUR"`, or `mode = "RADIUS"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
+  if (isTRUE(SLICER) && isTRUE(USE_ANAT_ORIENT) && !mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
+    stop('`SLICER = TRUE` is currently implemented only for `mode = "TIBIA"`, `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`, or `mode = "ULNA"` when `USE_ANAT_ORIENT = TRUE`.', call. = FALSE)
   }
 
   lm_coord_system <- resolve_lm_coord_system(lm_coord_system = lm_coord_system)
@@ -386,7 +400,7 @@ orient_longbone <- function(mode,
   }
 
   n_landmarks <- if (isTRUE(USE_ANAT_ORIENT)) {
-    switch(mode, TIBIA = 3, HUMERUS = 4, FEMUR = 3, RADIUS = 4, HUMERUS_TABLE = 2)
+    switch(mode, TIBIA = 3, HUMERUS = 4, FEMUR = 3, RADIUS = 4, ULNA = 4, HUMERUS_TABLE = 2)
   } else {
     1L
   }
@@ -399,8 +413,8 @@ orient_longbone <- function(mode,
 
   P1 <- mat_pts[1, ]
   P2 <- if (nrow(mat_pts) >= 2L) mat_pts[2, ] else NULL
-  P3 <- if (nrow(mat_pts) >= 3L && mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) mat_pts[3, ] else NULL
-  P4 <- if (nrow(mat_pts) >= 4L && mode %in% c("HUMERUS", "RADIUS")) mat_pts[4, ] else NULL
+  P3 <- if (nrow(mat_pts) >= 3L && mode %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) mat_pts[3, ] else NULL
+  P4 <- if (nrow(mat_pts) >= 4L && mode %in% c("HUMERUS", "RADIUS", "ULNA")) mat_pts[4, ] else NULL
 
   Lh <- nrm(L)
 
@@ -431,6 +445,12 @@ orient_longbone <- function(mode,
       long_ref <- P4 - P3
       if (sqrt(sum(long_ref^2)) < 1e-12) {
         stop("LM3 and LM4 coincide; the radial longitudinal direction cannot be defined.", call. = FALSE)
+      }
+      if (dot3(long_ref, Lh) < 0) Lh <- -Lh
+    } else if (mode == "ULNA") {
+      long_ref <- P3 - P4
+      if (sqrt(sum(long_ref^2)) < 1e-12) {
+        stop("LM3 and LM4 coincide; the ulnar longitudinal direction cannot be defined.", call. = FALSE)
       }
       if (dot3(long_ref, Lh) < 0) Lh <- -Lh
     } else if (mode == "HUMERUS_TABLE") {
@@ -492,6 +512,27 @@ orient_longbone <- function(mode,
     if (mode == "HUMERUS") {
       MLh <- -MLh
       APh <- -APh
+    }
+
+    if (mode == "ULNA") {
+      # LM3 lies anterior to the trochlear-waist landmarks. Use LM2 -> LM3 as
+      # an anatomical posterior-to-anterior cue to resolve the otherwise
+      # arbitrary sign of the ML/AP pair. Because LM3 should also be anterior to
+      # LM1, swapping the two waist landmarks produces the same final axes.
+      ulna_ap_ref <- P3 - P2
+      ulna_ap_component <- dot3(ulna_ap_ref, APh)
+      if (!is.finite(ulna_ap_component) || abs(ulna_ap_component) < 1e-12) {
+        stop("LM2 -> LM3 does not define a reliable posterior-to-anterior direction for ULNA mode.", call. = FALSE)
+      }
+      if (ulna_ap_component < 0) {
+        APh <- -APh
+        MLh <- -MLh
+      }
+
+      ulna_ap_check_lm1 <- dot3(P3 - P1, APh)
+      if (!is.finite(ulna_ap_check_lm1) || ulna_ap_check_lm1 <= 1e-12) {
+        stop("LM3 must lie anterior to both trochlear-waist landmarks in ULNA mode; check LM1-LM3 placement.", call. = FALSE)
+      }
     }
 
     # In TRUE-volume TIBIA and FEMUR workflows, P1/P2 are an undirected
@@ -556,6 +597,14 @@ orient_longbone <- function(mode,
     point_at_pct <- function(pct) Proj_DistArticular + (pct / 100) * Bio_vec
     projected$Proj_DistArticular <- Proj_DistArticular
     projected$Proj_ProxArticular <- Proj_ProxArticular
+  } else if (mode == "ULNA") {
+    Proj_UlnarHeadDistal <- P4
+    Proj_RadialTrochlearBorder <- P4 + dot3(P3 - P4, Lh) * Lh
+    Bio_vec <- Proj_RadialTrochlearBorder - Proj_UlnarHeadDistal
+    Bio_length <- sqrt(sum(Bio_vec^2))
+    point_at_pct <- function(pct) Proj_UlnarHeadDistal + (pct / 100) * Bio_vec
+    projected$Proj_UlnarHeadDistal <- Proj_UlnarHeadDistal
+    projected$Proj_RadialTrochlearBorder <- Proj_RadialTrochlearBorder
   } else {
     Bio_length <- abs(dot3(P2 - P1, Lh))
     point_at_pct <- function(pct) P1 + (pct / 100) * Bio_length * Lh
@@ -598,6 +647,12 @@ orient_longbone <- function(mode,
     sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], P3[3], point_z)
   } else if (mode == "RADIUS") {
     labels <- c("RadialStyloid", "UlnarNotch", "DistArticular", "ProxArticular")
+    summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
+    sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], P4[1], point_x)
+    sy <- c(Lh[2], MLh[2], APh[2], P1[2], P2[2], P3[2], P4[2], point_y)
+    sz <- c(Lh[3], MLh[3], APh[3], P1[3], P2[3], P3[3], P4[3], point_z)
+  } else if (mode == "ULNA") {
+    labels <- c("TrochlearWaistLat", "TrochlearWaistMed", "RadialTrochlearBorder", "UlnarHeadDistal")
     summary_metrics <- c("Long_Vector", "ML", "AP", labels, point_metric_names)
     sx <- c(Lh[1], MLh[1], APh[1], P1[1], P2[1], P3[1], P4[1], point_x)
     sy <- c(Lh[2], MLh[2], APh[2], P1[2], P2[2], P3[2], P4[2], point_y)
@@ -772,6 +827,9 @@ longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
   } else if (mode == "RADIUS") {
     ref <- mat_pts[4, ] - mat_pts[3, ]
     ref_label <- "distal-to-proximal radial"
+  } else if (mode == "ULNA") {
+    ref <- mat_pts[3, ] - mat_pts[4, ]
+    ref_label <- "distal-to-proximal ulnar"
   } else if (mode == "HUMERUS_TABLE") {
     ref <- mat_pts[2, ] - mat_pts[1, ]
     ref_label <- "distal-to-proximal humeral-table"
@@ -810,10 +868,22 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1,
   APc <- nrm(cross3(Lc, MLc))
   MLc <- nrm(cross3(APc, Lc))
 
-  APref <- nrm(c(0, -1, 0))
-  if (dot3(APc, APref) < 0) {
-    APc <- -APc
-    MLc <- -MLc
+  if (mode == "ULNA") {
+    AP_target <- AP - dot3(AP, Lc) * Lc
+    if (sqrt(sum(AP_target^2)) < 1e-12) {
+      stop("AP is invalid after projection relative to L in ULNA mode.", call. = FALSE)
+    }
+    AP_target <- nrm(AP_target)
+    if (dot3(APc, AP_target) < 0) {
+      APc <- -APc
+      MLc <- -MLc
+    }
+  } else {
+    APref <- nrm(c(0, -1, 0))
+    if (dot3(APc, APref) < 0) {
+      APc <- -APc
+      MLc <- -MLc
+    }
   }
 
   if (mode %in% c("TIBIA", "FEMUR")) {

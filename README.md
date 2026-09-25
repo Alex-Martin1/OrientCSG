@@ -77,6 +77,7 @@ It currently supports:
 - `HUMERUS`;
 - `FEMUR`;
 - `RADIUS`;
+- `ULNA`;
 - `HUMERUS_TABLE`.
 
 For classic CT-derived workflows, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, current BoneJ Log output copied directly from the Log window (three `[INFO] ||...||` rows), the legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for Log, matrix, or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed from the ImageJ stack basis to the internal DICOM/LPS basis using three DICOM metadata lines from the exact stack used in BoneJ: Image Orientation (Patient) (`0020,0037`) plus Image Position (Patient) (`0020,0032`) from two consecutive slices supplied in stack order. IOP defines the in-plane axes and the ordered IPP pair resolves the actual direction of stack Z, including series whose slice order runs opposite to the IOP-derived normal.
@@ -94,7 +95,20 @@ longitudinal_matrix_str <- "
 
 The `[INFO]` prefixes and pipe characters are ignored by the parser; the three rows are interpreted as the 3 x 3 eigenvector matrix exactly as printed by BoneJ.
 
-For TRUE-volume anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks. In `TIBIA` and `FEMUR`, the two plateau/condylar landmarks define an undirected transverse axis: swapping those two points does not change the TRUE-volume orientation; the acquisition convention resolves the final AP sign.
+For TRUE-volume anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks. In `TIBIA` and `FEMUR`, the two plateau/condylar landmarks define an undirected transverse axis: swapping those two points does not change the TRUE-volume orientation; the acquisition convention resolves the final AP sign. In `ULNA`, AP is resolved anatomically: LM2 to LM3 is treated as posterior-to-anterior. Because LM3 should be anterior to both trochlear-waist landmarks, swapping LM1 and LM2 does not change the final ML/AP axes.
+
+#### ULNA landmarks
+
+`ULNA` uses four landmarks:
+
+| Order | Name | Location |
+|---|---|---|
+| LM1 | `TrochlearWaistLat` | Lateral point of the narrowest waist of the trochlear notch, placed on the trochlear articular edge. |
+| LM2 | `TrochlearWaistMed` | Medial point of the narrowest waist of the trochlear notch, placed on the trochlear articular edge. If the articular edge disappears at the waist, place the landmark at the same anteroposterior depth indicated by the adjacent trochlear articular edge immediately proximal to the waist. |
+| LM3 | `RadialTrochlearBorder` | Point on the border between the radial and trochlear articular surfaces, placed as far as possible toward the centre of the overall olecranon articular surface while remaining on the border. |
+| LM4 | `UlnarHeadDistal` | Most distal point of the articular portion of the ulnar head, excluding the styloid process. |
+
+LM1 and LM2 are interchangeable. Their connecting line defines ML. LM2 to LM3 is used only to resolve the posterior-to-anterior sign of AP. Ulnar biomechanical length is the projected distance along the longitudinal axis from distal LM4 to proximal LM3.
 
 For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
 
@@ -103,7 +117,8 @@ When `SLICER = TRUE`, OrientCSG generates a 3D Slicer Python block that creates 
 - `TIBIA`;
 - `HUMERUS`;
 - `FEMUR`;
-- `RADIUS`.
+- `RADIUS`;
+- `ULNA`.
 
 It is intentionally not implemented for `HUMERUS_TABLE`, because that mode relies on a standardized scanner/table orientation rather than the landmark-based anatomical workflow used by the supported Slicer modes.
 
@@ -162,6 +177,7 @@ The long-bone example script includes:
 - `HUMERUS`;
 - `FEMUR`;
 - `RADIUS`;
+- `ULNA`;
 - `HUMERUS_TABLE`;
 - CT/DICOM true cross-section + 3D Slicer workflows;
 - solid mesh + 3D Slicer workflows;

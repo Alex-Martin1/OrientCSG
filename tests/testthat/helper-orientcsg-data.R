@@ -181,6 +181,13 @@ radius_landmarks_str <- "
   0 5 200
 "
 
+ulna_landmarks_str <- "
+-10 0 100
+ 10 0 100
+  5 5 100
+  0 0 0
+"
+
 extract_python_vector <- function(code, variable) {
   lines <- strsplit(code, "\n", fixed = TRUE)[[1]]
   pattern <- paste0("^", variable, " = np\\.array\\(\\[")

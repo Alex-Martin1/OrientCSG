@@ -286,7 +286,7 @@ test_that("orient_longbone() accepts a direct three-component BoneJ longitudinal
 test_that("orient_longbone() validates malformed input", {
   expect_error(
     orient_longbone(
-      mode = "ULNA",
+      mode = "FIBULA",
       longitudinal_matrix_str = longitudinal_matrix_str_tibia,
       landmarks_str = tibia_landmarks_str
     ),
@@ -488,7 +488,7 @@ test_that("orient_longbone() supports section-only mode without anatomical plane
 })
 
 test_that("orient_longbone() section-only mode accepts all long-bone modes", {
-  for (m in c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "HUMERUS_TABLE")) {
+  for (m in c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA", "HUMERUS_TABLE")) {
     res <- orient_longbone(
       mode = m,
       longitudinal_matrix_str = longitudinal_matrix_str_humerus,
@@ -572,7 +572,70 @@ test_that("orient_longbone() works for RADIUS mode", {
   expect_true(!is.null(res$projected$Proj_ProxArticular))
 })
 
-test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and RADIUS modes", {
+
+test_that("orient_longbone() works for ULNA mode and resolves AP anatomically", {
+  res <- orient_longbone(
+    mode = "ULNA",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = ulna_landmarks_str,
+    section_loc = c(35, 50),
+    individual_id = "ULNA_TEST"
+  )
+
+  expect_true(inherits(res, "orientcsg_longbone"))
+  expect_equal(res$type, "ULNA")
+  expect_equal(names(res$avizo_tcl), c("SECTION_35", "SECTION_50"))
+  expect_equal(names(res$section_points), c("SECTION_35", "SECTION_50"))
+  expect_equal(nrow(res$manual_orientation), 5)
+  expect_equal(as.numeric(res$summary$`Bio_Length_&_Orient`[1]), 100, tolerance = 1e-6)
+  expect_equal(
+    res$summary$metric[4:7],
+    c("TrochlearWaistLat", "TrochlearWaistMed", "RadialTrochlearBorder", "UlnarHeadDistal")
+  )
+
+  expect_unit_vector(res$vectors$L)
+  expect_unit_vector(res$vectors$ML)
+  expect_unit_vector(res$vectors$AP)
+  expect_orthogonal(res$vectors$L, res$vectors$ML)
+  expect_orthogonal(res$vectors$L, res$vectors$AP)
+  expect_orthogonal(res$vectors$ML, res$vectors$AP)
+  expect_gt(dot3(res$vectors$L, res$landmarks["P3", ] - res$landmarks["P4", ]), 0)
+  expect_gt(dot3(res$vectors$AP, res$landmarks["P3", ] - res$landmarks["P2", ]), 0)
+  expect_equal(unname(res$section_points$SECTION_50), c(0, 0, 50), tolerance = 1e-6)
+  expect_true(!is.null(res$projected$Proj_UlnarHeadDistal))
+  expect_true(!is.null(res$projected$Proj_RadialTrochlearBorder))
+})
+
+test_that("ULNA orientation is invariant to swapping the trochlear-waist landmarks", {
+  xyz <- matrix_from_xyz_string(ulna_landmarks_str)
+  swapped <- xyz[c(2, 1, 3, 4), , drop = FALSE]
+
+  res_a <- orient_longbone(
+    mode = "ULNA",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = ulna_landmarks_str,
+    section_loc = 50
+  )
+
+  res_b <- orient_longbone(
+    mode = "ULNA",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = paste(apply(swapped, 1, paste, collapse = " "), collapse = "\n"),
+    section_loc = 50
+  )
+
+  expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
+  expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
+  expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
+  expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+  expect_gt(dot3(res_a$vectors$AP, res_a$landmarks["P3", ] - res_a$landmarks["P2", ]), 0)
+  expect_gt(dot3(res_b$vectors$AP, res_b$landmarks["P3", ] - res_b$landmarks["P2", ]), 0)
+})
+
+test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADIUS, and ULNA modes", {
   res_femur <- orient_longbone(
     mode = "FEMUR",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
@@ -619,6 +682,23 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR and R
   expect_contains_fixed(py_radius, "PROXIMAL_AXIS_POINT =")
   expect_contains_fixed(py_radius, "ANTERIOR_UP_SIGN = 1")
   expect_contains_fixed(py_radius, "ML_RIGHT_SIGN = 1")
+
+  res_ulna <- orient_longbone(
+    mode = "ULNA",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = ulna_landmarks_str,
+    section_loc = 50,
+    volume_name = "ULNA_volume",
+    SLICER = TRUE,
+    SOLID = FALSE
+  )
+  py_ulna <- get_slicer_py(res_ulna, section = "SECTION_50")
+  expect_contains_fixed(py_ulna, "VOLUME_NAME = \"ULNA_volume\"")
+  expect_contains_fixed(py_ulna, "DISTAL_AXIS_POINT =")
+  expect_contains_fixed(py_ulna, "PROXIMAL_AXIS_POINT =")
+  expect_contains_fixed(py_ulna, "ANTERIOR_UP_SIGN = 1")
+  expect_contains_fixed(py_ulna, "ML_RIGHT_SIGN = 1")
 })
 
 test_that("TRUE-volume tibial orientation is invariant to swapping plateau landmarks", {

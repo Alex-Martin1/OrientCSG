@@ -24,7 +24,7 @@ orient_longbone(
 }
 \arguments{
 \item{mode}{Character value indicating the orientation mode. Must be one of
-\code{"TIBIA"}, \code{"HUMERUS"}, \code{"FEMUR"}, \code{"RADIUS"}, or \code{"HUMERUS_TABLE"}.}
+\code{"TIBIA"}, \code{"HUMERUS"}, \code{"FEMUR"}, \code{"RADIUS"}, \code{"ULNA"}, or \code{"HUMERUS_TABLE"}.}
 
 \item{longitudinal_matrix_str}{Character string containing either three
 numeric components of the BoneJ longitudinal vector, current BoneJ Log
@@ -66,7 +66,7 @@ homogeneous solid. Solid-mesh workflows require \code{SLICER = TRUE}. If
 
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
-implemented for tibiae, humeri, femora, and radii; \code{HUMERUS_TABLE} is
+implemented for tibiae, humeri, femora, radii, and ulnae; \code{HUMERUS_TABLE} is
 intentionally not supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.}
 
 \item{USE_ANAT_ORIENT}{Logical. If \code{TRUE} (default), use the full anatomical
@@ -142,7 +142,7 @@ longitudinal vector and the anatomical distal-proximal reference.
 \description{
 \code{orient_longbone()} implements the long-bone orientation workflows used by
 OrientCSG. It computes biomechanical length, cross-sectional locations, and
-anatomical orientation vectors for tibiae, humeri, femora, and radii from a small set of
+anatomical orientation vectors for tibiae, humeri, femora, radii, and ulnae from a small set of
 anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
 or a closed surface mesh. The BoneJ input can be supplied as a direct
 three-component longitudinal vector, current Log output copied verbatim
@@ -184,13 +184,13 @@ The \code{SLICER} argument controls the type of capture script returned.
 \itemize{
 \item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks for \code{SOLID = FALSE}. This is
 the default backend and is compatible with \code{mode = "TIBIA"},
-\code{mode = "HUMERUS"}, \code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and
-\code{mode = "HUMERUS_TABLE"}.
+\code{mode = "HUMERUS"}, \code{mode = "FEMUR"}, \code{mode = "RADIUS"},
+\code{mode = "ULNA"}, and \code{mode = "HUMERUS_TABLE"}.
 \item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{SOLID = FALSE},
 these blocks orient a Slicer slice view on a scalar volume node. When
 \code{SOLID = TRUE}, they cut and display the corresponding model node. This
 backend is implemented for \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
-\code{mode = "FEMUR"}, and \code{mode = "RADIUS"}. It is intentionally not
+\code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "ULNA"}. It is intentionally not
 implemented for \code{mode = "HUMERUS_TABLE"}, because
 surface scans do not preserve a reliable scanner/table orientation.
 }
@@ -216,6 +216,20 @@ midpoint between them defines the distal endpoint of biomechanical length.
 \item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
 midpoint, the distal radiocarpal articular centre, and the proximal radial
 head articular centre.
+\item \code{"ULNA"} uses four landmarks. \code{TrochlearWaistLat} (LM1) is the lateral
+point of the narrowest waist of the trochlear notch, placed on the trochlear
+articular edge. \code{TrochlearWaistMed} (LM2) is the corresponding medial point;
+if the articular edge disappears at the waist, its AP depth is taken from the
+adjacent trochlear articular edge immediately proximal to the waist.
+\code{RadialTrochlearBorder} (LM3) lies on the border between the radial and
+trochlear articular surfaces, as far toward the centre of the overall
+olecranon articular surface as possible while remaining on that border.
+\code{UlnarHeadDistal} (LM4) is the most distal point of the articular portion of
+the ulnar head, excluding the styloid process. LM1 and LM2 are interchangeable
+and define ML. The sign of AP is resolved from LM2 toward LM3, which is
+expected to run posterior-to-anterior; LM3 is also checked to lie anterior to
+LM1. Biomechanical length is the projected distance along the longitudinal
+axis from distal LM4 to proximal LM3.
 \item \code{"HUMERUS_TABLE"} uses two landmarks defining humeral biomechanical length.
 The mediolateral direction is derived from the scanner X axis. This mode is
 intended for humeri scanned in a standardized table position and is only
@@ -247,7 +261,7 @@ inertia. In both cases, the sign of the longitudinal vector is adjusted when
 anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
 reference is defined from the tibio-talar landmark to the midpoint of the two
 plateau landmarks. Equivalent distal-to-proximal references are defined for
-humeri, femora, radii, and table-position humeri from their biomechanical
+humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 length landmarks.
 }
 

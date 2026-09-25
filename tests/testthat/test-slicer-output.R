@@ -131,6 +131,10 @@ test_that("Slicer long-bone screen signs are shared across TRUE and SOLID backen
     OrientCSG:::slicer_longbone_screen_signs("RADIUS", TRUE),
     list(anterior_up_sign = 1, ml_right_sign = 1)
   )
+  expect_equal(
+    OrientCSG:::slicer_longbone_screen_signs("ULNA", TRUE),
+    list(anterior_up_sign = 1, ml_right_sign = 1)
+  )
 })
 
 test_that("camera_distance controls orthographic framing in all long-bone backends", {

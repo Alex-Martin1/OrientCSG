@@ -93,3 +93,29 @@ test_that("SOLID long-bone workflow uses the mesh-derived longitudinal axis", {
   expect_equal(names(res$slicer_py), "SECTION_50")
   expect_equal(res$model_name, "BOX_MODEL")
 })
+
+
+test_that("SOLID ULNA workflow uses projected ulnar biomechanical length", {
+  skip_if_not_installed("Rvcg")
+
+  mesh_file <- make_box_mesh_file()
+  on.exit(unlink(mesh_file), add = TRUE)
+
+  res <- orient_longbone(
+    mode = "ULNA",
+    landmarks_str = "-1 0 5\n1 0 5\n0.5 1 5\n0 0 -5",
+    section_loc = 50,
+    individual_id = "ULNA_BOX_SOLID",
+    SOLID = TRUE,
+    SLICER = TRUE,
+    mesh_file = mesh_file,
+    model_name = "ULNA_BOX_MODEL"
+  )
+
+  expect_equal(res$biomechanical_length, 10, tolerance = 1e-8)
+  expect_gt(dot3(res$vectors$L, res$landmarks["P3", ] - res$landmarks["P4", ]), 0)
+  expect_gt(dot3(res$vectors$AP, res$landmarks["P3", ] - res$landmarks["P2", ]), 0)
+  expect_equal(unname(res$section_points$SECTION_50), c(0, 0, 0), tolerance = 1e-8)
+  expect_equal(names(res$slicer_py), "SECTION_50")
+  expect_contains_fixed(res$slicer_py$SECTION_50, "MODEL_NAME = \"ULNA_BOX_MODEL\"")
+})

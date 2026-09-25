@@ -601,7 +601,67 @@ if (file.exists(mesh_file_radius)) {
 }
 
 
-# 5. HUMERUS_TABLE example ===================================================
+# 5. ULNA: W30 solid mesh + 3D Slicer example ===============================
+#
+# Landmark order for mode = "ULNA":
+#
+#   LM1 = TrochlearWaistLat, lateral point of the narrowest trochlear waist,
+#         placed on the trochlear articular edge
+#   LM2 = TrochlearWaistMed, medial point of the narrowest trochlear waist,
+#         placed on the trochlear articular edge; if the edge disappears at the
+#         waist, use the AP depth indicated by the adjacent trochlear articular
+#         edge immediately proximal to the waist
+#   LM3 = RadialTrochlearBorder, point on the border between the radial and
+#         trochlear articular surfaces, as far toward the centre of the overall
+#         olecranon articular surface as possible while remaining on the border
+#   LM4 = UlnarHeadDistal, most distal point of the articular portion of the
+#         ulnar head, excluding the styloid process
+#
+# LM1 and LM2 are interchangeable. LM2 -> LM3 resolves posterior -> anterior.
+# Biomechanical length is the projected distance along the ulnar longitudinal
+# axis from LM4 distally to LM3 proximally.
+#
+# The landmarks below are a real 3D Slicer Markups example from ulna W30.
+# Coordinates copied from the Markups table are treated as LPS here. Replace
+# mesh_file_ulna with the path to the corresponding watertight W30 STL.
+
+mesh_file_ulna <- r"(C:\Users\Alex\Desktop\W30.stl)"
+
+ulna_landmarks_slicer_W30 <- "
+1  30.974050521851  -58.783699035645   9.991388320923 0 0 0 1 1 1 0 F-1 2 0
+2  47.675731658936  -50.844257354736  14.297772407532 0 0 0 1 1 1 0 F-2 2 0
+3  44.372432708740  -49.244995117188  19.735382080078 0 0 0 1 1 1 0 F-3 2 0
+4 -14.369778633118  152.685928344727  15.395440101624 0 0 0 1 1 1 0 F-4 2 0
+"
+
+if (file.exists(mesh_file_ulna)) {
+  res_ulna_solid_slicer <- orient_longbone(
+    mode = "ULNA",
+    mesh_file = mesh_file_ulna,
+    landmarks_str = ulna_landmarks_slicer_W30,
+    lm_coord_system = "LPS",
+    section_loc = c(20, 35, 50, 65, 80),
+    individual_id = "W30",
+    model_name = "W30",
+    SOLID = TRUE,
+    SLICER = TRUE,
+    USE_ANAT_ORIENT = TRUE,
+    camera_distance = 1
+  )
+
+  res_ulna_solid_slicer$summary
+  #View(res_ulna_solid_slicer$summary)
+  res_ulna_solid_slicer$mesh_axes$eigenvectors
+
+  cat(get_slicer_py(res_ulna_solid_slicer, section = "SECTION_50"))
+
+  copy_slicer_py(res_ulna_solid_slicer, section = "SECTION_50")
+} else {
+  message("Skipping ULNA W30 example: mesh file not found. Edit mesh_file_ulna to run this example.")
+}
+
+
+# 6. HUMERUS_TABLE example ===================================================
 #
 # Landmark order for mode = "HUMERUS_TABLE":
 #

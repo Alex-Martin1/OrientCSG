@@ -16,6 +16,7 @@ slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
     HUMERUS = list(anterior_up_sign = 1, ml_right_sign = 1),
     FEMUR = list(anterior_up_sign = -1, ml_right_sign = -1),
     RADIUS = list(anterior_up_sign = 1, ml_right_sign = 1),
+    ULNA = list(anterior_up_sign = 1, ml_right_sign = 1),
     stop(
       sprintf("Unsupported anatomical Slicer long-bone mode: %s", type),
       call. = FALSE
@@ -28,8 +29,8 @@ slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
 # Python Interactor with the corresponding scalar volume or mesh model already
 # loaded.
 emit_slicer_section_python <- function(res, section = NULL) {
-  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
-    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, or `mode = \"RADIUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
+    stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, `mode = \"RADIUS\"`, or `mode = \"ULNA\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -87,6 +88,12 @@ emit_slicer_section_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_DistArticular
     proximal_endpoint <- res$projected$Proj_ProxArticular
+  } else if (identical(res$type, "ULNA")) {
+    if (is.null(res$projected$Proj_UlnarHeadDistal) || is.null(res$projected$Proj_RadialTrochlearBorder)) {
+      stop("Projected ulnar endpoints are required for Slicer output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_UlnarHeadDistal
+    proximal_endpoint <- res$projected$Proj_RadialTrochlearBorder
   }
 
   # OrientCSG stores long-bone geometry internally in the external mesh/LPS-like
@@ -451,8 +458,8 @@ emit_slicer_section_python <- function(res, section = NULL) {
 # section. This route is used when SLICER = TRUE and SOLID = FALSE. It orients
 # a Slicer slice view on a scalar volume node, rather than cutting a model node.
 emit_slicer_longbone_volume_python <- function(res, section = NULL) {
-  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS")) {
-    stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, or `mode = \"RADIUS\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
+  if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
+    stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, `mode = \"RADIUS\"`, or `mode = \"ULNA\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
 
   if (is.null(section)) {
@@ -506,6 +513,12 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     }
     distal_endpoint <- res$projected$Proj_DistArticular
     proximal_endpoint <- res$projected$Proj_ProxArticular
+  } else if (identical(res$type, "ULNA")) {
+    if (is.null(res$projected$Proj_UlnarHeadDistal) || is.null(res$projected$Proj_RadialTrochlearBorder)) {
+      stop("Projected ulnar endpoints are required for Slicer volume output.", call. = FALSE)
+    }
+    distal_endpoint <- res$projected$Proj_UlnarHeadDistal
+    proximal_endpoint <- res$projected$Proj_RadialTrochlearBorder
   }
 
   # OrientCSG stores long-bone geometry internally in the external LPS-like

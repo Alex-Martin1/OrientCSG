@@ -1,5 +1,6 @@
 # OrientCSG 1.0.5
 
+* Added `ULNA` long-bone orientation mode with four landmarks, anatomically resolved anterior/posterior direction, projected ulnar biomechanical length, and Avizo/Amira, TRUE-volume Slicer, and SOLID-mesh Slicer support.
 * Refined the regression test suite.
 * Improved Avizo/Amira humeral visualization.
 
