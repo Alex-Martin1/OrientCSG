@@ -1,6 +1,7 @@
-# OrientCSG 1.0.5
+# OrientCSG 1.1.0
 
 * Added `ULNA` long-bone orientation mode with four landmarks, anatomically resolved anterior/posterior direction, projected ulnar biomechanical length, and Avizo/Amira, TRUE-volume Slicer, and SOLID-mesh Slicer support.
+* Added `get_fragmented_roi()` to copy a 3D Slicer ROI generator for fragmented surface meshes using maximum point-to-point mesh length (`LongMax`) as a geometric longitudinal reference.
 * Refined the regression test suite.
 * Improved Avizo/Amira humeral visualization.
 

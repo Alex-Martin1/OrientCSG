@@ -180,3 +180,41 @@ test_that("camera_distance controls orthographic framing in all long-bone backen
   expect_contains_fixed(py_solid, "BASE_PARALLEL_SCALE_MM = 35.0")
   expect_contains_fixed(py_solid, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
 })
+
+test_that("get_fragmented_roi() validates its public arguments", {
+  expect_error(
+    get_fragmented_roi("", limits = c(20, 80)),
+    "`model_name` must be a single non-empty character string.",
+    fixed = TRUE
+  )
+
+  expect_error(
+    get_fragmented_roi("W30", limits = c(80, 20)),
+    "`limits` must satisfy 0 <= lower < upper <= 100.",
+    fixed = TRUE
+  )
+
+  expect_error(
+    get_fragmented_roi("W30", transverse_margin_mm = -1),
+    "`transverse_margin_mm` must be a single non-negative finite number.",
+    fixed = TRUE
+  )
+
+  expect_error(
+    get_fragmented_roi("W30", create_la_line = NA),
+    "`create_la_line` must be TRUE or FALSE.",
+    fixed = TRUE
+  )
+})
+
+test_that("get_fragmented_roi() contains the expected Slicer ROI workflow", {
+  body_text <- paste(deparse(body(get_fragmented_roi)), collapse = "\n")
+
+  expect_contains_fixed(body_text, "LongMax")
+  expect_contains_fixed(body_text, "vtkMRMLMarkupsROINode")
+  expect_contains_fixed(body_text, "vtkMRMLMarkupsLineNode")
+  expect_contains_fixed(body_text, "ConvexHull")
+  expect_contains_fixed(body_text, "exactFarthestPair")
+  expect_contains_fixed(body_text, "QInputDialog.getItem")
+  expect_contains_fixed(body_text, "copy_to_clipboard(py)")
+})

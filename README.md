@@ -42,6 +42,7 @@ Depending on the workflow, it can:
 - generate Amira/Avizo TCL command blocks;
 - generate 3D Slicer Python blocks for supported Slicer workflows;
 - generate batch capture blocks with `flash_capture()` for Avizo/Amira + CT, 3D Slicer + CT, and 3D Slicer + SOLID mesh workflows;
+- generate an oriented 3D Slicer ROI for preliminary cropping of fragmented surface meshes with `get_fragmented_roi()`;
 - copy generated command blocks to the clipboard.
 
 ## What OrientCSG does not do
@@ -111,6 +112,22 @@ For TRUE-volume anatomical orientation, the specimen must also follow the establ
 LM1 and LM2 are interchangeable. Their connecting line defines ML. LM2 to LM3 is used only to resolve the posterior-to-anterior sign of AP. Ulnar biomechanical length is the projected distance along the longitudinal axis from distal LM4 to proximal LM3.
 
 For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
+
+### Fragmented solid meshes
+
+For fragmented 3D-scanned specimens, `get_fragmented_roi()` copies a Python block directly to the clipboard for creating an oriented ROI in 3D Slicer. By default, the ROI spans 20-80% of the geometric longitudinal reference and adds a 2 mm transverse margin:
+
+```r
+get_fragmented_roi("W30")
+```
+
+The longitudinal limits can be changed when a different preliminary crop is useful:
+
+```r
+get_fragmented_roi("W30", limits = c(10, 90))
+```
+
+The ROI longitudinal reference is `LongMax`, calculated from the two mesh vertices with the greatest Euclidean distance. It is a geometric approximation of longitudinal direction and should not be interpreted as the anatomical or biomechanical length calculated by `orient_longbone()`. If the requested model name is not found, the generated Slicer code uses the only valid model in the scene with a warning, or opens an interactive model selector when several valid models are available. A `LongMax` markup line can optionally be created with `create_la_line = TRUE`; it is disabled by default.
 
 When `SLICER = TRUE`, OrientCSG generates a 3D Slicer Python block that creates the oriented section and sets the 3D view. This Slicer workflow is currently implemented for:
 
@@ -182,6 +199,7 @@ The long-bone example script includes:
 - CT/DICOM true cross-section + 3D Slicer workflows;
 - solid mesh + 3D Slicer workflows;
 - a tibial `flash_capture()` batch example using 20, 35, 50, 65, and 80% sections.
+- the `get_fragmented_roi()` helper for preliminary 3D Slicer cropping of fragmented surface meshes.
 
 The mandibular example script shows the mandibular orientation workflow and the corresponding Amira/Avizo and 3D Slicer outputs.
 

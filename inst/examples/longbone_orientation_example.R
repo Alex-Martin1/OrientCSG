@@ -46,6 +46,18 @@ library(OrientCSG)
 # require a prior copy_tcl() step: Flash Capture initializes Slice, AP/ML, and
 # the standardized camera from the current result before the batch starts.
 #
+# 0. FRAGMENTED SOLID ROI HELPER ============================================
+#
+# For a fragmented surface mesh already loaded in 3D Slicer, this copies a
+# Python block that creates an oriented ROI using LongMax, the maximum distance
+# between any two mesh vertices, as a geometric longitudinal reference.
+# The ROI defaults to 20-80% of LongMax with a 2 mm transverse margin.
+#
+# get_fragmented_roi("W30")
+# get_fragmented_roi("W30", limits = c(10, 90))
+# get_fragmented_roi("W30", create_la_line = TRUE)
+
+
 # 1. TIBIA example ===========================================================
 #
 # Landmark order for mode = "TIBIA":
