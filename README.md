@@ -10,7 +10,7 @@ The package was designed to generate consistent anatomical reference systems for
 
 OrientCSG computes section locations, anatomical vectors, camera/view parameters, summary tables, manual-orientation tables, Amira/Avizo TCL command blocks, and, where requested, 3D Slicer Python blocks.
 
-The anatomical logic for long bones follows criteria grounded in Ruff’s (2003) proposals for long-bone orientation. The mandibular workflow is broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019).
+The anatomical logic for long bones follows criteria grounded in Ruff’s (2002) proposals for long-bone orientation. The mandibular workflow is broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019).
 
 ## Installation
 
@@ -369,6 +369,6 @@ Development of this package was supported by the FCT R&D research project “Par
 
 ## References
 
-Ruff, C. B. (2003). Long bone articular and diaphyseal structure in Old World monkeys and apes. II: Estimation of body mass. *American Journal of Physical Anthropology*, *120*(1), 16–37. https://doi.org/10.1002/ajpa.10118
+Ruff, C. B. (2002). Long bone articular and diaphyseal structure in old world monkeys and apes. I: Locomotor effects. *American Journal of Physical Anthropology*, *119*(4), 305–342. https://doi.org/10.1002/ajpa.10117
 
 Toro-Ibacache, V., Ugarte, F., Morales, C., Eyquem, A., Aguilera, J., & Astudillo, W. (2019). Dental malocclusions are not just about small and weak bones: assessing the morphology of the mandible with cross-section analysis and geometric morphometrics. *Clinical Oral Investigations*, *23*(9), 3479–3490. https://doi.org/10.1007/s00784-018-2766-6
