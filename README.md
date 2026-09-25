@@ -365,7 +365,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Major milestones include v0.1.1, which introduced Avizo/Amira TCL generation for mandibular, tibial, and humeral workflows; v0.2.0, which added solid-mesh workflows and 3D Slicer output for long bones; and v0.3.0, which introduced the mandibular 3D Slicer backend. v1.0.0 expanded long-bone support to the femur and radius, while v1.0.1 established the current BoneJ-to-DICOM orientation workflow. v1.0.3 added flash_capture() for automated batch section export, and v1.0.4 introduced automatic DICOM metadata extraction and grayscale TIFF output in Slicer. Planned developments include workflows for fragmented long bones and extension to additional elements and preservation scenarios.
+Major milestones include v0.1.1, which introduced Avizo/Amira TCL generation for mandibular, tibial, and humeral workflows; v0.2.0, which added solid-mesh workflows and 3D Slicer output for long bones; and v0.3.0, which introduced the mandibular 3D Slicer backend. v1.0.0 expanded long-bone support to the femur and radius, while v1.0.1 established the current BoneJ-to-DICOM orientation workflow. v1.0.3 added flash_capture() for automated batch section export, and v1.0.4 introduced automatic DICOM metadata extraction and grayscale TIFF output in Slicer. v1.1.0 expanded long-bone support to the ulna.
 
 Planned developments include workflows for fragmented long bones and extension to additional elements and preservation scenarios.
 
