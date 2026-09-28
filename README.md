@@ -113,6 +113,12 @@ LM1 and LM2 are interchangeable. Their connecting line defines ML. LM2 to LM3 is
 
 For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
 
+### Whole-bone reorientation
+
+`Reorient()` copies a software command block that places a completed long-bone result in anatomical Cartesian axes. In 3D Slicer SOLID workflows it creates a new `_Anatomical` model with transformed vertex coordinates, leaving the source model unchanged; this new model can be saved or exported as a reoriented mesh.
+
+CT support is deliberately more limited. In Slicer, `Reorient()` applies a linear transform and aligns the standard slice viewers, but does not resample the voxel lattice. In Avizo/Amira it applies only `setTransform`. Creating an intrinsically reoriented CT/DICOM stack requires resampling in the external software and is not performed by OrientCSG.
+
 ### Fragmented solid meshes
 
 For fragmented 3D-scanned specimens, `get_fragmented_roi()` copies a Python block directly to the clipboard for creating an oriented ROI in 3D Slicer. By default, the ROI spans 20-80% of the geometric longitudinal reference and adds a 2 mm transverse margin:
