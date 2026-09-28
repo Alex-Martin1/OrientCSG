@@ -12,6 +12,8 @@ test_that("orient_longbone() works for TIBIA mode", {
   expect_true(inherits(res, "orientcsg_orientation"))
 
   expect_equal(res$type, "TIBIA")
+  expect_equal(res$INPUT, "VOLUME")
+  expect_false("SOLID" %in% names(res))
   expect_equal(res$individual_id, "TIBIA_TEST")
   expect_equal(names(res$avizo_tcl), "SECTION_50")
   expect_equal(names(res$section_points), "SECTION_50")
@@ -635,7 +637,7 @@ test_that("ULNA orientation is invariant to swapping the trochlear-waist landmar
   expect_gt(dot3(res_b$vectors$AP, res_b$landmarks["P3", ] - res_b$landmarks["P2", ]), 0)
 })
 
-test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADIUS, and ULNA modes", {
+test_that("orient_longbone() generates volume-input Slicer Python for FEMUR, RADIUS, and ULNA modes", {
   res_femur <- orient_longbone(
     mode = "FEMUR",
     longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
@@ -644,7 +646,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADI
     section_loc = 50,
     volume_name = "FEMUR_volume",
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
   py_femur <- get_slicer_py(res_femur, section = "SECTION_50")
   expect_contains_fixed(py_femur, "VOLUME_NAME = \"FEMUR_volume\"")
@@ -654,16 +656,16 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADI
   expect_contains_fixed(py_femur, "ANTERIOR_UP_SIGN = -1")
   expect_contains_fixed(py_femur, "ML_RIGHT_SIGN = -1")
 
-  res_femur_solid <- res_femur
-  res_femur_solid$SOLID <- TRUE
-  res_femur_solid$model_name <- "FEMUR_model"
-  py_femur_solid <- emit_slicer_section_python(
-    res_femur_solid,
+  res_femur_mesh <- res_femur
+  res_femur_mesh$INPUT <- "MESH"
+  res_femur_mesh$model_name <- "FEMUR_model"
+  py_femur_mesh <- emit_slicer_section_python(
+    res_femur_mesh,
     section = "SECTION_50"
   )
-  expect_contains_fixed(py_femur_solid, "MODEL_NAME = \"FEMUR_model\"")
-  expect_contains_fixed(py_femur_solid, "ANTERIOR_UP_SIGN = -1")
-  expect_contains_fixed(py_femur_solid, "ML_RIGHT_SIGN = -1")
+  expect_contains_fixed(py_femur_mesh, "MODEL_NAME = \"FEMUR_model\"")
+  expect_contains_fixed(py_femur_mesh, "ANTERIOR_UP_SIGN = -1")
+  expect_contains_fixed(py_femur_mesh, "ML_RIGHT_SIGN = -1")
 
   res_radius <- orient_longbone(
     mode = "RADIUS",
@@ -673,7 +675,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADI
     section_loc = 50,
     volume_name = "RADIUS_volume",
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
   py_radius <- get_slicer_py(res_radius, section = "SECTION_50")
   expect_contains_fixed(py_radius, "VOLUME_NAME = \"RADIUS_volume\"")
@@ -691,7 +693,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADI
     section_loc = 50,
     volume_name = "ULNA_volume",
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
   py_ulna <- get_slicer_py(res_ulna, section = "SECTION_50")
   expect_contains_fixed(py_ulna, "VOLUME_NAME = \"ULNA_volume\"")
@@ -701,7 +703,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for FEMUR, RADI
   expect_contains_fixed(py_ulna, "ML_RIGHT_SIGN = 1")
 })
 
-test_that("TRUE-volume tibial orientation is invariant to swapping plateau landmarks", {
+test_that("volume-input tibial orientation is invariant to swapping plateau landmarks", {
   xyz <- matrix_from_xyz_string(tibia_landmarks_str)
   swapped <- xyz[c(2, 1, 3), , drop = FALSE]
 
@@ -713,7 +715,7 @@ test_that("TRUE-volume tibial orientation is invariant to swapping plateau landm
     lm_coord_system = "LPS",
     section_loc = 50,
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   res_b <- orient_longbone(
@@ -724,7 +726,7 @@ test_that("TRUE-volume tibial orientation is invariant to swapping plateau landm
     lm_coord_system = "LPS",
     section_loc = 50,
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
@@ -737,7 +739,7 @@ test_that("TRUE-volume tibial orientation is invariant to swapping plateau landm
   expect_gt(sum(res_b$vectors$AP * ct_ap_reference), 0)
 })
 
-test_that("TRUE-volume femoral orientation is invariant to swapping condylar landmarks", {
+test_that("volume-input femoral orientation is invariant to swapping condylar landmarks", {
   xyz <- matrix_from_xyz_string(femur_landmarks_str)
   swapped <- xyz[c(2, 1, 3), , drop = FALSE]
 
@@ -748,7 +750,7 @@ test_that("TRUE-volume femoral orientation is invariant to swapping condylar lan
     landmarks_str = femur_landmarks_str,
     section_loc = 50,
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   res_b <- orient_longbone(
@@ -758,7 +760,7 @@ test_that("TRUE-volume femoral orientation is invariant to swapping condylar lan
     landmarks_str = paste(apply(swapped, 1, paste, collapse = " "), collapse = "\n"),
     section_loc = 50,
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
@@ -798,14 +800,34 @@ test_that("orient_longbone() validates camera_distance", {
   expect_error(do.call(orient_longbone, c(base_args, list(camera_distance = Inf))), "camera_distance")
 })
 
-test_that("SOLID workflows require SLICER = TRUE", {
+test_that("INPUT validates representation and normalizes case", {
+  expect_false("SOLID" %in% names(formals(orient_longbone)))
+  expect_true("INPUT" %in% names(formals(orient_longbone)))
+  expect_error(
+    orient_longbone(mode = "TIBIA", INPUT = TRUE),
+    '`INPUT` must be either "VOLUME" or "MESH".',
+    fixed = TRUE
+  )
+  expect_error(
+    orient_longbone(mode = "TIBIA", INPUT = "OTHER"),
+    '`INPUT` must be either "VOLUME" or "MESH".',
+    fixed = TRUE
+  )
+  expect_error(
+    orient_longbone(mode = "TIBIA", INPUT = "mesh", SLICER = FALSE),
+    '`INPUT = "MESH"` requires `SLICER = TRUE`.',
+    fixed = TRUE
+  )
+})
+
+test_that("mesh input requires SLICER = TRUE", {
   expect_error(
     orient_longbone(
       mode = "TIBIA",
-      SOLID = TRUE,
+      INPUT = "MESH",
       SLICER = FALSE
     ),
-    "`SOLID = TRUE` requires `SLICER = TRUE`.",
+    '`INPUT = "MESH"` requires `SLICER = TRUE`.',
     fixed = TRUE
   )
 })

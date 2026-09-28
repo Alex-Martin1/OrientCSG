@@ -11,8 +11,8 @@ Reorient(res, object_name = NULL)
 Full anatomical orientation must have been used.}
 
 \item{object_name}{Optional name of the target model or volume in the external
-application. If omitted, \code{Reorient()} uses \code{res$model_name} for solid Slicer
-workflows, \code{res$volume_name} for CT workflows, and then
+application. If omitted, \code{Reorient()} uses \code{res$model_name} for mesh-input Slicer
+workflows, \code{res$volume_name} for volume-input workflows, and then
 \code{res$individual_id} as a fallback.}
 }
 \value{
@@ -33,7 +33,7 @@ axes. Full anatomical orientation (\code{USE_ANAT_ORIENT = TRUE}) is required.
 }
 \section{Surface meshes}{
 
-For 3D Slicer solid-mesh workflows, \code{Reorient()} creates a new model with the
+For 3D Slicer mesh-input workflows, \code{Reorient()} creates a new model with the
 suffix \verb{_Anatomical}. The transformed vertex coordinates are written into the
 new model itself, while the source model is left unchanged. The new model can
 therefore be saved or exported as an anatomically reoriented mesh.

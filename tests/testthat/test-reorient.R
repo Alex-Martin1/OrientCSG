@@ -7,7 +7,7 @@ test_that("Reorient internal generator creates non-resampling Slicer CT code", {
       biomechanical_length = 100,
       internal_coord_system = "LPS",
       SLICER = TRUE,
-      SOLID = FALSE,
+      INPUT = "VOLUME",
       USE_ANAT_ORIENT = TRUE,
       volume_name = "Tibia_CT",
       individual_id = "Tibia_CT"
@@ -34,7 +34,7 @@ test_that("Reorient internal generator creates a new anatomical Slicer mesh", {
       biomechanical_length = 200,
       internal_coord_system = "LPS",
       SLICER = TRUE,
-      SOLID = TRUE,
+      INPUT = "MESH",
       USE_ANAT_ORIENT = TRUE,
       model_name = "W30",
       individual_id = "W30"
@@ -61,7 +61,7 @@ test_that("Reorient internal generator creates only the Avizo spatial transform"
       biomechanical_length = 100,
       internal_coord_system = "LPS",
       SLICER = FALSE,
-      SOLID = FALSE,
+      INPUT = "VOLUME",
       USE_ANAT_ORIENT = TRUE,
       volume_name = "Tibia_CT",
       individual_id = "Tibia_CT"
@@ -88,7 +88,7 @@ test_that("Reorient rejects section-only and unsupported modes", {
       biomechanical_length = 100,
       internal_coord_system = "LPS",
       SLICER = TRUE,
-      SOLID = FALSE,
+      INPUT = "VOLUME",
       USE_ANAT_ORIENT = FALSE,
       volume_name = "Tibia_CT",
       individual_id = "Tibia_CT"

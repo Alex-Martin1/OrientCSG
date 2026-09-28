@@ -19,13 +19,19 @@ library(OrientCSG)
 # coordinate convention expected by the workflow when coordinates are copied
 # from the Slicer Markups table rather than extracted as RAS world coordinates.
 #
+# INPUT describes the representation supplied to orient_longbone(), not the
+# eventual TRUE/SOLID CSG treatment. Use INPUT = "VOLUME" for CT or other scalar
+# volumetric data and INPUT = "MESH" for watertight surface meshes. A mesh may
+# encode periosteal-only geometry or both periosteal and endosteal surfaces,
+# depending on how it was produced.
+#
 # On Windows, raw strings such as r"(D:\path\to\folder)" are used for file
 # and directory paths so paths copied directly from File Explorer can be pasted
 # without escaping backslashes. Forward-slash paths also remain valid inside a
 # raw string.
 
 
-# For routine SOLID = FALSE calls, the recommended input is now `dicom_dir`,
+# For routine INPUT = "VOLUME" calls, the recommended DICOM input is `dicom_dir`,
 # pointing to the local directory containing the DICOM series used to build the
 # ImageJ/BoneJ stack. OrientCSG reads only the first two readable DICOM headers
 # in filename order, checks that their InstanceNumber values are consecutive,
@@ -46,7 +52,7 @@ library(OrientCSG)
 # require a prior copy_tcl() step: Flash Capture initializes Slice, AP/ML, and
 # the standardized camera from the current result before the batch starts.
 #
-# 0. FRAGMENTED SOLID ROI HELPER ============================================
+# 0. FRAGMENTED MESH ROI HELPER ============================================
 #
 # For a fragmented surface mesh already loaded in 3D Slicer, this copies a
 # Python block that creates an oriented ROI using LongMax, the maximum distance
@@ -88,6 +94,7 @@ tibia_landmarks_str_T108_Left_A <- "
 
 res_tibia <- orient_longbone(
   mode = "TIBIA",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
   dicom_orientation = dicom_orientation_tibia,
   landmarks_str = tibia_landmarks_str_T108_Left_A,
@@ -106,7 +113,7 @@ cat(get_tcl(res_tibia, section = "SECTION_50"))
 copy_tcl(res_tibia, section = "SECTION_50")
 
 
-# 1B. TIBIA: CT/DICOM true cross-section + 3D Slicer workflow ================
+# 1B. TIBIA: CT/DICOM volume input + 3D Slicer workflow ================
 #
 # Same specimen as in the main TIBIA example above, but with five section
 # locations for batch capture and landmarks represented as if copied from the
@@ -129,14 +136,15 @@ tibia_landmarks_slicer_T108_Left_B <- "
 3 146.258621 -15.388991  -61.599937 0 0 0 1 1 1 0 F-3 2 0
 "
 
-res_tibia_true_slicer <- orient_longbone(
+res_tibia_volume_slicer <- orient_longbone(
   mode = "TIBIA",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_tibia,
   dicom_orientation = dicom_orientation_tibia,
   landmarks_str = tibia_landmarks_slicer_T108_Left_B,
   section_loc = c(20, 35, 50, 65, 80),
   individual_id = "T108_Left",
-  SOLID = FALSE,
+  INPUT = "VOLUME",
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "T108_Left_DICOM_VOLUME",
@@ -144,32 +152,32 @@ res_tibia_true_slicer <- orient_longbone(
   lm_coord_system = "LPS"
 )
 
-res_tibia_true_slicer$summary
-#View(res_tibia_true_slicer$summary)
+res_tibia_volume_slicer$summary
+#View(res_tibia_volume_slicer$summary)
 
-cat(get_slicer_py(res_tibia_true_slicer, section = "SECTION_50"))
+cat(get_slicer_py(res_tibia_volume_slicer, section = "SECTION_50"))
 
 # To copy this Python block to the clipboard, run:
-copy_slicer_py(res_tibia_true_slicer, section = "SECTION_50")
+copy_slicer_py(res_tibia_volume_slicer, section = "SECTION_50")
 
 # After pasting SECTION_50 in Slicer and configuring the desired view, one
 # Flash Capture block can export all five requested sections. RGB is the default;
 # set color_mode = "grayscale" for a true one-channel TIFF in Slicer. Edit the
 # output directory before running this command:
 # flash_capture(
-#   res_tibia_true_slicer,
+#   res_tibia_volume_slicer,
 #   output_dir = r"(C:\Users\Alex\Desktop\T108_Left_flash)",
 #   file_name = "T108_Left",
 #   color_mode = "grayscale"
 # )
 
 
-# 1C. TIBIA: solid mesh + 3D Slicer workflow =================================
+# 1C. TIBIA: mesh input + 3D Slicer workflow =================================
 #
 # This workflow is intended for closed surface meshes (.ply, .stl, .obj).
 # Replace mesh_file_tibia with the full path to your own watertight mesh file.
 
-mesh_file_tibia <- r"(C:\Users\Alex\Desktop\T108_Left_solid.ply)"
+mesh_file_tibia <- r"(C:\Users\Alex\Desktop\T108_Left_mesh.ply)"
 
 tibia_landmarks_slicer_T108_Left_C <- "
 1 130.946060 -12.514749 -392.244507 0 0 0 1 1 1 0 F-1 2 0
@@ -178,27 +186,27 @@ tibia_landmarks_slicer_T108_Left_C <- "
 "
 
 if (file.exists(mesh_file_tibia)) {
-  res_tibia_solid_slicer <- orient_longbone(
+  res_tibia_mesh_slicer <- orient_longbone(
     mode = "TIBIA",
     mesh_file = mesh_file_tibia,
     landmarks_str = tibia_landmarks_slicer_T108_Left_C,
     lm_coord_system = "LPS",
     section_loc = 50,
     individual_id = "T108_Left",
-    model_name = "T108_Left_solid",
-    SOLID = TRUE,
+    model_name = "T108_Left_mesh",
+    INPUT = "MESH",
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
     camera_distance = 1
   )
   
-  res_tibia_solid_slicer$summary
-  #View(res_tibia_solid_slicer$summary)
-  res_tibia_solid_slicer$mesh_axes$eigenvectors
+  res_tibia_mesh_slicer$summary
+  #View(res_tibia_mesh_slicer$summary)
+  res_tibia_mesh_slicer$mesh_axes$eigenvectors
   
-  cat(get_slicer_py(res_tibia_solid_slicer, section = "SECTION_50"))
+  cat(get_slicer_py(res_tibia_mesh_slicer, section = "SECTION_50"))
   
-  copy_slicer_py(res_tibia_solid_slicer, section = "SECTION_50")
+  copy_slicer_py(res_tibia_mesh_slicer, section = "SECTION_50")
 } else {
   message("Skipping 1C: tibial mesh file not found. Edit mesh_file_tibia to run this example.")
 }
@@ -236,6 +244,7 @@ humerus_landmarks_str_H108_Right_A <- "
 
 res_humerus <- orient_longbone(
   mode = "HUMERUS",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
   dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_landmarks_str_H108_Right_A,
@@ -255,7 +264,7 @@ copy_tcl(res_humerus, section = "SECTION_35")
 copy_tcl(res_humerus, section = "SECTION_50")
 
 
-# 2B. HUMERUS: CT/DICOM true cross-section + 3D Slicer workflow ==============
+# 2B. HUMERUS: CT/DICOM volume input + 3D Slicer workflow ==============
 #
 # Same specimen and section locations as in the main HUMERUS example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
@@ -278,14 +287,15 @@ humerus_landmarks_slicer_H108_Right_B <- "
 4 182.721400000000   8.127365000000 -345.482760000000 0 0 0 1 1 1 0 F-4 2 0
 "
 
-res_humerus_true_slicer <- orient_longbone(
+res_humerus_volume_slicer <- orient_longbone(
   mode = "HUMERUS",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
   dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_landmarks_slicer_H108_Right_B,
   section_loc = c(35, 50),
   individual_id = "H108_Right",
-  SOLID = FALSE,
+  INPUT = "VOLUME",
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "H108_Right_DICOM_VOLUME",
@@ -293,21 +303,21 @@ res_humerus_true_slicer <- orient_longbone(
   lm_coord_system = "LPS"
 )
 
-res_humerus_true_slicer$summary
-#View(res_humerus_true_slicer$summary)
+res_humerus_volume_slicer$summary
+#View(res_humerus_volume_slicer$summary)
 
-cat(get_slicer_py(res_humerus_true_slicer, section = "SECTION_35"))
-cat(get_slicer_py(res_humerus_true_slicer, section = "SECTION_50"))
+cat(get_slicer_py(res_humerus_volume_slicer, section = "SECTION_35"))
+cat(get_slicer_py(res_humerus_volume_slicer, section = "SECTION_50"))
 
-copy_slicer_py(res_humerus_true_slicer, section = "SECTION_35")
-copy_slicer_py(res_humerus_true_slicer, section = "SECTION_50")
+copy_slicer_py(res_humerus_volume_slicer, section = "SECTION_35")
+copy_slicer_py(res_humerus_volume_slicer, section = "SECTION_50")
 
 
-# 2C. HUMERUS: solid mesh + 3D Slicer workflow ===============================
+# 2C. HUMERUS: mesh input + 3D Slicer workflow ===============================
 #
 # Replace mesh_file_humerus with the full path to your own watertight mesh file.
 
-mesh_file_humerus <- r"(C:\Users\Alex\Desktop\H108_Right_solid.ply)"
+mesh_file_humerus <- r"(C:\Users\Alex\Desktop\H108_Right_mesh.ply)"
 
 humerus_landmarks_slicer_H108_Right_C <- "
 1 164.789749145508 -15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
@@ -317,29 +327,29 @@ humerus_landmarks_slicer_H108_Right_C <- "
 "
 
 if (file.exists(mesh_file_humerus)) {
-  res_humerus_solid_slicer <- orient_longbone(
+  res_humerus_mesh_slicer <- orient_longbone(
     mode = "HUMERUS",
     mesh_file = mesh_file_humerus,
     landmarks_str = humerus_landmarks_slicer_H108_Right_C,
     lm_coord_system = "LPS",
     section_loc = c(35, 50),
     individual_id = "H108_Right",
-    model_name = "H108_Right_solid",
-    SOLID = TRUE,
+    model_name = "H108_Right_mesh",
+    INPUT = "MESH",
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
     camera_distance = 1
   )
   
-  res_humerus_solid_slicer$summary
-  #View(res_humerus_solid_slicer$summary)
-  res_humerus_solid_slicer$mesh_axes$eigenvectors
+  res_humerus_mesh_slicer$summary
+  #View(res_humerus_mesh_slicer$summary)
+  res_humerus_mesh_slicer$mesh_axes$eigenvectors
   
-  cat(get_slicer_py(res_humerus_solid_slicer, section = "SECTION_35"))
-  cat(get_slicer_py(res_humerus_solid_slicer, section = "SECTION_50"))
+  cat(get_slicer_py(res_humerus_mesh_slicer, section = "SECTION_35"))
+  cat(get_slicer_py(res_humerus_mesh_slicer, section = "SECTION_50"))
   
-  copy_slicer_py(res_humerus_solid_slicer, section = "SECTION_35")
-  copy_slicer_py(res_humerus_solid_slicer, section = "SECTION_50")
+  copy_slicer_py(res_humerus_mesh_slicer, section = "SECTION_35")
+  copy_slicer_py(res_humerus_mesh_slicer, section = "SECTION_50")
 } else {
   message("Skipping 2C: humeral mesh file not found. Edit mesh_file_humerus to run this example.")
 }
@@ -373,6 +383,7 @@ femur_landmarks_str_F324_Left_A <- "
 
 res_femur <- orient_longbone(
   mode = "FEMUR",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_femur,
   dicom_orientation = dicom_orientation_femur,
   landmarks_str = femur_landmarks_str_F324_Left_A,
@@ -390,7 +401,7 @@ cat(get_tcl(res_femur, section = "SECTION_50"))
 copy_tcl(res_femur, section = "SECTION_50")
 
 
-# 3B. FEMUR: CT/DICOM true cross-section + 3D Slicer workflow ================
+# 3B. FEMUR: CT/DICOM volume input + 3D Slicer workflow ================
 #
 # Same specimen and section location as in the main FEMUR example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
@@ -410,14 +421,15 @@ femur_landmarks_slicer_F324_Left_B <- "
 3 -164.759582519531 11.562967300415 -474.982910156250 0 0 0 1 1 1 0 F-3 2 0
 "
 
-res_femur_true_slicer <- orient_longbone(
+res_femur_volume_slicer <- orient_longbone(
   mode = "FEMUR",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_femur,
   dicom_orientation = dicom_orientation_femur,
   landmarks_str = femur_landmarks_slicer_F324_Left_B,
   section_loc = 50,
   individual_id = "F324_Left",
-  SOLID = FALSE,
+  INPUT = "VOLUME",
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "AAM_T-324_fémur_I",
@@ -425,15 +437,15 @@ res_femur_true_slicer <- orient_longbone(
   lm_coord_system = "LPS"
 )
 
-res_femur_true_slicer$summary
-#View(res_femur_true_slicer$summary)
+res_femur_volume_slicer$summary
+#View(res_femur_volume_slicer$summary)
 
-cat(get_slicer_py(res_femur_true_slicer, section = "SECTION_50"))
+cat(get_slicer_py(res_femur_volume_slicer, section = "SECTION_50"))
 
-copy_slicer_py(res_femur_true_slicer, section = "SECTION_50")
+copy_slicer_py(res_femur_volume_slicer, section = "SECTION_50")
 
 
-# 3C. FEMUR: solid mesh + 3D Slicer workflow =================================
+# 3C. FEMUR: mesh input + 3D Slicer workflow =================================
 #
 # Replace mesh_file_femur with the full path to the corresponding closed
 # surface mesh. The directory is illustrative; the file name is kept
@@ -448,7 +460,7 @@ femur_landmarks_slicer_F324_Left_C <- "
 "
 
 if (file.exists(mesh_file_femur)) {
-  res_femur_solid_slicer <- orient_longbone(
+  res_femur_mesh_slicer <- orient_longbone(
     mode = "FEMUR",
     mesh_file = mesh_file_femur,
     landmarks_str = femur_landmarks_slicer_F324_Left_C,
@@ -456,19 +468,19 @@ if (file.exists(mesh_file_femur)) {
     section_loc = 50,
     individual_id = "F324_Left",
     model_name = "AAM_T-324_fémur_I",
-    SOLID = TRUE,
+    INPUT = "MESH",
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
     camera_distance = 1
   )
   
-  res_femur_solid_slicer$summary
-  #View(res_femur_solid_slicer$summary)
-  res_femur_solid_slicer$mesh_axes$eigenvectors
+  res_femur_mesh_slicer$summary
+  #View(res_femur_mesh_slicer$summary)
+  res_femur_mesh_slicer$mesh_axes$eigenvectors
   
-  cat(get_slicer_py(res_femur_solid_slicer, section = "SECTION_50"))
+  cat(get_slicer_py(res_femur_mesh_slicer, section = "SECTION_50"))
   
-  copy_slicer_py(res_femur_solid_slicer, section = "SECTION_50")
+  copy_slicer_py(res_femur_mesh_slicer, section = "SECTION_50")
 } else {
   message("Skipping 3C: femoral mesh file not found. Edit mesh_file_femur to run this example.")
 }
@@ -504,6 +516,7 @@ radius_landmarks_str_R324_Right_A <- "
 
 res_radius <- orient_longbone(
   mode = "RADIUS",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_radius,
   dicom_orientation = dicom_orientation_radius,
   landmarks_str = radius_landmarks_str_R324_Right_A,
@@ -523,7 +536,7 @@ copy_tcl(res_radius, section = "SECTION_35")
 copy_tcl(res_radius, section = "SECTION_50")
 
 
-# 4B. RADIUS: CT/DICOM true cross-section + 3D Slicer workflow ===============
+# 4B. RADIUS: CT/DICOM volume input + 3D Slicer workflow ===============
 #
 # Same specimen and section locations as in the main RADIUS example above, but
 # with the landmarks represented as if copied from the 3D Slicer Markups table.
@@ -544,14 +557,15 @@ radius_landmarks_slicer_R324_Right_B <- "
 4 -100.943511962891 -3.431178569794 -353.811614990234 0 0 0 1 1 1 0 F-4 2 0
 "
 
-res_radius_true_slicer <- orient_longbone(
+res_radius_volume_slicer <- orient_longbone(
   mode = "RADIUS",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_radius,
   dicom_orientation = dicom_orientation_radius,
   landmarks_str = radius_landmarks_slicer_R324_Right_B,
   section_loc = c(35, 50),
   individual_id = "R324_Right",
-  SOLID = FALSE,
+  INPUT = "VOLUME",
   SLICER = TRUE,
   USE_ANAT_ORIENT = TRUE,
   volume_name = "AAM_T-324_radio_D",
@@ -559,17 +573,17 @@ res_radius_true_slicer <- orient_longbone(
   lm_coord_system = "LPS"
 )
 
-res_radius_true_slicer$summary
-#View(res_radius_true_slicer$summary)
+res_radius_volume_slicer$summary
+#View(res_radius_volume_slicer$summary)
 
-cat(get_slicer_py(res_radius_true_slicer, section = "SECTION_35"))
-cat(get_slicer_py(res_radius_true_slicer, section = "SECTION_50"))
+cat(get_slicer_py(res_radius_volume_slicer, section = "SECTION_35"))
+cat(get_slicer_py(res_radius_volume_slicer, section = "SECTION_50"))
 
-copy_slicer_py(res_radius_true_slicer, section = "SECTION_35")
-copy_slicer_py(res_radius_true_slicer, section = "SECTION_50")
+copy_slicer_py(res_radius_volume_slicer, section = "SECTION_35")
+copy_slicer_py(res_radius_volume_slicer, section = "SECTION_50")
 
 
-# 4C. RADIUS: solid mesh + 3D Slicer workflow ================================
+# 4C. RADIUS: mesh input + 3D Slicer workflow ================================
 #
 # Replace mesh_file_radius with the full path to the corresponding closed
 # surface mesh. The directory is illustrative; the file name is kept
@@ -585,7 +599,7 @@ radius_landmarks_slicer_R324_Right_C <- "
 "
 
 if (file.exists(mesh_file_radius)) {
-  res_radius_solid_slicer <- orient_longbone(
+  res_radius_mesh_slicer <- orient_longbone(
     mode = "RADIUS",
     mesh_file = mesh_file_radius,
     landmarks_str = radius_landmarks_slicer_R324_Right_C,
@@ -593,27 +607,27 @@ if (file.exists(mesh_file_radius)) {
     section_loc = c(35, 50),
     individual_id = "R324_Right",
     model_name = "AAM_T-324_radio_D",
-    SOLID = TRUE,
+    INPUT = "MESH",
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
     camera_distance = 1
   )
   
-  res_radius_solid_slicer$summary
-  #View(res_radius_solid_slicer$summary)
-  res_radius_solid_slicer$mesh_axes$eigenvectors
+  res_radius_mesh_slicer$summary
+  #View(res_radius_mesh_slicer$summary)
+  res_radius_mesh_slicer$mesh_axes$eigenvectors
   
-  cat(get_slicer_py(res_radius_solid_slicer, section = "SECTION_35"))
-  cat(get_slicer_py(res_radius_solid_slicer, section = "SECTION_50"))
+  cat(get_slicer_py(res_radius_mesh_slicer, section = "SECTION_35"))
+  cat(get_slicer_py(res_radius_mesh_slicer, section = "SECTION_50"))
   
-  copy_slicer_py(res_radius_solid_slicer, section = "SECTION_35")
-  copy_slicer_py(res_radius_solid_slicer, section = "SECTION_50")
+  copy_slicer_py(res_radius_mesh_slicer, section = "SECTION_35")
+  copy_slicer_py(res_radius_mesh_slicer, section = "SECTION_50")
 } else {
   message("Skipping 4C: radial mesh file not found. Edit mesh_file_radius to run this example.")
 }
 
 
-# 5. ULNA: W30 solid mesh + 3D Slicer example ===============================
+# 5. ULNA: W30 mesh input + 3D Slicer example ===============================
 #
 # Landmark order for mode = "ULNA":
 #
@@ -647,7 +661,7 @@ ulna_landmarks_slicer_W30 <- "
 "
 
 if (file.exists(mesh_file_ulna)) {
-  res_ulna_solid_slicer <- orient_longbone(
+  res_ulna_mesh_slicer <- orient_longbone(
     mode = "ULNA",
     mesh_file = mesh_file_ulna,
     landmarks_str = ulna_landmarks_slicer_W30,
@@ -655,19 +669,19 @@ if (file.exists(mesh_file_ulna)) {
     section_loc = c(20, 35, 50, 65, 80),
     individual_id = "W30",
     model_name = "W30",
-    SOLID = TRUE,
+    INPUT = "MESH",
     SLICER = TRUE,
     USE_ANAT_ORIENT = TRUE,
     camera_distance = 1
   )
 
-  res_ulna_solid_slicer$summary
-  #View(res_ulna_solid_slicer$summary)
-  res_ulna_solid_slicer$mesh_axes$eigenvectors
+  res_ulna_mesh_slicer$summary
+  #View(res_ulna_mesh_slicer$summary)
+  res_ulna_mesh_slicer$mesh_axes$eigenvectors
 
-  cat(get_slicer_py(res_ulna_solid_slicer, section = "SECTION_50"))
+  cat(get_slicer_py(res_ulna_mesh_slicer, section = "SECTION_50"))
 
-  copy_slicer_py(res_ulna_solid_slicer, section = "SECTION_50")
+  copy_slicer_py(res_ulna_mesh_slicer, section = "SECTION_50")
 } else {
   message("Skipping ULNA W30 example: mesh file not found. Edit mesh_file_ulna to run this example.")
 }
@@ -690,6 +704,7 @@ humerus_table_landmarks_str_H108_Right_A <- "
 
 res_humerus_table <- orient_longbone(
   mode = "HUMERUS_TABLE",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str_humerus,
   dicom_orientation = dicom_orientation_humerus,
   landmarks_str = humerus_table_landmarks_str_H108_Right_A,

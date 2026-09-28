@@ -65,7 +65,7 @@ test_that("mesh inertia recovers analytic properties of a rectangular solid", {
   expect_equal(res_many$eigenvalues, res_one$eigenvalues, tolerance = 1e-10)
 })
 
-test_that("SOLID long-bone workflow uses the mesh-derived longitudinal axis", {
+test_that("mesh-input long-bone workflow uses the mesh-derived longitudinal axis", {
   skip_if_not_installed("Rvcg")
 
   mesh_file <- make_box_mesh_file()
@@ -75,15 +75,15 @@ test_that("SOLID long-bone workflow uses the mesh-derived longitudinal axis", {
     mode = "TIBIA",
     landmarks_str = "-1 0 5\n1 0 5\n0 0 -5",
     section_loc = 50,
-    individual_id = "BOX_SOLID",
-    SOLID = TRUE,
+    individual_id = "BOX_MESH",
+    INPUT = "MESH",
     SLICER = TRUE,
     mesh_file = mesh_file,
     model_name = "BOX_MODEL"
   )
 
   expect_true(inherits(res, "orientcsg_longbone"))
-  expect_true(res$SOLID)
+  expect_equal(res$INPUT, "MESH")
   expect_true(res$SLICER)
   expect_null(res$bonej)
   expect_equal(res$mesh_axes$volume, 80, tolerance = 1e-8)
@@ -95,7 +95,7 @@ test_that("SOLID long-bone workflow uses the mesh-derived longitudinal axis", {
 })
 
 
-test_that("SOLID ULNA workflow uses projected ulnar biomechanical length", {
+test_that("mesh-input ULNA workflow uses projected ulnar biomechanical length", {
   skip_if_not_installed("Rvcg")
 
   mesh_file <- make_box_mesh_file()
@@ -105,8 +105,8 @@ test_that("SOLID ULNA workflow uses projected ulnar biomechanical length", {
     mode = "ULNA",
     landmarks_str = "-1 0 5\n1 0 5\n0.5 1 5\n0 0 -5",
     section_loc = 50,
-    individual_id = "ULNA_BOX_SOLID",
-    SOLID = TRUE,
+    individual_id = "ULNA_BOX_MESH",
+    INPUT = "MESH",
     SLICER = TRUE,
     mesh_file = mesh_file,
     model_name = "ULNA_BOX_MODEL"

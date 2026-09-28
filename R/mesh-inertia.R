@@ -10,7 +10,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
                                       chunk_size = 250000L) {
   if (!requireNamespace("Rvcg", quietly = TRUE)) {
     stop(
-      "Package 'Rvcg' is required for `SOLID = TRUE`. Install it with install.packages('Rvcg').",
+      "Package 'Rvcg' is required for `INPUT = \"MESH\"`. Install it with install.packages('Rvcg').",
       call. = FALSE
     )
   }

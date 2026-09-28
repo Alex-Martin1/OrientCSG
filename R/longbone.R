@@ -10,41 +10,44 @@
 #' or a full Results-table row containing the unit-vector columns. The function can
 #' generate Avizo/Amira TCL command
 #' blocks for the classic CT-derived workflow or 3D Slicer Python command
-#' blocks for CT-derived volume workflows or workflows based on solid surface
+#' blocks for volume-input workflows or workflows based on closed surface
 #' meshes.
 #'
-#' @section Input workflows:
-#' The `SOLID` argument controls how the longitudinal axis is obtained.
+#' @section Input representation:
+#' The `INPUT` argument describes the representation supplied to
+#' `orient_longbone()`; it does not specify whether the eventual CSG section is
+#' treated as TRUE or SOLID.
 #'
-#' - `SOLID = FALSE` implements the classic DICOM/CT workflow. In this mode,
-#'   `longitudinal_matrix_str` must contain either a direct three-component
-#'   BoneJ longitudinal vector, current BoneJ Log output copied verbatim, the
-#'   legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full row
-#'   copied from the BoneJ Results table with the
-#'   unit-vector columns recorded. The direct vector, or the first BoneJ vector
-#'   in matrix/table input, is interpreted as the longitudinal axis after
-#'   conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
-#'   convention. The recommended workflow supplies `dicom_dir`, allowing
-#'   OrientCSG to read DICOM Image Orientation (Patient), Image Position
-#'   (Patient), and InstanceNumber directly from the local CT series without
-#'   opening Fiji. Manual `dicom_orientation` input remains available for
-#'   compatibility and validation.
-#' - `SOLID = TRUE` implements the solid-mesh workflow. In this mode, `mesh_file`
-#'   must point to a watertight `.ply`, `.stl`, or `.obj` surface mesh. The mesh
-#'   is treated as a homogeneous closed solid, and the eigenvector associated
-#'   with the smallest principal moment of inertia is used as the longitudinal
-#'   axis. This workflow requires `SLICER = TRUE` and the suggested package Rvcg.
+#' - `INPUT = "VOLUME"` is used for scalar volumetric data such as medical CT.
+#'   The longitudinal axis is supplied from BoneJ and transformed into the
+#'   internal DICOM/LPS convention using DICOM orientation metadata. Generated
+#'   sections retain scalar/grayscale information, leaving subsequent
+#'   thresholding, segmentation, and any conversion to a filled SOLID
+#'   representation under user control.
+#' - `INPUT = "MESH"` is used for a watertight `.ply`, `.stl`, or `.obj`
+#'   surface mesh. The longitudinal axis is estimated directly from mesh
+#'   volumetric inertia and the generated Slicer section is geometric rather
+#'   than grayscale. A mesh input does not imply a SOLID CSG section: a
+#'   surface-scan mesh may encode only the periosteal envelope, whereas a mesh
+#'   derived from 3D segmentation may also encode endosteal geometry and
+#'   therefore support a TRUE section. This workflow requires `SLICER = TRUE`
+#'   and the suggested package Rvcg.
+#'
+#' In short, `INPUT` controls longitudinal-axis estimation and the software
+#' representation of the generated section, not the CSG distinction between
+#' TRUE (periosteal + endosteal information retained) and SOLID (the periosteal
+#' envelope treated as filled).
 #'
 #' @section Output backends:
 #' The `SLICER` argument controls the type of capture script returned.
 #'
-#' - `SLICER = FALSE` returns Avizo/Amira TCL blocks for `SOLID = FALSE`. This is
+#' - `SLICER = FALSE` returns Avizo/Amira TCL blocks for `INPUT = "VOLUME"`. This is
 #'   the default backend and is compatible with `mode = "TIBIA"`,
 #'   `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`,
 #'   `mode = "ULNA"`, and `mode = "HUMERUS_TABLE"`.
-#' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `SOLID = FALSE`,
+#' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `INPUT = "VOLUME"`,
 #'   these blocks orient a Slicer slice view on a scalar volume node. When
-#'   `SOLID = TRUE`, they cut and display the corresponding model node. This
+#'   `INPUT = "MESH"`, they cut and display the corresponding model node. This
 #'   backend is implemented for `mode = "TIBIA"`, `mode = "HUMERUS"`,
 #'   `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "ULNA"`. It is intentionally not
 #'   implemented for `mode = "HUMERUS_TABLE"`, because
@@ -56,14 +59,14 @@
 #'
 #' - `"TIBIA"` uses three landmarks: two plateau landmarks and one tibio-talar
 #'   landmark. The plateau pair defines an undirected transverse axis, so swapping
-#'   those two landmarks does not change TRUE-volume orientation. Their midpoint
+#'   those two landmarks does not change volume-input orientation. Their midpoint
 #'   defines the proximal endpoint of biomechanical length.
 #' - `"HUMERUS"` uses four landmarks: two distal landmarks defining the
 #'   mediolateral reference direction, one distal landmark for biomechanical
 #'   length, and one proximal landmark on the humeral head.
 #' - `"FEMUR"` uses three landmarks: two distal condylar articular-centre
 #'   landmarks and one proximal landmark on the superior femoral neck. The
-#'   condylar pair defines an undirected transverse axis in TRUE-volume workflows,
+#'   condylar pair defines an undirected transverse axis in volume-input workflows,
 #'   so swapping those two landmarks does not change the final orientation. The
 #'   midpoint between them defines the distal endpoint of biomechanical length.
 #' - `"RADIUS"` uses four landmarks: the radial styloid tip, the ulnar-notch
@@ -89,7 +92,7 @@
 #'   available for Avizo/Amira TCL output.
 #'
 #' @section Longitudinal axis:
-#' When `SOLID = FALSE`, the function expects the BoneJ longitudinal direction
+#' When `INPUT = "VOLUME"`, the function expects the BoneJ longitudinal direction
 #' supplied as either three numeric components, current BoneJ Log output
 #' (three `[INFO] ||...||` rows), the legacy compact 3 x 3 matrix, or a full
 #' Results-table row. If a full row is supplied, the last nine numeric
@@ -105,7 +108,7 @@
 #' an exact IOP/IPP triplet is already known. IOP defines the in-plane axes,
 #' while the ordered IPP pair determines the actual sign of the stack Z axis.
 #' This makes the transformation independent of
-#' whether slice indices progress with or against the IOP-derived normal. When `SOLID = TRUE`, the
+#' whether slice indices progress with or against the IOP-derived normal. When `INPUT = "MESH"`, the
 #' longitudinal axis is estimated directly from the closed mesh by volumetric
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
 #' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
@@ -114,13 +117,13 @@
 #' humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 #' length landmarks.
 #'
-#' @section TRUE-volume acquisition orientation:
-#' For anatomical anterior/posterior display, TRUE-volume long-bone workflows
+#' @section Volume-input acquisition orientation:
+#' For anatomical anterior/posterior display, volume-input long-bone workflows
 #' retain the established OrientCSG acquisition convention: dry bones must be
 #' scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
 #' resolves the physical stack axes and slice-order sign; it cannot infer an
 #' anatomical anterior/posterior reversal caused by placing a specimen rotated
-#' 180 degrees around its longitudinal axis. For TRUE-volume tibiae and femora,
+#' 180 degrees around its longitudinal axis. For volume-input tibiae and femora,
 #' this acquisition convention also resolves the sign of the otherwise undirected
 #' plateau/condylar transverse axis. No additional landmarks are required when the
 #' scanning-position convention is followed consistently.
@@ -139,11 +142,11 @@
 #' improved compatibility across Amira/Avizo versions.
 #'
 #' @section 3D Slicer requirements:
-#' When `SLICER = TRUE` and `SOLID = FALSE`, the generated Python code assumes
+#' When `SLICER = TRUE` and `INPUT = "VOLUME"`, the generated Python code assumes
 #' that the corresponding scalar volume is loaded in 3D Slicer. If `volume_name`
 #' is omitted, the Python block first tries to use the background volume in the
 #' selected slice view and then the only scalar volume in the scene. When
-#' `SLICER = TRUE` and `SOLID = TRUE`, the generated Python code assumes that
+#' `SLICER = TRUE` and `INPUT = "MESH"`, the generated Python code assumes that
 #' the corresponding model is loaded in 3D Slicer. Both Slicer routes use the
 #' same anatomical screen convention and display sections from the proximal side.
 #' If `model_name` is omitted, the function uses the basename of `mesh_file` when
@@ -163,7 +166,7 @@
 #'   numeric components of the BoneJ longitudinal vector, current BoneJ Log
 #'   output copied verbatim (three `[INFO] ||...||` rows), the legacy compact
 #'   3 x 3 BoneJ eigenvector matrix, or a full row copied from the BoneJ Results table.
-#'   Required when `SOLID = FALSE`. A direct three-component input is used as
+#'   Required when `INPUT = "VOLUME"`. A direct three-component input is used as
 #'   the longitudinal vector. If a full Results-table row is supplied, the last
 #'   nine numeric values are interpreted as the three BoneJ unit vectors, and
 #'   the first of these vectors is used as the longitudinal axis.
@@ -171,16 +174,16 @@
 #'   exact stack used in BoneJ. Supply one Image Orientation (Patient)
 #'   `(0020,0037)` line and Image Position (Patient) `(0020,0032)` lines from two
 #'   consecutive slices in BoneJ stack order. This remains supported for
-#'   compatibility and validation; for routine TRUE-volume workflows,
+#'   compatibility and validation; for routine volume-input workflows,
 #'   `dicom_dir` is recommended instead. Do not supply both arguments.
 #' @param dicom_dir Optional path to the local directory containing the DICOM CT
 #'   series used to build the ImageJ/BoneJ stack. When supplied with
-#'   `SOLID = FALSE`, OrientCSG reads only the first two readable DICOM headers in filename order,
+#'   `INPUT = "VOLUME"`, OrientCSG reads only the first two readable DICOM headers in filename order,
 #'   verifies that their InstanceNumber `(0020,0013)` values are consecutive,
 #'   orders that pair by InstanceNumber, and obtains IOP plus the ordered IPP
 #'   pair automatically. This route requires
 #'   the suggested package `oro.dicom`. Either `dicom_dir` or
-#'   `dicom_orientation` is required when `SOLID = FALSE`.
+#'   `dicom_orientation` is required when `INPUT = "VOLUME"`.
 #' @param landmarks_str Character string containing landmark coordinates. The
 #'   expected number and interpretation of landmarks depend on `mode`. Plain XYZ
 #'   coordinates and Slicer Markups-style rows are both accepted.
@@ -193,11 +196,12 @@
 #'   `1` uses the calibrated standard view; values below `1` zoom in and values
 #'   above `1` zoom out. The factor is mapped to an orthographic camera height
 #'   of 100 in Avizo/Amira and an approximately 70 mm vertical field of view in
-#'   Slicer (70 mm in TRUE Red views; `ParallelScale = 35` in 3D views).
-#' @param SOLID Logical. If `TRUE`, the longitudinal axis is computed directly
-#'   from `mesh_file` by treating a watertight closed surface mesh as a
-#'   homogeneous solid. Solid-mesh workflows require `SLICER = TRUE`. If
-#'   `FALSE`, the longitudinal axis is read from `longitudinal_matrix_str`.
+#'   Slicer (70 mm in volume Red views; `ParallelScale = 35` in 3D views).
+#' @param INPUT Character scalar specifying the long-bone input representation.
+#'   Use `"VOLUME"` for scalar volumetric data such as CT and `"MESH"` for a
+#'   watertight surface mesh. The choice determines how the longitudinal axis is
+#'   obtained and whether generated sections are scalar/grayscale or geometric;
+#'   it does not define TRUE versus SOLID CSG treatment. Defaults to `"VOLUME"`.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
 #'   implemented for tibiae, humeri, femora, radii, and ulnae; `HUMERUS_TABLE` is
@@ -210,7 +214,7 @@
 #'   longitudinal axis at that point, and anatomical ML/AP axes are not
 #'   computed or exported.
 #' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
-#'   `.stl`, or `.obj`) used when `SOLID = TRUE`.
+#'   `.stl`, or `.obj`) used when `INPUT = "MESH"`.
 #' @param lm_coord_system Coordinate system of the numeric landmark values pasted
 #'   into R. The default is `"LPS"`, matching the Avizo/Amira-like internal
 #'   convention. Coordinates copied or exported from 3D Slicer Markups may paste
@@ -221,10 +225,10 @@
 #'   interpretation of the numbers only; it does not depend on whether the text
 #'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param model_name Optional model node name used by the generated Slicer Python
-#'   block when `SLICER = TRUE` and `SOLID = TRUE`. If omitted, the basename of
+#'   block when `SLICER = TRUE` and `INPUT = "MESH"`. If omitted, the basename of
 #'   `mesh_file` is used when available.
 #' @param volume_name Optional scalar volume node name used by the generated
-#'   Slicer Python block when `SLICER = TRUE` and `SOLID = FALSE`. If omitted,
+#'   Slicer Python block when `SLICER = TRUE` and `INPUT = "VOLUME"`. If omitted,
 #'   the generated Python block first tries to use the background volume in the
 #'   selected slice view and then the only scalar volume in the scene.
 #'
@@ -234,12 +238,13 @@
 #'
 #'   - `type`: Orientation mode.
 #'   - `individual_id`: Specimen identifier.
+#'   - `INPUT`: Input representation, either `"VOLUME"` or `"MESH"`.
 #'   - `landmarks`: Landmark coordinate matrix.
 #'   - `vectors`: Longitudinal, mediolateral, and anteroposterior unit vectors.
 #'   - `section_loc`: Requested section percentages.
 #'   - `section_points`: Three-dimensional coordinates of each section origin.
 #'   - `summary`: Summary table with vectors, landmarks, section points,
-#'     biomechanical length, and the DICOM IOP/IPP values used for TRUE-volume
+#'     biomechanical length, and the DICOM IOP/IPP values used for volume-input
 #'     orientation in the `Bio_Length_&_Orient` column.
 #'   - `biomechanical_length`: Numeric biomechanical length used internally and
 #'     to place percentage sections.
@@ -248,11 +253,11 @@
 #'   - `avizo_tcl`: Named list of Avizo TCL command blocks, when `SLICER = FALSE`.
 #'   - `slicer_py`: Named list of 3D Slicer Python command blocks, when
 #'     `SLICER = TRUE`.
-#'   - `mesh_axes`: Mesh-derived inertia information, when `SOLID = TRUE`.
-#'   - `dicom_dir`: Normalized DICOM directory path when TRUE-volume metadata
+#'   - `mesh_axes`: Mesh-derived inertia information, when `INPUT = "MESH"`.
+#'   - `dicom_dir`: Normalized DICOM directory path when volume-input metadata
 #'     were read automatically; otherwise `NULL`.
 #'   - `bonej`: BoneJ eigenvector and coordinate-transform information, when
-#'     `SOLID = FALSE`, including whether DICOM metadata came from `dicom_dir`
+#'     `INPUT = "VOLUME"`, including whether DICOM metadata came from `dicom_dir`
 #'     or manual input and the automatic metadata diagnostics when available.
 #'   - `longitudinal_axis_check`: Axial angle between the transformed
 #'     longitudinal vector and the anatomical distal-proximal reference.
@@ -273,6 +278,7 @@
 #'
 #' res <- orient_longbone(
 #'   mode = "TIBIA",
+#'   INPUT = "VOLUME",
 #'   longitudinal_matrix_str = longitudinal_matrix_str,
 #'   dicom_dir = dicom_dir,
 #'   landmarks_str = tibia_landmarks_str,
@@ -293,7 +299,7 @@ orient_longbone <- function(mode,
                             section_loc = 50,
                             individual_id = "LONG_BONE_001",
                             camera_distance = 1,
-                            SOLID = FALSE,
+                            INPUT = "VOLUME",
                             SLICER = FALSE,
                             USE_ANAT_ORIENT = TRUE,
                             mesh_file = NULL,
@@ -306,16 +312,20 @@ orient_longbone <- function(mode,
     stop('`mode` must be one of "TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA", or "HUMERUS_TABLE".', call. = FALSE)
   }
 
-  if (!is.logical(SOLID) || length(SOLID) != 1L || is.na(SOLID)) {
-    stop("`SOLID` must be TRUE or FALSE.", call. = FALSE)
+  if (!is.character(INPUT) || length(INPUT) != 1L || is.na(INPUT)) {
+    stop('`INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+  INPUT <- toupper(trimws(INPUT))
+  if (!INPUT %in% c("VOLUME", "MESH")) {
+    stop('`INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
   }
 
   if (!is.logical(SLICER) || length(SLICER) != 1L || is.na(SLICER)) {
     stop("`SLICER` must be TRUE or FALSE.", call. = FALSE)
   }
 
-  if (isTRUE(SOLID) && !isTRUE(SLICER)) {
-    stop("`SOLID = TRUE` requires `SLICER = TRUE`.", call. = FALSE)
+  if (identical(INPUT, "MESH") && !isTRUE(SLICER)) {
+    stop('`INPUT = "MESH"` requires `SLICER = TRUE`.', call. = FALSE)
   }
 
   if (!is.logical(USE_ANAT_ORIENT) || length(USE_ANAT_ORIENT) != 1L || is.na(USE_ANAT_ORIENT)) {
@@ -350,21 +360,21 @@ orient_longbone <- function(mode,
   dicom_metadata <- NULL
   dicom_source <- NULL
 
-  if (isTRUE(SOLID)) {
+  if (identical(INPUT, "MESH")) {
     if (is.null(mesh_file)) {
-      stop("`mesh_file` is required when `SOLID = TRUE`.", call. = FALSE)
+      stop('`mesh_file` is required when `INPUT = "MESH"`.', call. = FALSE)
     }
 
     mesh_axes <- compute_mesh_inertia_axes(mesh_file)
     L <- mesh_axes$eigenvectors[, "axis_min_inertia"]
   } else {
     if (is.null(longitudinal_matrix_str)) {
-      stop("`longitudinal_matrix_str` is required when `SOLID = FALSE`.", call. = FALSE)
+      stop('`longitudinal_matrix_str` is required when `INPUT = "VOLUME"`.', call. = FALSE)
     }
 
     if (!is.null(dicom_dir) && !is.null(dicom_orientation)) {
       stop(
-        "Supply only one of `dicom_dir` or `dicom_orientation` when `SOLID = FALSE`.",
+        'Supply only one of `dicom_dir` or `dicom_orientation` when `INPUT = "VOLUME"`.',
         call. = FALSE
       )
     }
@@ -377,7 +387,7 @@ orient_longbone <- function(mode,
       if (is.null(dicom_orientation)) {
         stop(
           paste0(
-            "Either `dicom_dir` or `dicom_orientation` is required when `SOLID = FALSE`. ",
+            'Either `dicom_dir` or `dicom_orientation` is required when `INPUT = "VOLUME"`. ',
             "Use `dicom_dir` to read the CT metadata automatically, or supply the manual ",
             "IOP plus two consecutive IPP lines in BoneJ stack order."
           ),
@@ -535,17 +545,17 @@ orient_longbone <- function(mode,
       }
     }
 
-    # In TRUE-volume TIBIA and FEMUR workflows, P1/P2 are an undirected
+    # In volume-input TIBIA and FEMUR workflows, P1/P2 are an undirected
     # transverse landmark pair. Swapping them reverses the provisional ML/AP
     # signs but must not change the anatomical result. Resolve that arbitrary
     # sign with the established CT acquisition convention. The legacy capture
     # protocol uses (0, -1, 0) as the scanner/table AP reference; Slicer/Avizo
     # then apply the established tibia/femur anterior-up screen convention.
     #
-    # This is deliberately limited to SOLID = FALSE: mesh workflows may come
+    # This is deliberately limited to INPUT = "VOLUME": mesh workflows may come
     # from acquisitions with different orientation assumptions and are left
     # unchanged here.
-    if (!isTRUE(SOLID) && mode %in% c("TIBIA", "FEMUR")) {
+    if (identical(INPUT, "VOLUME") && mode %in% c("TIBIA", "FEMUR")) {
       ct_ap_reference <- nrm(c(0, -1, 0))
       if (dot3(APh, ct_ap_reference) < 0) {
         APh <- -APh
@@ -668,7 +678,7 @@ orient_longbone <- function(mode,
   summary_orient <- rep(NA_character_, length(summary_metrics))
   summary_orient[1] <- if (is.finite(Bio_length)) as.character(round(Bio_length, 6)) else NA_character_
 
-  if (!isTRUE(SOLID)) {
+  if (identical(INPUT, "VOLUME")) {
     dicom_summary_values <- c(
       format_dicom_values(attr(bonej_transform_matrix, "dicom_iop")),
       format_dicom_values(attr(bonej_transform_matrix, "dicom_ipp_1")),
@@ -709,7 +719,7 @@ orient_longbone <- function(mode,
   numeric_cols <- vapply(manual_orientation, is.numeric, logical(1))
   manual_orientation[numeric_cols] <- lapply(manual_orientation[numeric_cols], round, 6)
 
-  if (isTRUE(SOLID)) {
+  if (identical(INPUT, "MESH")) {
     if (is.null(model_name) || length(model_name) != 1L || is.na(model_name) || !nzchar(model_name)) {
       model_name <- tools::file_path_sans_ext(basename(mesh_file))
     }
@@ -738,7 +748,7 @@ orient_longbone <- function(mode,
     camera_distance = camera_distance,
     lm_coord_system = lm_coord_system,
     internal_coord_system = "LPS",
-    SOLID = SOLID,
+    INPUT = INPUT,
     SLICER = SLICER,
     USE_ANAT_ORIENT = USE_ANAT_ORIENT,
     mesh_file = mesh_file,
@@ -746,7 +756,7 @@ orient_longbone <- function(mode,
     volume_name = volume_name,
     dicom_dir = if (!is.null(dicom_metadata$dicom_dir)) dicom_metadata$dicom_dir else NULL,
     mesh_axes = mesh_axes,
-    bonej = if (isTRUE(SOLID)) NULL else list(
+    bonej = if (identical(INPUT, "MESH")) NULL else list(
       coord_transform = "dicom_iop_ipp",
       dicom_source = dicom_source,
       dicom_metadata = dicom_metadata,

@@ -1,4 +1,4 @@
-#' Copy a 3D Slicer ROI generator for fragmented solid meshes
+#' Copy a 3D Slicer ROI generator for fragmented surface meshes
 #'
 #' `get_fragmented_roi()` generates a 3D Slicer Python block for quickly
 #' creating an oriented ROI around a selected longitudinal portion of a surface
@@ -87,7 +87,7 @@ get_fragmented_roi <- function(model_name,
     "from vtk.util.numpy_support import vtk_to_numpy",
     "",
     "# ============================================================",
-    "# ORIENTCSG: FRAGMENTED SOLID ROI",
+    "# ORIENTCSG: FRAGMENTED MESH ROI",
     "# ============================================================",
     paste0("MODEL_NAME = ", py_quote(model_name)),
     paste0("LOWER_PERCENT = ", fmt_num_py(lower)),

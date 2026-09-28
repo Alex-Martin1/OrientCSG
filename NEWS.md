@@ -1,6 +1,7 @@
 # OrientCSG 1.1.1
 
-* Added `Reorient()` to copy whole-bone anatomical reorientation code from an existing `orient_longbone()` result. In 3D Slicer SOLID workflows it creates a new saveable `_Anatomical` mesh with transformed vertex coordinates. CT support is intentionally non-resampling: Slicer applies a linear transform and aligns the slice viewers, while Avizo/Amira applies only `setTransform`; creation of an intrinsically reoriented CT/DICOM voxel grid remains a manual external resampling step.
+* Replaced the ambiguous logical `SOLID` argument in `orient_longbone()` with `INPUT = "VOLUME"` or `INPUT = "MESH"`. This is a breaking API change. `INPUT` identifies the representation supplied to the package and controls longitudinal-axis estimation and software output; it does not define whether downstream CSG is treated as TRUE or SOLID. Mesh inputs may encode periosteal-only geometry or both periosteal and endosteal geometry, while volume inputs retain scalar/grayscale information for later thresholding, segmentation, or filling.
+* Added `Reorient()` to copy whole-bone anatomical reorientation code from an existing `orient_longbone()` result. In 3D Slicer mesh-input workflows it creates a new saveable `_Anatomical` mesh with transformed vertex coordinates. CT support is intentionally non-resampling: Slicer applies a linear transform and aligns the slice viewers, while Avizo/Amira applies only `setTransform`; creation of an intrinsically reoriented CT/DICOM voxel grid remains a manual external resampling step.
 
 # OrientCSG 1.1.0
 * Added `ULNA` long-bone orientation mode with four landmarks, anatomically resolved anterior/posterior direction, projected ulnar biomechanical length, and Avizo/Amira, TRUE-volume Slicer, and SOLID-mesh Slicer support.

@@ -12,7 +12,7 @@ orient_longbone(
   section_loc = 50,
   individual_id = "LONG_BONE_001",
   camera_distance = 1,
-  SOLID = FALSE,
+  INPUT = "VOLUME",
   SLICER = FALSE,
   USE_ANAT_ORIENT = TRUE,
   mesh_file = NULL,
@@ -30,7 +30,7 @@ orient_longbone(
 numeric components of the BoneJ longitudinal vector, current BoneJ Log
 output copied verbatim (three \verb{[INFO] ||...||} rows), the legacy compact
 3 x 3 BoneJ eigenvector matrix, or a full row copied from the BoneJ Results table.
-Required when \code{SOLID = FALSE}. A direct three-component input is used as
+Required when \code{INPUT = "VOLUME"}. A direct three-component input is used as
 the longitudinal vector. If a full Results-table row is supplied, the last
 nine numeric values are interpreted as the three BoneJ unit vectors, and
 the first of these vectors is used as the longitudinal axis.}
@@ -39,7 +39,7 @@ the first of these vectors is used as the longitudinal axis.}
 exact stack used in BoneJ. Supply one Image Orientation (Patient)
 \verb{(0020,0037)} line and Image Position (Patient) \verb{(0020,0032)} lines from two
 consecutive slices in BoneJ stack order. This remains supported for
-compatibility and validation; for routine TRUE-volume workflows,
+compatibility and validation; for routine volume-input workflows,
 \code{dicom_dir} is recommended instead. Do not supply both arguments.}
 
 \item{landmarks_str}{Character string containing landmark coordinates. The
@@ -57,12 +57,13 @@ visual framing in generated Avizo/Amira and 3D Slicer output. The default
 \code{1} uses the calibrated standard view; values below \code{1} zoom in and values
 above \code{1} zoom out. The factor is mapped to an orthographic camera height
 of 100 in Avizo/Amira and an approximately 70 mm vertical field of view in
-Slicer (70 mm in TRUE Red views; \code{ParallelScale = 35} in 3D views).}
+Slicer (70 mm in volume Red views; \code{ParallelScale = 35} in 3D views).}
 
-\item{SOLID}{Logical. If \code{TRUE}, the longitudinal axis is computed directly
-from \code{mesh_file} by treating a watertight closed surface mesh as a
-homogeneous solid. Solid-mesh workflows require \code{SLICER = TRUE}. If
-\code{FALSE}, the longitudinal axis is read from \code{longitudinal_matrix_str}.}
+\item{INPUT}{Character scalar specifying the long-bone input representation.
+Use \code{"VOLUME"} for scalar volumetric data such as CT and \code{"MESH"} for a
+watertight surface mesh. The choice determines how the longitudinal axis is
+obtained and whether generated sections are scalar/grayscale or geometric;
+it does not define TRUE versus SOLID CSG treatment. Defaults to \code{"VOLUME"}.}
 
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
@@ -78,7 +79,7 @@ longitudinal axis at that point, and anatomical ML/AP axes are not
 computed or exported.}
 
 \item{mesh_file}{Optional path to a watertight closed surface mesh (\code{.ply},
-\code{.stl}, or \code{.obj}) used when \code{SOLID = TRUE}.}
+\code{.stl}, or \code{.obj}) used when \code{INPUT = "MESH"}.}
 
 \item{lm_coord_system}{Coordinate system of the numeric landmark values pasted
 into R. The default is \code{"LPS"}, matching the Avizo/Amira-like internal
@@ -91,22 +92,22 @@ interpretation of the numbers only; it does not depend on whether the text
 was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{model_name}{Optional model node name used by the generated Slicer Python
-block when \code{SLICER = TRUE} and \code{SOLID = TRUE}. If omitted, the basename of
+block when \code{SLICER = TRUE} and \code{INPUT = "MESH"}. If omitted, the basename of
 \code{mesh_file} is used when available.}
 
 \item{volume_name}{Optional scalar volume node name used by the generated
-Slicer Python block when \code{SLICER = TRUE} and \code{SOLID = FALSE}. If omitted,
+Slicer Python block when \code{SLICER = TRUE} and \code{INPUT = "VOLUME"}. If omitted,
 the generated Python block first tries to use the background volume in the
 selected slice view and then the only scalar volume in the scene.}
 
 \item{dicom_dir}{Optional path to the local directory containing the DICOM CT
 series used to build the ImageJ/BoneJ stack. When supplied with
-\code{SOLID = FALSE}, OrientCSG reads only the first two readable DICOM headers in filename order,
+\code{INPUT = "VOLUME"}, OrientCSG reads only the first two readable DICOM headers in filename order,
 verifies that their InstanceNumber \verb{(0020,0013)} values are consecutive,
 orders that pair by InstanceNumber, and obtains IOP plus the ordered IPP
 pair automatically. This route requires
 the suggested package \code{oro.dicom}. Either \code{dicom_dir} or
-\code{dicom_orientation} is required when \code{SOLID = FALSE}.}
+\code{dicom_orientation} is required when \code{INPUT = "VOLUME"}.}
 }
 \value{
 An object of class \code{orientcsg_longbone} and
@@ -115,12 +116,13 @@ components:
 \itemize{
 \item \code{type}: Orientation mode.
 \item \code{individual_id}: Specimen identifier.
+\item \code{INPUT}: Input representation, either \code{"VOLUME"} or \code{"MESH"}.
 \item \code{landmarks}: Landmark coordinate matrix.
 \item \code{vectors}: Longitudinal, mediolateral, and anteroposterior unit vectors.
 \item \code{section_loc}: Requested section percentages.
 \item \code{section_points}: Three-dimensional coordinates of each section origin.
 \item \code{summary}: Summary table with vectors, landmarks, section points,
-biomechanical length, and the DICOM IOP/IPP values used for TRUE-volume
+biomechanical length, and the DICOM IOP/IPP values used for volume-input
 orientation in the \verb{Bio_Length_&_Orient} column.
 \item \code{biomechanical_length}: Numeric biomechanical length used internally and
 to place percentage sections.
@@ -129,11 +131,11 @@ anatomical planes and transverse section orientation in Avizo/Amira.
 \item \code{avizo_tcl}: Named list of Avizo TCL command blocks, when \code{SLICER = FALSE}.
 \item \code{slicer_py}: Named list of 3D Slicer Python command blocks, when
 \code{SLICER = TRUE}.
-\item \code{mesh_axes}: Mesh-derived inertia information, when \code{SOLID = TRUE}.
-\item \code{dicom_dir}: Normalized DICOM directory path when TRUE-volume metadata
+\item \code{mesh_axes}: Mesh-derived inertia information, when \code{INPUT = "MESH"}.
+\item \code{dicom_dir}: Normalized DICOM directory path when volume-input metadata
 were read automatically; otherwise \code{NULL}.
 \item \code{bonej}: BoneJ eigenvector and coordinate-transform information, when
-\code{SOLID = FALSE}, including whether DICOM metadata came from \code{dicom_dir}
+\code{INPUT = "VOLUME"}, including whether DICOM metadata came from \code{dicom_dir}
 or manual input and the automatic metadata diagnostics when available.
 \item \code{longitudinal_axis_check}: Axial angle between the transformed
 longitudinal vector and the anatomical distal-proximal reference.
@@ -150,45 +152,48 @@ three-component longitudinal vector, current Log output copied verbatim
 or a full Results-table row containing the unit-vector columns. The function can
 generate Avizo/Amira TCL command
 blocks for the classic CT-derived workflow or 3D Slicer Python command
-blocks for CT-derived volume workflows or workflows based on solid surface
+blocks for volume-input workflows or workflows based on closed surface
 meshes.
 }
-\section{Input workflows}{
+\section{Input representation}{
 
-The \code{SOLID} argument controls how the longitudinal axis is obtained.
+The \code{INPUT} argument describes the representation supplied to
+\code{orient_longbone()}; it does not specify whether the eventual CSG section is
+treated as TRUE or SOLID.
 \itemize{
-\item \code{SOLID = FALSE} implements the classic DICOM/CT workflow. In this mode,
-\code{longitudinal_matrix_str} must contain either a direct three-component
-BoneJ longitudinal vector, current BoneJ Log output copied verbatim, the
-legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full row
-copied from the BoneJ Results table with the
-unit-vector columns recorded. The direct vector, or the first BoneJ vector
-in matrix/table input, is interpreted as the longitudinal axis after
-conversion from the ImageJ/BoneJ stack basis to the internal DICOM/LPS
-convention. The recommended workflow supplies \code{dicom_dir}, allowing
-OrientCSG to read DICOM Image Orientation (Patient), Image Position
-(Patient), and InstanceNumber directly from the local CT series without
-opening Fiji. Manual \code{dicom_orientation} input remains available for
-compatibility and validation.
-\item \code{SOLID = TRUE} implements the solid-mesh workflow. In this mode, \code{mesh_file}
-must point to a watertight \code{.ply}, \code{.stl}, or \code{.obj} surface mesh. The mesh
-is treated as a homogeneous closed solid, and the eigenvector associated
-with the smallest principal moment of inertia is used as the longitudinal
-axis. This workflow requires \code{SLICER = TRUE} and the suggested package Rvcg.
+\item \code{INPUT = "VOLUME"} is used for scalar volumetric data such as medical CT.
+The longitudinal axis is supplied from BoneJ and transformed into the
+internal DICOM/LPS convention using DICOM orientation metadata. Generated
+sections retain scalar/grayscale information, leaving subsequent
+thresholding, segmentation, and any conversion to a filled SOLID
+representation under user control.
+\item \code{INPUT = "MESH"} is used for a watertight \code{.ply}, \code{.stl}, or \code{.obj}
+surface mesh. The longitudinal axis is estimated directly from mesh
+volumetric inertia and the generated Slicer section is geometric rather
+than grayscale. A mesh input does not imply a SOLID CSG section: a
+surface-scan mesh may encode only the periosteal envelope, whereas a mesh
+derived from 3D segmentation may also encode endosteal geometry and
+therefore support a TRUE section. This workflow requires \code{SLICER = TRUE}
+and the suggested package Rvcg.
 }
+
+In short, \code{INPUT} controls longitudinal-axis estimation and the software
+representation of the generated section, not the CSG distinction between
+TRUE (periosteal + endosteal information retained) and SOLID (the periosteal
+envelope treated as filled).
 }
 
 \section{Output backends}{
 
 The \code{SLICER} argument controls the type of capture script returned.
 \itemize{
-\item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks for \code{SOLID = FALSE}. This is
+\item \code{SLICER = FALSE} returns Avizo/Amira TCL blocks for \code{INPUT = "VOLUME"}. This is
 the default backend and is compatible with \code{mode = "TIBIA"},
 \code{mode = "HUMERUS"}, \code{mode = "FEMUR"}, \code{mode = "RADIUS"},
 \code{mode = "ULNA"}, and \code{mode = "HUMERUS_TABLE"}.
-\item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{SOLID = FALSE},
+\item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{INPUT = "VOLUME"},
 these blocks orient a Slicer slice view on a scalar volume node. When
-\code{SOLID = TRUE}, they cut and display the corresponding model node. This
+\code{INPUT = "MESH"}, they cut and display the corresponding model node. This
 backend is implemented for \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
 \code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "ULNA"}. It is intentionally not
 implemented for \code{mode = "HUMERUS_TABLE"}, because
@@ -203,14 +208,14 @@ mediolateral axis is constructed.
 \itemize{
 \item \code{"TIBIA"} uses three landmarks: two plateau landmarks and one tibio-talar
 landmark. The plateau pair defines an undirected transverse axis, so swapping
-those two landmarks does not change TRUE-volume orientation. Their midpoint
+those two landmarks does not change volume-input orientation. Their midpoint
 defines the proximal endpoint of biomechanical length.
 \item \code{"HUMERUS"} uses four landmarks: two distal landmarks defining the
 mediolateral reference direction, one distal landmark for biomechanical
 length, and one proximal landmark on the humeral head.
 \item \code{"FEMUR"} uses three landmarks: two distal condylar articular-centre
 landmarks and one proximal landmark on the superior femoral neck. The
-condylar pair defines an undirected transverse axis in TRUE-volume workflows,
+condylar pair defines an undirected transverse axis in volume-input workflows,
 so swapping those two landmarks does not change the final orientation. The
 midpoint between them defines the distal endpoint of biomechanical length.
 \item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
@@ -239,7 +244,7 @@ available for Avizo/Amira TCL output.
 
 \section{Longitudinal axis}{
 
-When \code{SOLID = FALSE}, the function expects the BoneJ longitudinal direction
+When \code{INPUT = "VOLUME"}, the function expects the BoneJ longitudinal direction
 supplied as either three numeric components, current BoneJ Log output
 (three \verb{[INFO] ||...||} rows), the legacy compact 3 x 3 matrix, or a full
 Results-table row. If a full row is supplied, the last nine numeric
@@ -255,7 +260,7 @@ consecutive, orders that pair by InstanceNumber, and uses Image Orientation
 an exact IOP/IPP triplet is already known. IOP defines the in-plane axes,
 while the ordered IPP pair determines the actual sign of the stack Z axis.
 This makes the transformation independent of
-whether slice indices progress with or against the IOP-derived normal. When \code{SOLID = TRUE}, the
+whether slice indices progress with or against the IOP-derived normal. When \code{INPUT = "MESH"}, the
 longitudinal axis is estimated directly from the closed mesh by volumetric
 inertia. In both cases, the sign of the longitudinal vector is adjusted when
 anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
@@ -265,14 +270,14 @@ humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 length landmarks.
 }
 
-\section{TRUE-volume acquisition orientation}{
+\section{Volume-input acquisition orientation}{
 
-For anatomical anterior/posterior display, TRUE-volume long-bone workflows
+For anatomical anterior/posterior display, volume-input long-bone workflows
 retain the established OrientCSG acquisition convention: dry bones must be
 scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
 resolves the physical stack axes and slice-order sign; it cannot infer an
 anatomical anterior/posterior reversal caused by placing a specimen rotated
-180 degrees around its longitudinal axis. For TRUE-volume tibiae and femora,
+180 degrees around its longitudinal axis. For volume-input tibiae and femora,
 this acquisition convention also resolves the sign of the otherwise undirected
 plateau/condylar transverse axis. No additional landmarks are required when the
 scanning-position convention is followed consistently.
@@ -297,11 +302,11 @@ improved compatibility across Amira/Avizo versions.
 
 \section{3D Slicer requirements}{
 
-When \code{SLICER = TRUE} and \code{SOLID = FALSE}, the generated Python code assumes
+When \code{SLICER = TRUE} and \code{INPUT = "VOLUME"}, the generated Python code assumes
 that the corresponding scalar volume is loaded in 3D Slicer. If \code{volume_name}
 is omitted, the Python block first tries to use the background volume in the
 selected slice view and then the only scalar volume in the scene. When
-\code{SLICER = TRUE} and \code{SOLID = TRUE}, the generated Python code assumes that
+\code{SLICER = TRUE} and \code{INPUT = "MESH"}, the generated Python code assumes that
 the corresponding model is loaded in 3D Slicer. Both Slicer routes use the
 same anatomical screen convention and display sections from the proximal side.
 If \code{model_name} is omitted, the function uses the basename of \code{mesh_file} when
@@ -332,6 +337,7 @@ tibia_landmarks_str <- "
 
 res <- orient_longbone(
   mode = "TIBIA",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str,
   dicom_dir = dicom_dir,
   landmarks_str = tibia_landmarks_str,

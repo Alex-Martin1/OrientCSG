@@ -10,10 +10,9 @@
 #'
 #' `flash_capture()` generates a single batch command block that captures multiple
 #' long-bone sections from an existing [orient_longbone()] result. The function
-#' supports the three primary OrientCSG capture workflows: Avizo/Amira with a CT
-#' volume (`SLICER = FALSE`, `SOLID = FALSE`), 3D Slicer with a CT volume
-#' (`SLICER = TRUE`, `SOLID = FALSE`), and 3D Slicer with a solid surface mesh
-#' (`SLICER = TRUE`, `SOLID = TRUE`).
+#' supports the three primary OrientCSG capture workflows: Avizo/Amira with
+#' `INPUT = "VOLUME"` and `SLICER = FALSE`, 3D Slicer with
+#' `INPUT = "VOLUME"`, and 3D Slicer with `INPUT = "MESH"`.
 #'
 #' In 3D Slicer, Flash Capture deliberately does not recompute anatomical
 #' orientation: first run one reference section with [copy_slicer_py()] and
@@ -27,7 +26,7 @@
 #' colormap, and scale settings are also left unchanged. In the
 #' 3D Slicer CT workflow, the current slice matrix and field of
 #' view are used as the visual reference while the section plane and OrientCSG
-#' scale are translated between requested section points. In the 3D Slicer SOLID
+#' scale are translated between requested section points. In the 3D Slicer mesh-input
 #' workflow, the source mesh is re-cut at each requested section while the current
 #' 3D camera orientation, proximal viewing side, parallel scale, and relative pan
 #' are preserved. The starting Slicer view is restored after batch capture.
@@ -93,6 +92,11 @@ flash_capture <- function(
     stop("`res` must be an OrientCSG long-bone result.", call. = FALSE)
   }
 
+  if (is.null(res$INPUT) || length(res$INPUT) != 1L ||
+      !res$INPUT %in% c("VOLUME", "MESH")) {
+    stop('`res$INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+
   output_dir <- .flash_capture_validate_scalar_string(output_dir, "output_dir")
 
   if (is.null(file_name)) {
@@ -126,8 +130,8 @@ flash_capture <- function(
   }
 
   if (isTRUE(res$SLICER)) {
-    if (isTRUE(res$SOLID)) {
-      return(.flash_capture_slicer_solid(
+    if (identical(res$INPUT, "MESH")) {
+      return(.flash_capture_slicer_mesh(
         res = res,
         file_name = file_name,
         output_dir = output_dir,
@@ -222,9 +226,9 @@ flash_capture <- function(
   if (isTRUE(res$SLICER)) {
     stop("The Avizo/Amira Flash Capture branch requires `SLICER = FALSE`.", call. = FALSE)
   }
-  if (isTRUE(res$SOLID)) {
+  if (identical(res$INPUT, "MESH")) {
     stop(
-      "Avizo/Amira Flash Capture is currently implemented only for `SOLID = FALSE` long-bone results.",
+      "Avizo/Amira Flash Capture is currently implemented only for `INPUT = \"VOLUME\"` long-bone results.",
       call. = FALSE
     )
   }
@@ -453,9 +457,9 @@ flash_capture <- function(
     )
   }
 
-  if (isTRUE(res$SOLID)) {
+  if (identical(res$INPUT, "MESH")) {
     stop(
-      "This Flash Capture branch is for Slicer CT volumes (`SOLID = FALSE`) only.",
+      "This Flash Capture branch is for Slicer `INPUT = \"VOLUME\"` results only.",
       call. = FALSE
     )
   }
@@ -1095,7 +1099,7 @@ flash_capture <- function(
 
 
 
-.flash_capture_slicer_solid <- function(
+.flash_capture_slicer_mesh <- function(
     res,
     file_name,
     output_dir,
@@ -1111,9 +1115,9 @@ flash_capture <- function(
     stop("`res` must be an OrientCSG long-bone result.", call. = FALSE)
   }
 
-  if (!isTRUE(res$SLICER) || !isTRUE(res$SOLID)) {
+  if (!isTRUE(res$SLICER) || !identical(res$INPUT, "MESH")) {
     stop(
-      "Slicer SOLID Flash Capture requires `SLICER = TRUE` and `SOLID = TRUE`.",
+      "Slicer mesh Flash Capture requires `SLICER = TRUE` and `INPUT = \"MESH\"`.",
       call. = FALSE
     )
   }
@@ -1139,7 +1143,7 @@ flash_capture <- function(
   model_name <- res$model_name
   if (is.null(model_name) || length(model_name) != 1L ||
       is.na(model_name) || !nzchar(model_name)) {
-    stop("`res$model_name` is required for Slicer SOLID Flash Capture.", call. = FALSE)
+    stop("`res$model_name` is required for Slicer mesh Flash Capture.", call. = FALSE)
   }
 
   output_dir <- chartr("\\", "/", output_dir)
@@ -1228,7 +1232,7 @@ flash_capture <- function(
     "",
     "# ============================================================",
     "# OrientCSG FLASH CAPTURE",
-    "# 3D Slicer / SOLID mesh",
+    "# 3D Slicer / MESH input",
     "# ============================================================",
     "#",
     "# The CURRENT 3D view is the visual reference.",
@@ -1380,7 +1384,7 @@ flash_capture <- function(
     "        raise ValueError(",
     "            'The current 3D camera is not sufficiently close to one '",
     "            'of the OrientCSG section planes. First paste a normal '",
-    "            'OrientCSG Slicer SOLID block, configure the 3D view, '",
+    "            'OrientCSG Slicer mesh block, configure the 3D view, '",
     "            'and then run Flash Capture.'",
     "        )",
     "",
@@ -1564,7 +1568,7 @@ flash_capture <- function(
     copied <- copy_to_clipboard(txt)
     if (isTRUE(copied)) {
       message(sprintf(
-        "Slicer SOLID Flash Capture Python copied to clipboard (%d sections).",
+        "Slicer mesh Flash Capture Python copied to clipboard (%d sections).",
         length(selected)
       ))
     }

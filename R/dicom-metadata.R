@@ -1,6 +1,6 @@
 # Internal DICOM metadata reader ----------------------------------------------
 #
-# Fast TRUE-volume helper used by orient_longbone(). It opens only enough files
+# Fast volume-input helper used by orient_longbone(). It opens only enough files
 # to obtain two readable DICOM headers, never loads pixel data, orders the pair
 # by InstanceNumber, and validates the IOP/IPP geometry required by the existing
 # BoneJ-to-LPS transform. This helper is deliberately not part of the public API.

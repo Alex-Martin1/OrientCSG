@@ -262,7 +262,7 @@ parse_dicom_iop <- function(dicom_iop) {
 }
 
 # Parse DICOM Image Position (Patient) (0020,0032). The input may be a numeric
-# XYZ triplet or the complete DICOM line. For TRUE-volume workflows, the two
+# XYZ triplet or the complete DICOM line. For volume-input workflows, the two
 # IPP entries contained in `dicom_orientation` must describe consecutive slices
 # in the same order in which those slices occur in the ImageJ/BoneJ stack.
 parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
@@ -290,7 +290,7 @@ parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
   as.numeric(nums)
 }
 
-# Parse the combined TRUE-volume DICOM orientation input. The public
+# Parse the combined volume-input DICOM orientation input. The public
 # `dicom_orientation` argument is normally a three-element character vector
 # constructed as c(IOP, IPP1, IPP2). A single three-line character block is
 # also accepted. The IOP line is identified by tag/name when possible; the two

@@ -2,7 +2,7 @@
 % Please edit documentation in R/fragmented-roi.R
 \name{get_fragmented_roi}
 \alias{get_fragmented_roi}
-\title{Copy a 3D Slicer ROI generator for fragmented solid meshes}
+\title{Copy a 3D Slicer ROI generator for fragmented surface meshes}
 \usage{
 get_fragmented_roi(
   model_name,

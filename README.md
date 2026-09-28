@@ -4,8 +4,8 @@ OrientCSG is an R package for reproducible orientation of mandibular and long-bo
 
 The package was designed to generate consistent anatomical reference systems for virtual section capture. It supports three broad types of workflows:
 
-1. classic CT-derived workflows using BoneJ-derived principal axes, with Amira/Avizo TCL or 3D Slicer Python output;
-2. solid surface mesh workflows using `.ply`, `.stl`, or `.obj` files, with optional 3D Slicer Python output; and
+1. volume-input workflows using BoneJ-derived principal axes, with Amira/Avizo TCL or 3D Slicer Python output;
+2. mesh-input workflows using `.ply`, `.stl`, or `.obj` files, with 3D Slicer Python output; and
 3. mandibular volume workflows with either Avizo/Amira TCL or 3D Slicer Python output.
 
 OrientCSG computes section locations, anatomical vectors, camera/view parameters, summary tables, manual-orientation tables, Amira/Avizo TCL command blocks, and, where requested, 3D Slicer Python blocks.
@@ -22,7 +22,7 @@ remotes::install_github("Alex-Martin1/OrientCSG")
 library(OrientCSG)
 ```
 
-The solid mesh workflow uses `Rvcg` when `SOLID = TRUE`. Automatic DICOM metadata extraction through `dicom_dir` uses `oro.dicom`. Install either suggested package when you need that workflow:
+The mesh-input workflow uses `Rvcg` when `INPUT = "MESH"`. Automatic DICOM metadata extraction through `dicom_dir` uses `oro.dicom`. Install either suggested package when you need that workflow:
 
 ```r
 install.packages("Rvcg")
@@ -38,10 +38,10 @@ Depending on the workflow, it can:
 - compute anatomical points and vectors;
 - compute section locations;
 - compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, current BoneJ Log output copied verbatim, a legacy 3 x 3 eigenvector matrix, a full BoneJ Results-table row, or a closed surface mesh;
-- return summary tables and manual-orientation tables; TRUE-volume long-bone summaries store biomechanical length followed by the IOP/IPP values used for orientation in `Bio_Length_&_Orient`;
+- return summary tables and manual-orientation tables; volume-input long-bone summaries store biomechanical length followed by the IOP/IPP values used for orientation in `Bio_Length_&_Orient`;
 - generate Amira/Avizo TCL command blocks;
 - generate 3D Slicer Python blocks for supported Slicer workflows;
-- generate batch capture blocks with `flash_capture()` for Avizo/Amira + CT, 3D Slicer + CT, and 3D Slicer + SOLID mesh workflows;
+- generate batch capture blocks with `flash_capture()` for Avizo/Amira + volume, 3D Slicer + volume, and 3D Slicer + mesh workflows;
 - generate an oriented 3D Slicer ROI for preliminary cropping of fragmented surface meshes with `get_fragmented_roi()`;
 - copy generated command blocks to the clipboard.
 
@@ -51,7 +51,7 @@ OrientCSG does not directly control Amira/Avizo or 3D Slicer from R. It generate
 
 OrientCSG does not segment CT data, choose CT thresholds, extract contours, or calculate cross-sectional geometry properties such as cortical area, total area, second moments of area, polar moment of area, or section modulus.
 
-For DICOM or other volumetric image workflows, segmentation and thresholding must be handled before using OrientCSG. This is intentional: in volumetric data, the calculated axis depends on which voxels are treated as bone, so thresholding should remain explicit and user-controlled.
+OrientCSG does not segment or threshold volumetric data. For `INPUT = "VOLUME"`, the BoneJ-derived longitudinal axis necessarily reflects the external segmentation/binarization used to calculate it, while the section generated from the original volume can remain scalar/grayscale for later thresholding or segmentation. These decisions remain explicit and user-controlled.
 
 ## Current scope
 
@@ -81,7 +81,16 @@ It currently supports:
 - `ULNA`;
 - `HUMERUS_TABLE`.
 
-For classic CT-derived workflows, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, current BoneJ Log output copied directly from the Log window (three `[INFO] ||...||` rows), the legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for Log, matrix, or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed from the ImageJ stack basis to the internal DICOM/LPS basis using three DICOM metadata lines from the exact stack used in BoneJ: Image Orientation (Patient) (`0020,0037`) plus Image Position (Patient) (`0020,0032`) from two consecutive slices supplied in stack order. IOP defines the in-plane axes and the ordered IPP pair resolves the actual direction of stack Z, including series whose slice order runs opposite to the IOP-derived normal.
+#### Input representation is not section type
+
+`INPUT` describes the representation supplied to `orient_longbone()`; it does not describe whether the eventual CSG section is TRUE or SOLID.
+
+- `INPUT = "VOLUME"` is used for scalar volumetric data such as medical CT. The longitudinal axis comes from BoneJ and DICOM orientation metadata, while the generated section retains scalar/grayscale information. The section can later be thresholded or segmented to retain periosteal and endosteal information (TRUE), or, if required, converted to a filled periosteal-envelope representation (SOLID).
+- `INPUT = "MESH"` is used for a watertight surface mesh. The longitudinal axis is calculated directly from mesh volumetric inertia and the Slicer section is geometric. A mesh from a surface scanner may encode only the periosteal envelope and therefore support a SOLID-style section, whereas a mesh derived from 3D segmentation may encode both periosteal and endosteal surfaces and support a TRUE-style section.
+
+Therefore, neither `"VOLUME"` nor `"MESH"` should be interpreted as synonymous with TRUE or SOLID.
+
+For `INPUT = "VOLUME"`, `orient_longbone()` accepts the BoneJ longitudinal direction as three direct vector components, current BoneJ Log output copied directly from the Log window (three `[INFO] ||...||` rows), the legacy compact 3 x 3 Moments of Inertia eigenvector matrix, or a full BoneJ Results-table row. Direct vector input is treated as the first BoneJ vector; for Log, matrix, or table input, the first vector is used as the longitudinal axis. The BoneJ vector or matrix is transformed from the ImageJ stack basis to the internal DICOM/LPS basis using three DICOM metadata lines from the exact stack used in BoneJ: Image Orientation (Patient) (`0020,0037`) plus Image Position (Patient) (`0020,0032`) from two consecutive slices supplied in stack order. IOP defines the in-plane axes and the ordered IPP pair resolves the actual direction of stack Z, including series whose slice order runs opposite to the IOP-derived normal.
 
 
 Current BoneJ Log output can be pasted without editing, for example:
@@ -96,7 +105,7 @@ longitudinal_matrix_str <- "
 
 The `[INFO]` prefixes and pipe characters are ignored by the parser; the three rows are interpreted as the 3 x 3 eigenvector matrix exactly as printed by BoneJ.
 
-For TRUE-volume anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks. In `TIBIA` and `FEMUR`, the two plateau/condylar landmarks define an undirected transverse axis: swapping those two points does not change the TRUE-volume orientation; the acquisition convention resolves the final AP sign. In `ULNA`, AP is resolved anatomically: LM2 to LM3 is treated as posterior-to-anterior. Because LM3 should be anterior to both trochlear-waist landmarks, swapping LM1 and LM2 does not change the final ML/AP axes.
+For volume-input anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks. In `TIBIA` and `FEMUR`, the two plateau/condylar landmarks define an undirected transverse axis: swapping those two points does not change the volume-input orientation; the acquisition convention resolves the final AP sign. In `ULNA`, AP is resolved anatomically: LM2 to LM3 is treated as posterior-to-anterior. Because LM3 should be anterior to both trochlear-waist landmarks, swapping LM1 and LM2 does not change the final ML/AP axes.
 
 #### ULNA landmarks
 
@@ -111,15 +120,15 @@ For TRUE-volume anatomical orientation, the specimen must also follow the establ
 
 LM1 and LM2 are interchangeable. Their connecting line defines ML. LM2 to LM3 is used only to resolve the posterior-to-anterior sign of AP. Ulnar biomechanical length is the projected distance along the longitudinal axis from distal LM4 to proximal LM3.
 
-For closed surface meshes, `orient_longbone()` can compute the longitudinal axis directly from the mesh when `SOLID = TRUE`. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
+For `INPUT = "MESH"`, `orient_longbone()` computes the longitudinal axis directly from the closed surface mesh. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
 
 ### Whole-bone reorientation
 
-`Reorient()` copies a software command block that places a completed long-bone result in anatomical Cartesian axes. In 3D Slicer SOLID workflows it creates a new `_Anatomical` model with transformed vertex coordinates, leaving the source model unchanged; this new model can be saved or exported as a reoriented mesh.
+`Reorient()` copies a software command block that places a completed long-bone result in anatomical Cartesian axes. In 3D Slicer mesh-input workflows it creates a new `_Anatomical` model with transformed vertex coordinates, leaving the source model unchanged; this new model can be saved or exported as a reoriented mesh.
 
 CT support is deliberately more limited. In Slicer, `Reorient()` applies a linear transform and aligns the standard slice viewers, but does not resample the voxel lattice. In Avizo/Amira it applies only `setTransform`. Creating an intrinsically reoriented CT/DICOM stack requires resampling in the external software and is not performed by OrientCSG.
 
-### Fragmented solid meshes
+### Fragmented surface meshes
 
 For fragmented 3D-scanned specimens, `get_fragmented_roi()` copies a Python block directly to the clipboard for creating an oriented ROI in 3D Slicer. By default, the ROI spans 20-80% of the geometric longitudinal reference and adds a 2 mm transverse margin:
 
@@ -147,7 +156,7 @@ It is intentionally not implemented for `HUMERUS_TABLE`, because that mode relie
 
 ### Viewing distance / zoom
 
-`camera_distance` is a relative visual-framing factor, not a physical camera distance in millimetres. The default `camera_distance = 1` uses the calibrated standard view. Values below `1` zoom in and values above `1` zoom out. For long-bone workflows, OrientCSG maps the same factor to the native orthographic zoom control of each backend: Avizo/Amira uses a base `CameraHeight` of 100, Slicer TRUE uses a base Red-slice vertical field of view of 70 mm, and Slicer 3D views (including SOLID sections and TRUE verification views) use a base `ParallelScale` of 35, corresponding to approximately 70 mm of visible vertical height. The Slicer TRUE horizontal field of view is derived from the current Red-view aspect ratio so physical X/Y scale remains consistent. Mandibular Slicer output retains its established 85 mm base vertical field of view (`ParallelScale = 42.5` in 3D), with the same relative `camera_distance` scaling.
+`camera_distance` is a relative visual-framing factor, not a physical camera distance in millimetres. The default `camera_distance = 1` uses the calibrated standard view. Values below `1` zoom in and values above `1` zoom out. For long-bone workflows, OrientCSG maps the same factor to the native orthographic zoom control of each backend: Avizo/Amira uses a base `CameraHeight` of 100, Slicer volume input uses a base Red-slice vertical field of view of 70 mm, and Slicer 3D views (including mesh sections and volume verification views) use a base `ParallelScale` of 35, corresponding to approximately 70 mm of visible vertical height. The Slicer volume-input horizontal field of view is derived from the current Red-view aspect ratio so physical X/Y scale remains consistent. Mandibular Slicer output retains its established 85 mm base vertical field of view (`ParallelScale = 42.5` in 3D), with the same relative `camera_distance` scaling.
 
 ## Coordinate conventions
 
@@ -179,7 +188,7 @@ for i in range(markupsNode.GetNumberOfControlPoints()):
     print(i + 1, label, p[0], p[1], p[2])
 ```
 
-For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. For routine TRUE-volume analyses, the recommended workflow is now to supply `dicom_dir`, pointing to the local DICOM directory used to build the ImageJ/BoneJ stack. OrientCSG reads only enough files to obtain two readable DICOM headers, never loads pixel data, verifies that the selected `InstanceNumber` values are consecutive, orders the pair by `InstanceNumber`, and derives Image Orientation (Patient) plus the ordered Image Position (Patient) pair automatically. The full CT series is not read. Manual `dicom_orientation = c(IOP, IPP1, IPP2)` remains supported for legacy or validation workflows. The IOP/IPP values actually used are reported in `res$summary`, while additional transformation diagnostics remain available in `res$bonej`.
+For classic BoneJ workflows, the landmark coordinate system and the BoneJ stack transformation are separate issues. `lm_coord_system` only controls the landmarks. For routine volume-input analyses, the recommended workflow is now to supply `dicom_dir`, pointing to the local DICOM directory used to build the ImageJ/BoneJ stack. OrientCSG reads only enough files to obtain two readable DICOM headers, never loads pixel data, verifies that the selected `InstanceNumber` values are consecutive, orders the pair by `InstanceNumber`, and derives Image Orientation (Patient) plus the ordered Image Position (Patient) pair automatically. The full CT series is not read. Manual `dicom_orientation = c(IOP, IPP1, IPP2)` remains supported for legacy or validation workflows. The IOP/IPP values actually used are reported in `res$summary`, while additional transformation diagnostics remain available in `res$bonej`.
 
 ## Preservation requirements
 
@@ -202,8 +211,8 @@ The long-bone example script includes:
 - `RADIUS`;
 - `ULNA`;
 - `HUMERUS_TABLE`;
-- CT/DICOM true cross-section + 3D Slicer workflows;
-- solid mesh + 3D Slicer workflows;
+- CT/DICOM volume + 3D Slicer workflows;
+- mesh-input + 3D Slicer workflows;
 - a tibial `flash_capture()` batch example using 20, 35, 50, 65, and 80% sections.
 - the `get_fragmented_roi()` helper for preliminary 3D Slicer cropping of fragmented surface meshes.
 
@@ -247,13 +256,14 @@ file.edit(mandible_example)
 source(mandible_example)
 ```
 
-A minimal TRUE-volume long-bone call now points OrientCSG directly to the local DICOM series. The automatic route requires the suggested package `oro.dicom` (install it once with `install.packages("oro.dicom")`):
+A minimal volume-input long-bone call points OrientCSG directly to the local DICOM series. The automatic route requires the suggested package `oro.dicom` (install it once with `install.packages("oro.dicom")`):
 
 ```r
 dicom_dir <- r"(D:\path\to\the\DICOM_series)"
 
 res <- orient_longbone(
   mode = "TIBIA",
+  INPUT = "VOLUME",
   longitudinal_matrix_str = longitudinal_matrix_str,
   dicom_dir = dicom_dir,
   landmarks_str = landmarks_str,
@@ -280,9 +290,9 @@ cat(get_slicer_py(res, section = "SECTION_50"))
 
 `flash_capture()` generates one batch command block for several long-bone sections. It currently supports the three primary long-bone capture routes:
 
-- Avizo/Amira + CT (`SLICER = FALSE`, `SOLID = FALSE`);
-- 3D Slicer + CT (`SLICER = TRUE`, `SOLID = FALSE`);
-- 3D Slicer + SOLID mesh (`SLICER = TRUE`, `SOLID = TRUE`).
+- Avizo/Amira + volume (`INPUT = "VOLUME"`, `SLICER = FALSE`);
+- 3D Slicer + volume (`INPUT = "VOLUME"`, `SLICER = TRUE`);
+- 3D Slicer + mesh (`INPUT = "MESH"`, `SLICER = TRUE`).
 
 In 3D Slicer, run one reference section first, usually `SECTION_50`, and configure the desired view before using `flash_capture()`. In Avizo/Amira, no prior `copy_tcl()` step is required: Flash Capture initializes the first requested section with the current result's Slice and AP/ML planes and rotates the existing camera perpendicular to the section while preserving its position and zoom.
 
@@ -302,7 +312,7 @@ If `file_name` is omitted, `res$individual_id` is used. The generated files are 
 
 `viewer_id` and `reference_tolerance_mm` are no longer public arguments. Flash Capture uses Avizo/Amira viewer 0 and a fixed 2 mm Slicer reference-section tolerance internally.
 
-In Avizo/Amira, Flash Capture initializes the first requested section using the orientation stored in `res`: it updates the Slice and AP/ML visual planes and rotates the existing camera perpendicular to the section once, while preserving camera position, projection type, and zoom/framing. It then reuses that camera while moving the Slice through the remaining sections. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer SOLID, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
+In Avizo/Amira, Flash Capture initializes the first requested section using the orientation stored in `res`: it updates the Slice and AP/ML visual planes and rotates the existing camera perpendicular to the section once, while preserving camera position, projection type, and zoom/framing. It then reuses that camera while moving the Slice through the remaining sections. In Slicer CT, it translates the prepared slice view and OrientCSG scale while preserving orientation, field of view, pan, and display settings. In Slicer mesh input, it re-cuts the source mesh at each requested level and preserves the prepared 3D camera. The Slicer branches restore the starting reference view when the batch finishes.
 
 ## Working with Slicer Python output
 
@@ -322,15 +332,15 @@ get_slicer_py(res, section = "CS1")
 copy_slicer_py(res, section = "CS1")
 ```
 
-Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks define `restore_view()` as the main restoration command. In the solid-mesh route this restores the generated 3D verification view. In the TRUE-volume route it restores the Red slice orientation, the 3D verification camera, and the scale bar. TRUE-volume blocks also define `refresh_orientcsg_scale()` for recreating the 10 mm scale bar at the current slice position, and `restore_3d_camera()` if only the 3D camera needs to be restored.
+Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks define `restore_view()` as the main restoration command. In the mesh-input route this restores the generated 3D verification view. In the volume-input route it restores the Red slice orientation, the 3D verification camera, and the scale bar. volume-input blocks also define `refresh_orientcsg_scale()` for recreating the 10 mm scale bar at the current slice position, and `restore_3d_camera()` if only the 3D camera needs to be restored.
 
-For solid-mesh long-bone blocks:
+For mesh-input long-bone blocks:
 
 ```python
 restore_view()
 ```
 
-For TRUE-volume long-bone blocks:
+For volume-input long-bone blocks:
 
 ```python
 restore_view()
@@ -366,7 +376,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - the BoneJ Log/eigenvector input was copied incorrectly;
 - the wrong DICOM Image Orientation (Patient) or Image Position (Patient) values were supplied, the IPP values were not taken from two consecutive slices in stack order, or the metadata came from a different stack than the one processed in BoneJ;
 - the wrong long-bone mode was selected;
-- `SOLID = TRUE` was requested but the mesh is not closed or cannot be read by `Rvcg`;
+- `INPUT = "MESH"` was requested but the mesh is not closed or cannot be read by `Rvcg`;
 - the wrong coordinate convention was used for Slicer landmarks;
 - the model name in Slicer does not match `model_name`;
 - the required Amira/Avizo objects do not exist or have different names;
@@ -389,7 +399,7 @@ The returned value is expressed in the same linear unit as the input coordinates
 
 OrientCSG is under active methodological development.
 
-Major milestones include v0.1.1, which introduced Avizo/Amira TCL generation for mandibular, tibial, and humeral workflows; v0.2.0, which added solid-mesh workflows and 3D Slicer output for long bones; and v0.3.0, which introduced the mandibular 3D Slicer backend. v1.0.0 expanded long-bone support to the femur and radius, while v1.0.1 established the current BoneJ-to-DICOM orientation workflow. v1.0.3 added flash_capture() for automated batch section export, and v1.0.4 introduced automatic DICOM metadata extraction and grayscale TIFF output in Slicer. v1.1.0 expanded long-bone support to the ulna.
+Major milestones include v0.1.1, which introduced Avizo/Amira TCL generation for mandibular, tibial, and humeral workflows; v0.2.0, which added mesh-input workflows and 3D Slicer output for long bones; and v0.3.0, which introduced the mandibular 3D Slicer backend. v1.0.0 expanded long-bone support to the femur and radius, while v1.0.1 established the current BoneJ-to-DICOM orientation workflow. v1.0.3 added flash_capture() for automated batch section export, and v1.0.4 introduced automatic DICOM metadata extraction and grayscale TIFF output in Slicer. v1.1.0 expanded long-bone support to the ulna.
 
 Planned developments include workflows for fragmented long bones and extension to additional elements and preservation scenarios.
 

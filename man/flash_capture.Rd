@@ -51,10 +51,9 @@ command block.
 \description{
 \code{flash_capture()} generates a single batch command block that captures multiple
 long-bone sections from an existing \code{\link[=orient_longbone]{orient_longbone()}} result. The function
-supports the three primary OrientCSG capture workflows: Avizo/Amira with a CT
-volume (\code{SLICER = FALSE}, \code{SOLID = FALSE}), 3D Slicer with a CT volume
-(\code{SLICER = TRUE}, \code{SOLID = FALSE}), and 3D Slicer with a solid surface mesh
-(\code{SLICER = TRUE}, \code{SOLID = TRUE}).
+supports the three primary OrientCSG capture workflows: Avizo/Amira with
+\code{INPUT = "VOLUME"} and \code{SLICER = FALSE}, 3D Slicer with
+\code{INPUT = "VOLUME"}, and 3D Slicer with \code{INPUT = "MESH"}.
 }
 \details{
 In 3D Slicer, Flash Capture deliberately does not recompute anatomical
@@ -69,7 +68,7 @@ the Slice moves through the remaining requested sections. Brightness/contrast,
 colormap, and scale settings are also left unchanged. In the
 3D Slicer CT workflow, the current slice matrix and field of
 view are used as the visual reference while the section plane and OrientCSG
-scale are translated between requested section points. In the 3D Slicer SOLID
+scale are translated between requested section points. In the 3D Slicer mesh-input
 workflow, the source mesh is re-cut at each requested section while the current
 3D camera orientation, proximal viewing side, parallel scale, and relative pan
 are preserved. The starting Slicer view is restored after batch capture.

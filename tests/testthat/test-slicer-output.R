@@ -1,4 +1,4 @@
-test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mode", {
+test_that("orient_longbone() generates volume-input Slicer Python for HUMERUS mode", {
   humerus_landmarks_table <- "
 1 -164.789749145508 15.670039176941 -68.205650329590 0 0 0 1 1 1 0 F-1 2 0
 2 -186.393386840820 15.760459899902 -68.102157592773 0 0 0 1 1 1 0 F-2 2 0
@@ -15,7 +15,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mod
     section_loc = c(35, 50),
     volume_name = "H108_volume",
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   expect_equal(res$type, "HUMERUS")
@@ -39,7 +39,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for HUMERUS mod
   expect_false(grepl("MODEL_NAME =", py, fixed = TRUE))
 })
 
-test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode", {
+test_that("orient_longbone() generates volume-input Slicer Python for TIBIA mode", {
   tibia_landmarks_table <- make_slicer_markup_table(matrix_from_xyz_string(tibia_landmarks_str))
 
   res <- orient_longbone(
@@ -51,7 +51,7 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
     section_loc = 50,
     volume_name = "T108_volume",
     SLICER = TRUE,
-    SOLID = FALSE
+    INPUT = "VOLUME"
   )
 
   distal_to_proximal_ref <- ((res$landmarks["P1", ] + res$landmarks["P2", ]) / 2) -
@@ -84,11 +84,11 @@ test_that("orient_longbone() generates TRUE-volume Slicer Python for TIBIA mode"
   expect_false(grepl("MODEL_NAME =", py, fixed = TRUE))
 })
 
-test_that("solid-mesh Slicer Python uses restore_view as public helper", {
+test_that("mesh-input Slicer Python uses restore_view as public helper", {
   res <- list(
     USE_ANAT_ORIENT = TRUE,
     type = "TIBIA",
-    SOLID = TRUE,
+    INPUT = "MESH",
     section_points = list(SECTION_50 = c(10, 20, 30)),
     vectors = list(
       L = c(0, 0, 1),
@@ -99,12 +99,12 @@ test_that("solid-mesh Slicer Python uses restore_view as public helper", {
       Proj_TibioTalar = c(10, 20, 0),
       Proj_Midpoint = c(10, 20, 100)
     ),
-    model_name = "T108_solid",
+    model_name = "T108_mesh",
     camera_distance = 1
   )
 
   py <- OrientCSG:::emit_slicer_section_python(res, section = "SECTION_50")
-  expect_contains_fixed(py, "MODEL_NAME = \"T108_solid\"")
+  expect_contains_fixed(py, "MODEL_NAME = \"T108_mesh\"")
   expect_contains_fixed(py, "CAMERA_DISTANCE = 1.000000")
   expect_contains_fixed(py, "BASE_PARALLEL_SCALE_MM = 35.0")
   expect_contains_fixed(py, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
@@ -114,7 +114,7 @@ test_that("solid-mesh Slicer Python uses restore_view as public helper", {
   expect_true(grepl("def restore_view(", py, fixed = TRUE))
 })
 
-test_that("Slicer long-bone screen signs are shared across TRUE and SOLID backends", {
+test_that("Slicer long-bone screen signs are shared across volume and mesh backends", {
   expect_equal(
     OrientCSG:::slicer_longbone_screen_signs("TIBIA", TRUE),
     list(anterior_up_sign = -1, ml_right_sign = -1)
@@ -150,7 +150,7 @@ test_that("camera_distance controls orthographic framing in all long-bone backen
   expect_contains_fixed(tcl, "setCameraType orthographic")
   expect_contains_fixed(tcl, "setCameraHeight 150.000000")
 
-  res_true <- orient_longbone(
+  res_volume <- orient_longbone(
     mode = "TIBIA",
     longitudinal_matrix_str = longitudinal_matrix_str_tibia,
     dicom_orientation = dicom_orientation_flip_xy,
@@ -159,26 +159,26 @@ test_that("camera_distance controls orthographic framing in all long-bone backen
     camera_distance = 1.5,
     SLICER = TRUE
   )
-  py_true <- get_slicer_py(res_true, section = "SECTION_50")
-  expect_contains_fixed(py_true, "CAMERA_DISTANCE = 1.500000")
-  expect_contains_fixed(py_true, "BASE_FIELD_OF_VIEW_Y_MM = 70.0")
-  expect_contains_fixed(py_true, "fov_y = BASE_FIELD_OF_VIEW_Y_MM * CAMERA_DISTANCE")
-  expect_contains_fixed(py_true, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
+  py_volume <- get_slicer_py(res_volume, section = "SECTION_50")
+  expect_contains_fixed(py_volume, "CAMERA_DISTANCE = 1.500000")
+  expect_contains_fixed(py_volume, "BASE_FIELD_OF_VIEW_Y_MM = 70.0")
+  expect_contains_fixed(py_volume, "fov_y = BASE_FIELD_OF_VIEW_Y_MM * CAMERA_DISTANCE")
+  expect_contains_fixed(py_volume, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
 
-  res_solid <- list(
+  res_mesh <- list(
     USE_ANAT_ORIENT = TRUE,
     type = "TIBIA",
-    SOLID = TRUE,
+    INPUT = "MESH",
     section_points = list(SECTION_50 = c(10, 20, 30)),
     vectors = list(L = c(0, 0, 1), ML = c(1, 0, 0), AP = c(0, 1, 0)),
     projected = list(Proj_TibioTalar = c(10, 20, 0), Proj_Midpoint = c(10, 20, 100)),
-    model_name = "T108_solid",
+    model_name = "T108_mesh",
     camera_distance = 1.5
   )
-  py_solid <- OrientCSG:::emit_slicer_section_python(res_solid, section = "SECTION_50")
-  expect_contains_fixed(py_solid, "CAMERA_DISTANCE = 1.500000")
-  expect_contains_fixed(py_solid, "BASE_PARALLEL_SCALE_MM = 35.0")
-  expect_contains_fixed(py_solid, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
+  py_mesh <- OrientCSG:::emit_slicer_section_python(res_mesh, section = "SECTION_50")
+  expect_contains_fixed(py_mesh, "CAMERA_DISTANCE = 1.500000")
+  expect_contains_fixed(py_mesh, "BASE_PARALLEL_SCALE_MM = 35.0")
+  expect_contains_fixed(py_mesh, "camera.SetParallelScale(BASE_PARALLEL_SCALE_MM * CAMERA_DISTANCE)")
 })
 
 test_that("get_fragmented_roi() validates its public arguments", {

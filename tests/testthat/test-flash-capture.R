@@ -1,4 +1,4 @@
-make_flash_capture_result <- function(SLICER = FALSE, SOLID = FALSE) {
+make_flash_capture_result <- function(SLICER = FALSE, INPUT = "VOLUME") {
   structure(
     list(
       type = "TIBIA",
@@ -16,10 +16,10 @@ make_flash_capture_result <- function(SLICER = FALSE, SOLID = FALSE) {
         AP = c(0, 1, 0)
       ),
       SLICER = SLICER,
-      SOLID = SOLID,
+      INPUT = INPUT,
       USE_ANAT_ORIENT = TRUE,
       camera_distance = 1,
-      model_name = "T109_solid"
+      model_name = "T109_mesh"
     ),
     class = c("orientcsg_longbone", "orientcsg_orientation")
   )
@@ -34,7 +34,7 @@ test_that("flash_capture() public API keeps viewer/tolerance internal", {
 })
 
 test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
-  res <- make_flash_capture_result(SLICER = FALSE, SOLID = FALSE)
+  res <- make_flash_capture_result(SLICER = FALSE, INPUT = "VOLUME")
 
   txt <- flash_capture(
     res,
@@ -87,7 +87,7 @@ test_that("flash_capture() keeps Avizo/Amira on native RGB snapshots", {
 })
 
 test_that("Avizo/Amira grayscale request warns and falls back to RGB", {
-  res <- make_flash_capture_result(SLICER = FALSE, SOLID = FALSE)
+  res <- make_flash_capture_result(SLICER = FALSE, INPUT = "VOLUME")
 
   expect_warning(
     txt <- flash_capture(
@@ -106,7 +106,7 @@ test_that("Avizo/Amira grayscale request warns and falls back to RGB", {
 })
 
 test_that("Slicer CT Flash Capture supports RGB and true grayscale output", {
-  res <- make_flash_capture_result(SLICER = TRUE, SOLID = FALSE)
+  res <- make_flash_capture_result(SLICER = TRUE, INPUT = "VOLUME")
 
   txt_rgb <- flash_capture(
     res,
@@ -145,8 +145,8 @@ test_that("Slicer CT Flash Capture supports RGB and true grayscale output", {
   expect_contains_fixed(txt_gray, "writer.SetCompressionToDeflate()")
 })
 
-test_that("Slicer SOLID Flash Capture supports RGB and true grayscale output", {
-  res <- make_flash_capture_result(SLICER = TRUE, SOLID = TRUE)
+test_that("Slicer mesh Flash Capture supports RGB and true grayscale output", {
+  res <- make_flash_capture_result(SLICER = TRUE, INPUT = "MESH")
 
   txt_rgb <- flash_capture(
     res,
@@ -155,7 +155,7 @@ test_that("Slicer SOLID Flash Capture supports RGB and true grayscale output", {
     copy = FALSE
   )
 
-  expect_contains_fixed(txt_rgb, "FLASH_MODEL_NAME = 'T109_solid'")
+  expect_contains_fixed(txt_rgb, "FLASH_MODEL_NAME = 'T109_mesh'")
   expect_contains_fixed(txt_rgb, "FLASH_REFERENCE_TOLERANCE_MM = 2.000000000")
   expect_contains_fixed(txt_rgb, "FLASH_COLOR_MODE = 'rgb'")
   expect_contains_fixed(txt_rgb, "vtk.vtkCutter()")
@@ -188,7 +188,7 @@ test_that("flash_capture() validates workflow, section, color, and extension arg
     flash_capture(list(), output_dir = "C:/captures", copy = FALSE)
   )
 
-  res <- make_flash_capture_result(SLICER = FALSE, SOLID = FALSE)
+  res <- make_flash_capture_result(SLICER = FALSE, INPUT = "VOLUME")
   expect_error(
     flash_capture(res, output_dir = "C:/captures", sections = 25, copy = FALSE),
     "Unknown section"
@@ -203,15 +203,15 @@ test_that("flash_capture() validates workflow, section, color, and extension arg
     flash_capture(res, output_dir = "C:/captures", extension = "png", copy = FALSE)
   )
 
-  res_slicer <- make_flash_capture_result(SLICER = TRUE, SOLID = FALSE)
+  res_slicer <- make_flash_capture_result(SLICER = TRUE, INPUT = "VOLUME")
   expect_error(
     flash_capture(res_slicer, output_dir = "C:/captures", extension = "png", copy = FALSE),
     "TIFF output only"
   )
 
-  res_avizo_solid <- make_flash_capture_result(SLICER = FALSE, SOLID = TRUE)
+  res_avizo_mesh <- make_flash_capture_result(SLICER = FALSE, INPUT = "MESH")
   expect_error(
-    flash_capture(res_avizo_solid, output_dir = "C:/captures", copy = FALSE),
-    "implemented only for `SOLID = FALSE`"
+    flash_capture(res_avizo_mesh, output_dir = "C:/captures", copy = FALSE),
+    'implemented only for `INPUT = "VOLUME"`'
   )
 })

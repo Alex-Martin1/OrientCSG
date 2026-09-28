@@ -22,9 +22,9 @@ A character scalar containing one or more 3D Slicer Python blocks.
 result created with \code{orient_longbone(..., SLICER = TRUE)} or
 \code{orient_mandible(..., SLICER = TRUE)}. The returned block is intended to be
 pasted into the 3D Slicer Python Interactor. Generated Slicer blocks define
-\code{restore_view()} as the main helper for restoring the OrientCSG view. TRUE-volume
+\code{restore_view()} as the main helper for restoring the OrientCSG view. volume-input
 long-bone blocks and mandibular blocks also define \code{refresh_orientcsg_scale()};
-TRUE-volume long-bone blocks additionally define \code{restore_3d_camera()} for
+volume-input long-bone blocks additionally define \code{restore_3d_camera()} for
 camera-only restoration.
 }
 \examples{

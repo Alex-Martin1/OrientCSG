@@ -11,7 +11,7 @@
 #' axes. Full anatomical orientation (`USE_ANAT_ORIENT = TRUE`) is required.
 #'
 #' @section Surface meshes:
-#' For 3D Slicer solid-mesh workflows, `Reorient()` creates a new model with the
+#' For 3D Slicer mesh-input workflows, `Reorient()` creates a new model with the
 #' suffix `_Anatomical`. The transformed vertex coordinates are written into the
 #' new model itself, while the source model is left unchanged. The new model can
 #' therefore be saved or exported as an anatomically reoriented mesh.
@@ -34,8 +34,8 @@
 #' @param res An `orientcsg_longbone` result returned by [orient_longbone()].
 #'   Full anatomical orientation must have been used.
 #' @param object_name Optional name of the target model or volume in the external
-#'   application. If omitted, `Reorient()` uses `res$model_name` for solid Slicer
-#'   workflows, `res$volume_name` for CT workflows, and then
+#'   application. If omitted, `Reorient()` uses `res$model_name` for mesh-input Slicer
+#'   workflows, `res$volume_name` for volume-input workflows, and then
 #'   `res$individual_id` as a fallback.
 #'
 #' @return Invisibly returns the generated TCL or Python command block as a
@@ -66,6 +66,11 @@ Reorient <- function(res, object_name = NULL) {
     stop("`res` must be an OrientCSG long-bone result.", call. = FALSE)
   }
 
+  if (is.null(res$INPUT) || length(res$INPUT) != 1L ||
+      !res$INPUT %in% c("VOLUME", "MESH")) {
+    stop('`res$INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+
   if (!isTRUE(res$USE_ANAT_ORIENT)) {
     stop("`Reorient()` requires `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
   }
@@ -90,14 +95,14 @@ Reorient <- function(res, object_name = NULL) {
   signs <- slicer_longbone_screen_signs(res$type, TRUE)
 
   if (isTRUE(res$SLICER)) {
-    if (isTRUE(res$SOLID)) {
+    if (identical(res$INPUT, "MESH")) {
       return(.reorient_slicer_model_python(res, origin, signs, object_name))
     }
     return(.reorient_slicer_volume_python(res, origin, signs, object_name))
   }
 
-  if (isTRUE(res$SOLID)) {
-    stop("Avizo/Amira solid-mesh reorientation is not supported.", call. = FALSE)
+  if (identical(res$INPUT, "MESH")) {
+    stop("Avizo/Amira mesh-input reorientation is not supported.", call. = FALSE)
   }
 
   if (!nzchar(object_name)) {
@@ -118,7 +123,7 @@ Reorient <- function(res, object_name = NULL) {
     return(trimws(object_name))
   }
 
-  candidate <- if (isTRUE(res$SOLID)) res$model_name else res$volume_name
+  candidate <- if (identical(res$INPUT, "MESH")) res$model_name else res$volume_name
 
   if (is.null(candidate) || length(candidate) != 1L || is.na(candidate) || !nzchar(trimws(candidate))) {
     candidate <- res$individual_id

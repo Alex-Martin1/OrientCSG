@@ -2,7 +2,7 @@
 #
 # Shared long-bone screen convention for both Slicer backends.
 #
-# The TRUE-volume and solid-mesh generators must use the same anatomical
+# The volume-input and mesh-input generators must use the same anatomical
 # screen basis. L is always distal-to-proximal and the generated view is from
 # the proximal side. These signs therefore control only the in-plane display.
 slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
@@ -52,7 +52,12 @@ emit_slicer_section_python <- function(res, section = NULL) {
   anterior_up_sign <- screen_signs$anterior_up_sign
   ml_right_sign <- screen_signs$ml_right_sign
 
-  if (!isTRUE(res$SOLID)) {
+  if (is.null(res$INPUT) || length(res$INPUT) != 1L ||
+      !res$INPUT %in% c("VOLUME", "MESH")) {
+    stop('`res$INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+
+  if (identical(res$INPUT, "VOLUME")) {
     return(emit_slicer_longbone_volume_python(res, section = section))
   }
 
@@ -115,7 +120,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
 
   model_name <- res$model_name
   if (is.null(model_name) || length(model_name) != 1L || is.na(model_name) || !nzchar(model_name)) {
-    model_name <- "Segment_1_solid"
+    model_name <- "Segment_1_mesh"
   }
 
   code <- c(
@@ -455,7 +460,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
 # Internal 3D Slicer Python generator for CT-derived long-bone volumes --------
 #
 # Convert a long-bone orientation result into one Python block per requested
-# section. This route is used when SLICER = TRUE and SOLID = FALSE. It orients
+# section. This route is used when `SLICER = TRUE` and `INPUT = "VOLUME"`. It orients
 # a Slicer slice view on a scalar volume node, rather than cutting a model node.
 emit_slicer_longbone_volume_python <- function(res, section = NULL) {
   if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
@@ -552,7 +557,7 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     "import numpy as np",
     "",
     "# ============================================================",
-    "# OrientCSG / Long bone / Slicer TRUE volume block generated from R",
+    "# OrientCSG / Long bone / Slicer VOLUME input block generated from R",
     "# Coordinates emitted in Slicer RAS world space",
     "# ============================================================",
     "",
