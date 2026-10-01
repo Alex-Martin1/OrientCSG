@@ -831,3 +831,54 @@ test_that("mesh input requires SLICER = TRUE", {
     fixed = TRUE
   )
 })
+
+test_that("humeral AP sign is resolved from the anterior distal landmarks", {
+  res <- orient_longbone(
+    mode = "HUMERUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_humerus,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = humerus_landmarks_str,
+    section_loc = 50
+  )
+
+  p1 <- res$landmarks["P1", ]
+  p2 <- res$landmarks["P2", ]
+  p3 <- res$landmarks["P3", ]
+  ap_ref <- ((p1 + p2) / 2) - p3
+
+  expect_gt(dot3(res$vectors$AP, ap_ref), 0)
+  expect_gt(dot3(res$vectors$AP, p1 - p3), 0)
+  expect_gt(dot3(res$vectors$AP, p2 - p3), 0)
+})
+
+test_that("volume-input radial orientation is invariant to swapping transverse landmarks", {
+  xyz <- matrix_from_xyz_string(radius_landmarks_str)
+  swapped <- xyz[c(2, 1, 3, 4), , drop = FALSE]
+
+  res_a <- orient_longbone(
+    mode = "RADIUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = radius_landmarks_str,
+    section_loc = 50,
+    INPUT = "VOLUME"
+  )
+
+  res_b <- orient_longbone(
+    mode = "RADIUS",
+    longitudinal_matrix_str = longitudinal_matrix_str_longbone_z,
+    dicom_orientation = dicom_orientation_flip_xy,
+    landmarks_str = paste(apply(swapped, 1, paste, collapse = " "), collapse = "\n"),
+    section_loc = 50,
+    INPUT = "VOLUME"
+  )
+
+  expect_equal(res_a$vectors$L, res_b$vectors$L, tolerance = 1e-10)
+  expect_equal(res_a$vectors$ML, res_b$vectors$ML, tolerance = 1e-10)
+  expect_equal(res_a$vectors$AP, res_b$vectors$AP, tolerance = 1e-10)
+  expect_equal(res_a$section_points$SECTION_50, res_b$section_points$SECTION_50, tolerance = 1e-10)
+
+  ct_ap_reference <- c(0, -1, 0)
+  expect_gt(sum(res_a$vectors$AP * ct_ap_reference), 0)
+  expect_gt(sum(res_b$vectors$AP * ct_ap_reference), 0)
+})

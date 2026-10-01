@@ -2,9 +2,11 @@
 #
 # Shared long-bone screen convention for both Slicer backends.
 #
-# The volume-input and mesh-input generators must use the same anatomical
-# screen basis. L is always distal-to-proximal and the generated view is from
-# the proximal side. These signs therefore control only the in-plane display.
+# The volume-input and mesh-input generators use the same screen basis. L is
+# always distal-to-proximal and the generated view is from the proximal side.
+# HUMERUS and ULNA carry a landmark-resolved anatomical AP sign. In TIBIA,
+# FEMUR, and RADIUS, the AP-oriented sign is acquisition/coordinate-dependent;
+# these values control display only and do not independently infer anatomy.
 slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
   if (!isTRUE(use_anat_orient)) {
     return(list(anterior_up_sign = 1, ml_right_sign = 1))

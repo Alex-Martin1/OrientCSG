@@ -105,3 +105,25 @@ test_that("Reorient rejects section-only and unsupported modes", {
 
   expect_error(OrientCSG:::.reorient_code(res), "supports", fixed = TRUE)
 })
+
+test_that("Reorient labels AP sign limitations explicitly", {
+  res <- structure(
+    list(
+      type = "TIBIA",
+      vectors = list(L = c(0, 0, 1), ML = c(1, 0, 0), AP = c(0, 1, 0)),
+      projected = list(Proj_TibioTalar = c(0, 0, 0)),
+      biomechanical_length = 100,
+      internal_coord_system = "LPS",
+      SLICER = TRUE,
+      INPUT = "VOLUME",
+      USE_ANAT_ORIENT = TRUE,
+      volume_name = "Tibia_CT",
+      individual_id = "Tibia_CT"
+    ),
+    class = c("orientcsg_longbone", "orientcsg_orientation")
+  )
+
+  code <- OrientCSG:::.reorient_code(res)
+
+  expect_contains_fixed(code, "Y = AP-oriented axis; anatomically anterior only when landmark-resolved")
+})

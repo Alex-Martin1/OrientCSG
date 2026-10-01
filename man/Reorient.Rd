@@ -21,10 +21,13 @@ character scalar after copying it to the system clipboard.
 }
 \description{
 \code{Reorient()} generates a software-specific command block that places a
-long-bone result in a Cartesian anatomical reference system and copies the
+long-bone result in a standardized Cartesian reference system and copies the
 block directly to the system clipboard. The longitudinal axis is aligned with
-Z from distal to proximal, the anterior direction with Y, and the distal
-biomechanical origin with \verb{(0, 0, 0)}.
+Z from distal to proximal and the distal biomechanical origin with \verb{(0, 0, 0)}.
+For \code{HUMERUS} and \code{ULNA}, Y is anatomically anterior because AP sign is
+resolved from landmarks. For \code{TIBIA}, \code{FEMUR}, and \code{RADIUS}, Y follows the
+AP-oriented axis stored by \code{\link[=orient_longbone]{orient_longbone()}}, whose sign depends on the
+acquisition/coordinate convention rather than an AP-defining landmark.
 }
 \details{
 The function uses the geometry already stored in an \code{\link[=orient_longbone]{orient_longbone()}}
@@ -36,7 +39,7 @@ axes. Full anatomical orientation (\code{USE_ANAT_ORIENT = TRUE}) is required.
 For 3D Slicer mesh-input workflows, \code{Reorient()} creates a new model with the
 suffix \verb{_Anatomical}. The transformed vertex coordinates are written into the
 new model itself, while the source model is left unchanged. The new model can
-therefore be saved or exported as an anatomically reoriented mesh.
+therefore be saved or exported as a mesh in the standardized OrientCSG frame.
 }
 
 \section{CT volumes}{
@@ -50,7 +53,7 @@ provisional spatial/display reorientations rather than as newly reoriented
 DICOM volumes.
 
 Creating a CT volume whose voxel grid and DICOM slices are intrinsically
-aligned with the anatomical axes requires resampling in the external imaging
+aligned with the reoriented Cartesian axes requires resampling in the external imaging
 software. Neither \code{Reorient()} nor OrientCSG performs that resampling. In
 Avizo/Amira, this can be done manually with \verb{Resample Transformed Image} if
 required.

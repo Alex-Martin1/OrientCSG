@@ -1,10 +1,13 @@
 #' Generate anatomical reorientation code for a long bone
 #'
 #' `Reorient()` generates a software-specific command block that places a
-#' long-bone result in a Cartesian anatomical reference system and copies the
+#' long-bone result in a standardized Cartesian reference system and copies the
 #' block directly to the system clipboard. The longitudinal axis is aligned with
-#' Z from distal to proximal, the anterior direction with Y, and the distal
-#' biomechanical origin with `(0, 0, 0)`.
+#' Z from distal to proximal and the distal biomechanical origin with `(0, 0, 0)`.
+#' For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is
+#' resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the
+#' AP-oriented axis stored by [orient_longbone()], whose sign depends on the
+#' acquisition/coordinate convention rather than an AP-defining landmark.
 #'
 #' The function uses the geometry already stored in an [orient_longbone()]
 #' result and does not recompute landmarks, biomechanical length, or anatomical
@@ -14,7 +17,7 @@
 #' For 3D Slicer mesh-input workflows, `Reorient()` creates a new model with the
 #' suffix `_Anatomical`. The transformed vertex coordinates are written into the
 #' new model itself, while the source model is left unchanged. The new model can
-#' therefore be saved or exported as an anatomically reoriented mesh.
+#' therefore be saved or exported as a mesh in the standardized OrientCSG frame.
 #'
 #' @section CT volumes:
 #' CT support is intentionally more limited. In 3D Slicer, `Reorient()` places
@@ -26,7 +29,7 @@
 #' DICOM volumes.
 #'
 #' Creating a CT volume whose voxel grid and DICOM slices are intrinsically
-#' aligned with the anatomical axes requires resampling in the external imaging
+#' aligned with the reoriented Cartesian axes requires resampling in the external imaging
 #' software. Neither `Reorient()` nor OrientCSG performs that resampling. In
 #' Avizo/Amira, this can be done manually with `Resample Transformed Image` if
 #' required.
@@ -163,7 +166,7 @@ Reorient <- function(res, object_name = NULL) {
   Y <- Y - dot3(Y, X) * X
 
   if (sqrt(sum(Y^2)) < 1e-12) {
-    stop("Could not construct an anatomical Y axis orthogonal to X.", call. = FALSE)
+    stop("Could not construct a Y axis orthogonal to X.", call. = FALSE)
   }
 
   Y <- nrm(Y)
@@ -304,8 +307,8 @@ Reorient <- function(res, object_name = NULL) {
     "print('ANATOMICAL TRANSFORM APPLIED')",
     "print('============================================')",
     "print('Volume:', volumeNode.GetName())",
-    "print('X = mediolateral anatomical display axis')",
-    "print('Y = anterior')",
+    "print('X = mediolateral-oriented transverse axis')",
+    "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
     "print('Z = longitudinal, distal -> proximal')",
     "print('Distal biomechanical origin = (0, 0, 0)')",
     "print('Red = transverse section at 50% biomechanical length')",
@@ -436,8 +439,8 @@ Reorient <- function(res, object_name = NULL) {
     "print('============================================')",
     "print('Source model:', modelNode.GetName())",
     "print('Output model:', outputNode.GetName())",
-    "print('X = mediolateral anatomical display axis')",
-    "print('Y = anterior')",
+    "print('X = mediolateral-oriented transverse axis')",
+    "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
     "print('Z = longitudinal, distal -> proximal')",
     "print('Distal biomechanical origin = (0, 0, 0)')",
     "print('Source model was not modified.')",
@@ -475,8 +478,8 @@ Reorient <- function(res, object_name = NULL) {
     "",
     "echo \"============================================\"",
     "echo \"ANATOMICAL TRANSFORM APPLIED\"",
-    "echo \"X = mediolateral anatomical display axis\"",
-    "echo \"Y = anterior\"",
+    "echo \"X = mediolateral-oriented transverse axis\"",
+    "echo \"Y = AP-oriented axis; anatomically anterior only when landmark-resolved\"",
     "echo \"Z = longitudinal, distal -> proximal\"",
     "echo \"Distal biomechanical origin = (0, 0, 0)\"",
     "echo \"Volume has NOT been resampled.\"",

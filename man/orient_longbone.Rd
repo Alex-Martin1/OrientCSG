@@ -118,7 +118,10 @@ components:
 \item \code{individual_id}: Specimen identifier.
 \item \code{INPUT}: Input representation, either \code{"VOLUME"} or \code{"MESH"}.
 \item \code{landmarks}: Landmark coordinate matrix.
-\item \code{vectors}: Longitudinal, mediolateral, and anteroposterior unit vectors.
+\item \code{vectors}: Longitudinal, mediolateral, and anteroposterior-oriented unit
+vectors. AP sign is anatomically resolved from landmarks for \code{HUMERUS} and
+\code{ULNA}; for \code{TIBIA}, \code{FEMUR}, and \code{RADIUS} it remains dependent on the
+acquisition/coordinate convention.
 \item \code{section_loc}: Requested section percentages.
 \item \code{section_points}: Three-dimensional coordinates of each section origin.
 \item \code{summary}: Summary table with vectors, landmarks, section points,
@@ -207,20 +210,30 @@ The \code{mode} argument determines how landmarks are interpreted and how the
 mediolateral axis is constructed.
 \itemize{
 \item \code{"TIBIA"} uses three landmarks: two plateau landmarks and one tibio-talar
-landmark. The plateau pair defines an undirected transverse axis, so swapping
-those two landmarks does not change volume-input orientation. Their midpoint
-defines the proximal endpoint of biomechanical length.
-\item \code{"HUMERUS"} uses four landmarks: two distal landmarks defining the
-mediolateral reference direction, one distal landmark for biomechanical
-length, and one proximal landmark on the humeral head.
+landmark. The plateau pair defines an anatomically undirected transverse
+axis. No supplied tibial landmark resolves anterior/posterior sign; in
+volume-input workflows the final sign therefore follows the acquisition and
+coordinate convention. Their midpoint defines the proximal endpoint of
+biomechanical length.
+\item \code{"HUMERUS"} uses four landmarks. LM1 (\code{MedialTrocleaAnt}) and LM2
+(\code{CapitulumAnt}) are expected to lie anterior to LM3
+(\code{LateralTrocleaDist}). After constructing the orthogonal ML/AP pair,
+OrientCSG uses LM3 toward the midpoint of LM1 and LM2 as a
+posterior-to-anterior anatomical reference to resolve the sign of AP.
+LM3 and proximal LM4 define biomechanical length.
 \item \code{"FEMUR"} uses three landmarks: two distal condylar articular-centre
 landmarks and one proximal landmark on the superior femoral neck. The
-condylar pair defines an undirected transverse axis in volume-input workflows,
-so swapping those two landmarks does not change the final orientation. The
-midpoint between them defines the distal endpoint of biomechanical length.
+condylar pair defines an anatomically undirected transverse axis. No supplied
+femoral landmark resolves anterior/posterior sign; in volume-input workflows
+the final sign therefore follows the acquisition and coordinate convention.
+The midpoint between the condylar landmarks defines the distal endpoint of
+biomechanical length.
 \item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
 midpoint, the distal radiocarpal articular centre, and the proximal radial
-head articular centre.
+head articular centre. The styloid/notch pair defines an anatomically
+undirected transverse axis. No supplied radial landmark resolves
+anterior/posterior sign; in volume-input workflows the final sign therefore
+follows the acquisition and coordinate convention.
 \item \code{"ULNA"} uses four landmarks. \code{TrochlearWaistLat} (LM1) is the lateral
 point of the narrowest waist of the trochlear notch, placed on the trochlear
 articular edge. \code{TrochlearWaistMed} (LM2) is the corresponding medial point;
@@ -270,17 +283,25 @@ humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 length landmarks.
 }
 
-\section{Volume-input acquisition orientation}{
+\section{Anteroposterior sign resolution}{
 
-For anatomical anterior/posterior display, volume-input long-bone workflows
-retain the established OrientCSG acquisition convention: dry bones must be
-scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
-resolves the physical stack axes and slice-order sign; it cannot infer an
-anatomical anterior/posterior reversal caused by placing a specimen rotated
-180 degrees around its longitudinal axis. For volume-input tibiae and femora,
-this acquisition convention also resolves the sign of the otherwise undirected
-plateau/condylar transverse axis. No additional landmarks are required when the
-scanning-position convention is followed consistently.
+Anteroposterior sign is not resolved in the same way for every bone.
+\code{HUMERUS} and \code{ULNA} contain landmark geometry that resolves anterior
+anatomically. In \code{HUMERUS}, LM1 and LM2 are expected to be anterior to LM3,
+so LM3 toward the LM1/LM2 midpoint provides a posterior-to-anterior reference.
+In \code{ULNA}, LM2 toward LM3 provides the posterior-to-anterior reference, with
+LM3 also required to lie anterior to LM1.
+
+\code{TIBIA}, \code{FEMUR}, and \code{RADIUS} do not contain landmarks that determine
+anatomical anterior/posterior sign. Their transverse landmark pairs therefore
+define undirected anatomical axes. For \code{INPUT = "VOLUME"}, OrientCSG retains
+its established scanner/table display convention after the DICOM IOP/IPP
+transformation to choose a reproducible sign; this makes the result invariant
+to swapping the two transverse landmarks. That sign is acquisition- and
+coordinate-dependent and must not be interpreted as a universally
+landmark-resolved anatomical anterior direction. Different scanners, specimen
+placements, or coordinate transformations may require a different external
+convention.
 }
 
 \section{Section locations}{

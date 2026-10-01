@@ -58,20 +58,30 @@
 #' mediolateral axis is constructed.
 #'
 #' - `"TIBIA"` uses three landmarks: two plateau landmarks and one tibio-talar
-#'   landmark. The plateau pair defines an undirected transverse axis, so swapping
-#'   those two landmarks does not change volume-input orientation. Their midpoint
-#'   defines the proximal endpoint of biomechanical length.
-#' - `"HUMERUS"` uses four landmarks: two distal landmarks defining the
-#'   mediolateral reference direction, one distal landmark for biomechanical
-#'   length, and one proximal landmark on the humeral head.
+#'   landmark. The plateau pair defines an anatomically undirected transverse
+#'   axis. No supplied tibial landmark resolves anterior/posterior sign; in
+#'   volume-input workflows the final sign therefore follows the acquisition and
+#'   coordinate convention. Their midpoint defines the proximal endpoint of
+#'   biomechanical length.
+#' - `"HUMERUS"` uses four landmarks. LM1 (`MedialTrocleaAnt`) and LM2
+#'   (`CapitulumAnt`) are expected to lie anterior to LM3
+#'   (`LateralTrocleaDist`). After constructing the orthogonal ML/AP pair,
+#'   OrientCSG uses LM3 toward the midpoint of LM1 and LM2 as a
+#'   posterior-to-anterior anatomical reference to resolve the sign of AP.
+#'   LM3 and proximal LM4 define biomechanical length.
 #' - `"FEMUR"` uses three landmarks: two distal condylar articular-centre
 #'   landmarks and one proximal landmark on the superior femoral neck. The
-#'   condylar pair defines an undirected transverse axis in volume-input workflows,
-#'   so swapping those two landmarks does not change the final orientation. The
-#'   midpoint between them defines the distal endpoint of biomechanical length.
+#'   condylar pair defines an anatomically undirected transverse axis. No supplied
+#'   femoral landmark resolves anterior/posterior sign; in volume-input workflows
+#'   the final sign therefore follows the acquisition and coordinate convention.
+#'   The midpoint between the condylar landmarks defines the distal endpoint of
+#'   biomechanical length.
 #' - `"RADIUS"` uses four landmarks: the radial styloid tip, the ulnar-notch
 #'   midpoint, the distal radiocarpal articular centre, and the proximal radial
-#'   head articular centre.
+#'   head articular centre. The styloid/notch pair defines an anatomically
+#'   undirected transverse axis. No supplied radial landmark resolves
+#'   anterior/posterior sign; in volume-input workflows the final sign therefore
+#'   follows the acquisition and coordinate convention.
 #' - `"ULNA"` uses four landmarks. `TrochlearWaistLat` (LM1) is the lateral
 #'   point of the narrowest waist of the trochlear notch, placed on the trochlear
 #'   articular edge. `TrochlearWaistMed` (LM2) is the corresponding medial point;
@@ -117,16 +127,24 @@
 #' humeri, femora, radii, ulnae, and table-position humeri from their biomechanical
 #' length landmarks.
 #'
-#' @section Volume-input acquisition orientation:
-#' For anatomical anterior/posterior display, volume-input long-bone workflows
-#' retain the established OrientCSG acquisition convention: dry bones must be
-#' scanned in a consistent anatomical position. The DICOM IOP/IPP transformation
-#' resolves the physical stack axes and slice-order sign; it cannot infer an
-#' anatomical anterior/posterior reversal caused by placing a specimen rotated
-#' 180 degrees around its longitudinal axis. For volume-input tibiae and femora,
-#' this acquisition convention also resolves the sign of the otherwise undirected
-#' plateau/condylar transverse axis. No additional landmarks are required when the
-#' scanning-position convention is followed consistently.
+#' @section Anteroposterior sign resolution:
+#' Anteroposterior sign is not resolved in the same way for every bone.
+#' `HUMERUS` and `ULNA` contain landmark geometry that resolves anterior
+#' anatomically. In `HUMERUS`, LM1 and LM2 are expected to be anterior to LM3,
+#' so LM3 toward the LM1/LM2 midpoint provides a posterior-to-anterior reference.
+#' In `ULNA`, LM2 toward LM3 provides the posterior-to-anterior reference, with
+#' LM3 also required to lie anterior to LM1.
+#'
+#' `TIBIA`, `FEMUR`, and `RADIUS` do not contain landmarks that determine
+#' anatomical anterior/posterior sign. Their transverse landmark pairs therefore
+#' define undirected anatomical axes. For `INPUT = "VOLUME"`, OrientCSG retains
+#' its established scanner/table display convention after the DICOM IOP/IPP
+#' transformation to choose a reproducible sign; this makes the result invariant
+#' to swapping the two transverse landmarks. That sign is acquisition- and
+#' coordinate-dependent and must not be interpreted as a universally
+#' landmark-resolved anatomical anterior direction. Different scanners, specimen
+#' placements, or coordinate transformations may require a different external
+#' convention.
 #'
 #' @section Section locations:
 #' `section_loc` gives the desired section position or positions as percentages
@@ -240,7 +258,10 @@
 #'   - `individual_id`: Specimen identifier.
 #'   - `INPUT`: Input representation, either `"VOLUME"` or `"MESH"`.
 #'   - `landmarks`: Landmark coordinate matrix.
-#'   - `vectors`: Longitudinal, mediolateral, and anteroposterior unit vectors.
+#'   - `vectors`: Longitudinal, mediolateral, and anteroposterior-oriented unit
+#'     vectors. AP sign is anatomically resolved from landmarks for `HUMERUS` and
+#'     `ULNA`; for `TIBIA`, `FEMUR`, and `RADIUS` it remains dependent on the
+#'     acquisition/coordinate convention.
 #'   - `section_loc`: Requested section percentages.
 #'   - `section_points`: Three-dimensional coordinates of each section origin.
 #'   - `summary`: Summary table with vectors, landmarks, section points,
@@ -490,13 +511,14 @@ orient_longbone <- function(mode,
     )
   }
 
-  # Define the mediolateral and anteroposterior axes. For TIBIA and HUMERUS, the
-  # initial mediolateral direction comes from landmarks. It is then projected onto
-  # the plane perpendicular to L so that the final anatomical axes are strictly
-  # orthogonal. In HUMERUS_TABLE mode, the mediolateral direction is derived from
-  # the scanner X axis instead. In section-only mode no anatomical ML/AP axes are
-  # computed; generic screen-reference vectors are created only to orient the
-  # camera orthogonally to the section.
+  # Define an orthogonal transverse ML/AP-oriented pair. The P1/P2 transverse
+  # reference is projected onto the plane perpendicular to L. HUMERUS and ULNA
+  # contain additional landmark geometry that resolves the anatomical AP sign.
+  # TIBIA, FEMUR, and RADIUS do not; their AP sign is therefore dependent on the
+  # acquisition/coordinate convention rather than being landmark-resolved.
+  # HUMERUS_TABLE derives the transverse direction from scanner X. In section-only
+  # mode no anatomical transverse axes are computed; generic screen-reference
+  # vectors are created only to orient the camera orthogonally to the section.
   if (!isTRUE(USE_ANAT_ORIENT)) {
     fallback_axes <- longbone_section_only_screen_axes(Lh)
     MLh <- fallback_axes$X_screen
@@ -520,8 +542,23 @@ orient_longbone <- function(mode,
     APh <- nrm(cross3(Lh, MLh))
     MLh <- nrm(cross3(APh, Lh))
     if (mode == "HUMERUS") {
-      MLh <- -MLh
-      APh <- -APh
+      humerus_ap_ref <- ((P1 + P2) / 2) - P3
+      humerus_ap_ref <- humerus_ap_ref - dot3(humerus_ap_ref, Lh) * Lh
+      humerus_ap_component <- dot3(humerus_ap_ref, APh)
+      if (!is.finite(humerus_ap_component) || abs(humerus_ap_component) < 1e-12) {
+        stop("LM3 -> midpoint(LM1, LM2) does not define a reliable posterior-to-anterior direction for HUMERUS mode.", call. = FALSE)
+      }
+      if (humerus_ap_component < 0) {
+        APh <- -APh
+        MLh <- -MLh
+      }
+
+      humerus_ap_check_lm1 <- dot3(P1 - P3, APh)
+      humerus_ap_check_lm2 <- dot3(P2 - P3, APh)
+      if (!is.finite(humerus_ap_check_lm1) || !is.finite(humerus_ap_check_lm2) ||
+          humerus_ap_check_lm1 <= 1e-12 || humerus_ap_check_lm2 <= 1e-12) {
+        stop("LM1 and LM2 must both lie anterior to LM3 in HUMERUS mode; check distal landmark placement.", call. = FALSE)
+      }
     }
 
     if (mode == "ULNA") {
@@ -545,17 +582,19 @@ orient_longbone <- function(mode,
       }
     }
 
-    # In volume-input TIBIA and FEMUR workflows, P1/P2 are an undirected
-    # transverse landmark pair. Swapping them reverses the provisional ML/AP
-    # signs but must not change the anatomical result. Resolve that arbitrary
-    # sign with the established CT acquisition convention. The legacy capture
-    # protocol uses (0, -1, 0) as the scanner/table AP reference; Slicer/Avizo
-    # then apply the established tibia/femur anterior-up screen convention.
+    # In volume-input TIBIA, FEMUR, and RADIUS workflows, the P1/P2 pair
+    # defines an anatomically undirected transverse axis. Swapping the two points
+    # reverses the provisional ML/AP signs but should not change the result within
+    # the established acquisition workflow. Resolve that computational ambiguity
+    # with the existing scanner/table reference (0, -1, 0) after DICOM conversion.
+    # This is a dataset/acquisition convention, not landmark evidence for
+    # anatomical anterior, and should not be generalized across acquisition
+    # pipelines without validation.
     #
     # This is deliberately limited to INPUT = "VOLUME": mesh workflows may come
-    # from acquisitions with different orientation assumptions and are left
-    # unchanged here.
-    if (identical(INPUT, "VOLUME") && mode %in% c("TIBIA", "FEMUR")) {
+    # from acquisitions with different coordinate assumptions and retain their
+    # input-coordinate-dependent transverse sign.
+    if (identical(INPUT, "VOLUME") && mode %in% c("TIBIA", "FEMUR", "RADIUS")) {
       ct_ap_reference <- nrm(c(0, -1, 0))
       if (dot3(APh, ct_ap_reference) < 0) {
         APh <- -APh
@@ -859,9 +898,9 @@ longbone_axis_check <- function(mode, mat_pts, L, warning_threshold_deg = 15) {
 
 # Internal long-bone camera helper ------------------------------------------
 #
-# Orient the camera so that the section is parallel to the screen and the
-# anatomical axes appear in a consistent orientation. Tibial sections are handled
-# with a sign convention that matches the established capture protocol.
+# Orient the camera so that the section is parallel to the screen. HUMERUS and
+# ULNA preserve the landmark-resolved AP sign. Other modes retain the established
+# acquisition/display convention used by the capture workflow.
 emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1,
                                  orientation_only = FALSE,
                                  preserve_screen_position = FALSE,
@@ -878,10 +917,10 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1,
   APc <- nrm(cross3(Lc, MLc))
   MLc <- nrm(cross3(APc, Lc))
 
-  if (mode == "ULNA") {
+  if (mode %in% c("HUMERUS", "ULNA")) {
     AP_target <- AP - dot3(AP, Lc) * Lc
     if (sqrt(sum(AP_target^2)) < 1e-12) {
-      stop("AP is invalid after projection relative to L in ULNA mode.", call. = FALSE)
+      stop(sprintf("AP is invalid after projection relative to L in %s mode.", mode), call. = FALSE)
     }
     AP_target <- nrm(AP_target)
     if (dot3(APc, AP_target) < 0) {
@@ -897,9 +936,9 @@ emit_longbone_camera <- function(P, L, ML, AP, mode, camera_distance = 1,
   }
 
   if (mode %in% c("TIBIA", "FEMUR")) {
-    # Tibial and femoral capture protocols use the opposite in-plane screen
-    # direction so that the anterior aspect is displayed at the top. Flipping
-    # both axes rotates the section by 180 degrees without mirroring it.
+    # The established tibial and femoral capture protocols use the opposite
+    # in-plane display direction. This is a validated acquisition/display
+    # convention for those workflows, not independent landmark resolution of AP.
     emit_camera_from_basis(P, Z_axis = Lc, X_axis = -MLc, Y_preferred = -APc,
                            camera_distance = camera_distance,
                            orientation_only = orientation_only,

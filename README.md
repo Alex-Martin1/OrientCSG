@@ -105,7 +105,9 @@ longitudinal_matrix_str <- "
 
 The `[INFO]` prefixes and pipe characters are ignored by the parser; the three rows are interpreted as the 3 x 3 eigenvector matrix exactly as printed by BoneJ.
 
-For volume-input anatomical orientation, the specimen must also follow the established standardized scanning-position convention. IOP/IPP resolves scanner geometry and slice order, but it cannot identify an anatomical anterior/posterior reversal caused by physically rotating a dry bone 180 degrees around its longitudinal axis. This convention avoids requiring additional anatomical landmarks. In `TIBIA` and `FEMUR`, the two plateau/condylar landmarks define an undirected transverse axis: swapping those two points does not change the volume-input orientation; the acquisition convention resolves the final AP sign. In `ULNA`, AP is resolved anatomically: LM2 to LM3 is treated as posterior-to-anterior. Because LM3 should be anterior to both trochlear-waist landmarks, swapping LM1 and LM2 does not change the final ML/AP axes.
+AP sign resolution differs by long-bone mode. In `HUMERUS` and `ULNA`, the landmarks themselves provide an anatomical anterior/posterior reference. For the humerus, LM1 (`MedialTrocleaAnt`) and LM2 (`CapitulumAnt`) are expected to lie anterior to LM3 (`LateralTrocleaDist`); OrientCSG therefore uses LM3 toward the LM1/LM2 midpoint as a posterior-to-anterior reference. For the ulna, LM2 to LM3 is treated as posterior-to-anterior, with LM3 also required to lie anterior to LM1.
+
+In `TIBIA`, `FEMUR`, and `RADIUS`, no supplied landmark defines anatomical anterior/posterior sign. Their transverse landmark pairs are therefore anatomically undirected. For `INPUT = "VOLUME"`, OrientCSG retains its established scanner/table display convention after DICOM IOP/IPP transformation to choose a reproducible sign, so swapping the two transverse landmarks does not change the result. This sign remains acquisition- and coordinate-dependent: IOP/IPP resolves scanner geometry and slice order, but cannot determine anatomical anterior after an arbitrary 180-degree rotation of the specimen around its longitudinal axis. Different scanners, specimen placements, or coordinate transformations may therefore require different externally validated conventions.
 
 #### ULNA landmarks
 
@@ -124,7 +126,7 @@ For `INPUT = "MESH"`, `orient_longbone()` computes the longitudinal axis directl
 
 ### Whole-bone reorientation
 
-`Reorient()` copies a software command block that places a completed long-bone result in anatomical Cartesian axes. In 3D Slicer mesh-input workflows it creates a new `_Anatomical` model with transformed vertex coordinates, leaving the source model unchanged; this new model can be saved or exported as a reoriented mesh.
+`Reorient()` copies a software command block that places a completed long-bone result in a standardized Cartesian frame. Z is always longitudinal from distal to proximal and the distal biomechanical endpoint becomes the origin. For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the acquisition/coordinate-dependent AP-oriented axis and should not be interpreted as independently landmark-resolved anatomical anterior. In 3D Slicer mesh-input workflows, `Reorient()` creates a new `_Anatomical` model with transformed vertex coordinates while leaving the source model unchanged.
 
 CT support is deliberately more limited. In Slicer, `Reorient()` applies a linear transform and aligns the standard slice viewers, but does not resample the voxel lattice. In Avizo/Amira it applies only `setTransform`. Creating an intrinsically reoriented CT/DICOM stack requires resampling in the external software and is not performed by OrientCSG.
 
