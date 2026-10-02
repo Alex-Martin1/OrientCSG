@@ -63,7 +63,7 @@
 #' blocks orient the Red slice view to the requested mandibular section, emit RAS
 #' coordinates in the Python interactor, activate volume rendering with the
 #' `CT-AAA2` preset when available, create the ARP and `LM1_Line` verification
-#' objects, add a 10 mm scale bar, and configure a 3D verification view. The
+#' objects, add a 10 mm scale bar with visibility disabled by default, and configure a 3D verification view. The
 #' generated block also defines `restore_view()` and
 #' `refresh_orientcsg_scale()` helper commands.
 #'

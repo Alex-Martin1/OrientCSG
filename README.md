@@ -66,7 +66,7 @@ It currently:
 - defines the alveolar reference plane (ARP) from `LM1`, `LM2`, and `LM1_Line`;
 - computes `CS1`, `CS2`, and `CS3` following the mandibular landmark protocol;
 - supports 9-, 11-, and 12-landmark inputs to accommodate different preservation states;
-- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one software command block per section. By default these are Amira/Avizo TCL blocks; with `SLICER = TRUE`, they are 3D Slicer Python blocks that orient the selected slice view to CS1, CS2, or CS3, activate a CT volume-rendering preset, create ARP and `LM1_Line` verification objects, add a 10 mm scale bar, and configure a 3D verification view.
+- returns summary tables, mandibular size-related measurements with status/method metadata, manual-orientation tables, and one software command block per section. By default these are Amira/Avizo TCL blocks; with `SLICER = TRUE`, they are 3D Slicer Python blocks that orient the selected slice view to CS1, CS2, or CS3, activate a CT volume-rendering preset, create ARP and `LM1_Line` verification objects, add a 10 mm scale bar with visibility disabled by default, and configure a 3D verification view.
 
 ### Long-bone cross-sections
 
@@ -334,7 +334,7 @@ get_slicer_py(res, section = "CS1")
 copy_slicer_py(res, section = "CS1")
 ```
 
-Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks define `restore_view()` as the main restoration command. In the mesh-input route this restores the generated 3D verification view. In the volume-input route it restores the Red slice orientation, the 3D verification camera, and the scale bar. volume-input blocks also define `refresh_orientcsg_scale()` for recreating the 10 mm scale bar at the current slice position, and `restore_3d_camera()` if only the 3D camera needs to be restored.
+Paste the copied block into the 3D Slicer Python Interactor. Long-bone Slicer blocks define `restore_view()` as the main restoration command. In the mesh-input route this restores the generated 3D verification view. In the volume-input route it restores the Red slice orientation, the 3D verification camera, and the scale bar. The 10 mm scale bar is created with its visibility disabled by default, so its eye is off until the user enables it. Volume-input blocks also define `refresh_orientcsg_scale()` for recreating the 10 mm scale bar at the current slice position, and `restore_3d_camera()` if only the 3D camera needs to be restored.
 
 For mesh-input long-bone blocks:
 
@@ -350,7 +350,7 @@ refresh_orientcsg_scale()
 restore_3d_camera()
 ```
 
-Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines `restore_view()` and `refresh_orientcsg_scale()`. Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
+Mandibular Slicer blocks orient the Red slice view to the requested anatomical section of the loaded scalar volume. They also create an ARP plane, an `LM1_Line` fiducial, a 10 mm scale bar that is hidden by default, and a 3D verification view in which the ARP appears horizontally edge-on and the section plane appears vertically edge-on. The generated block defines `restore_view()` and `refresh_orientcsg_scale()`. Run `restore_view()` in the Slicer Python Interactor to restore the original mandibular slice orientation, 3D verification view, and scale. Run `refresh_orientcsg_scale()` to recreate the 10 mm scale bar at the current slice position.
 
 ## Avizo/Amira requirements
 
