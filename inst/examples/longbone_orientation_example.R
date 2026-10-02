@@ -21,7 +21,9 @@ library(OrientCSG)
 #
 # INPUT describes the representation supplied to orient_longbone(), not the
 # eventual TRUE/SOLID CSG treatment. Use INPUT = "VOLUME" for CT or other scalar
-# volumetric data and INPUT = "MESH" for watertight surface meshes. A mesh may
+# volumetric data and INPUT = "MESH" for surface meshes. Strict topological
+# watertightness is not required, but large or strongly asymmetric openings or
+# missing regions should be repaired or independently validated. A mesh may
 # encode periosteal-only geometry or both periosteal and endosteal surfaces,
 # depending on how it was produced.
 #
@@ -173,8 +175,8 @@ copy_slicer_py(res_tibia_volume_slicer, section = "SECTION_50")
 
 # 1C. TIBIA: mesh input + 3D Slicer workflow =================================
 #
-# This workflow is intended for closed surface meshes (.ply, .stl, .obj).
-# Replace mesh_file_tibia with the full path to your own watertight mesh file.
+# This workflow is intended for surface meshes (.ply, .stl, .obj).
+# Replace mesh_file_tibia with the full path to your own mesh file.
 
 mesh_file_tibia <- r"(C:\Users\Alex\Desktop\T108_Left_mesh.ply)"
 
@@ -313,7 +315,7 @@ copy_slicer_py(res_humerus_volume_slicer, section = "SECTION_50")
 
 # 2C. HUMERUS: mesh input + 3D Slicer workflow ===============================
 #
-# Replace mesh_file_humerus with the full path to your own watertight mesh file.
+# Replace mesh_file_humerus with the full path to your own mesh file.
 
 mesh_file_humerus <- r"(C:\Users\Alex\Desktop\H108_Right_mesh.ply)"
 
@@ -645,7 +647,7 @@ if (file.exists(mesh_file_radius)) {
 #
 # The landmarks below are a real 3D Slicer Markups example from ulna W30.
 # Coordinates copied from the Markups table are treated as LPS here. Replace
-# mesh_file_ulna with the path to the corresponding watertight W30 STL.
+# mesh_file_ulna with the path to the corresponding W30 STL.
 
 mesh_file_ulna <- r"(C:\Users\Alex\Desktop\W30.stl)"
 

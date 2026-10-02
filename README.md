@@ -37,7 +37,7 @@ Depending on the workflow, it can:
 
 - compute anatomical points and vectors;
 - compute section locations;
-- compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, current BoneJ Log output copied verbatim, a legacy 3 x 3 eigenvector matrix, a full BoneJ Results-table row, or a closed surface mesh;
+- compute long-bone longitudinal axes from a direct BoneJ longitudinal vector, current BoneJ Log output copied verbatim, a legacy 3 x 3 eigenvector matrix, a full BoneJ Results-table row, or a surface mesh;
 - return summary tables and manual-orientation tables; volume-input long-bone summaries store biomechanical length followed by the IOP/IPP values used for orientation in `Bio_Length_&_Orient`;
 - generate Amira/Avizo TCL command blocks;
 - generate 3D Slicer Python blocks for supported Slicer workflows;
@@ -86,7 +86,9 @@ It currently supports:
 `INPUT` describes the representation supplied to `orient_longbone()`; it does not describe whether the eventual CSG section is TRUE or SOLID.
 
 - `INPUT = "VOLUME"` is used for scalar volumetric data such as medical CT. The longitudinal axis comes from BoneJ and DICOM orientation metadata, while the generated section retains scalar/grayscale information. The section can later be thresholded or segmented to retain periosteal and endosteal information (TRUE), or, if required, converted to a filled periosteal-envelope representation (SOLID).
-- `INPUT = "MESH"` is used for a watertight surface mesh. The longitudinal axis is calculated directly from mesh volumetric inertia and the Slicer section is geometric. A mesh from a surface scanner may encode only the periosteal envelope and therefore support a SOLID-style section, whereas a mesh derived from 3D segmentation may encode both periosteal and endosteal surfaces and support a TRUE-style section.
+- `INPUT = "MESH"` is used for a surface mesh. The longitudinal axis is calculated directly from mesh volumetric inertia and the Slicer section is geometric. A mesh from a surface scanner may encode only the periosteal envelope and therefore support a SOLID-style section, whereas a mesh derived from 3D segmentation may encode both periosteal and endosteal surfaces and support a TRUE-style section.
+
+Strict topological watertightness is not required for `INPUT = "MESH"`. Coincident but unwelded seams do not change the signed-tetrahedron calculation when face geometry is unchanged, and small scan holes may have negligible effects on the estimated longitudinal axis. Large or strongly asymmetric openings or missing regions can, however, bias the signed volume, centroid, inertia tensor, and longitudinal axis. Substantially incomplete meshes should therefore be inspected, repaired, or independently validated before analysis.
 
 Therefore, neither `"VOLUME"` nor `"MESH"` should be interpreted as synonymous with TRUE or SOLID.
 
@@ -122,7 +124,7 @@ In `TIBIA`, `FEMUR`, and `RADIUS`, no supplied landmark defines anatomical anter
 
 LM1 and LM2 are interchangeable. Their connecting line defines ML. LM2 to LM3 is used only to resolve the posterior-to-anterior sign of AP. Ulnar biomechanical length is the projected distance along the longitudinal axis from distal LM4 to proximal LM3.
 
-For `INPUT = "MESH"`, `orient_longbone()` computes the longitudinal axis directly from the closed surface mesh. The mesh is treated as a homogeneous closed solid, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis.
+For `INPUT = "MESH"`, `orient_longbone()` computes the longitudinal axis directly from the surface mesh using signed-tetrahedron volumetric integration. The mesh is treated as a homogeneous solid approximation, and the eigenvector associated with the smallest principal moment of inertia is used as the longitudinal axis. Strict topological closure is not required, but large or strongly asymmetric geometric openings or missing regions may bias the estimate.
 
 ### Whole-bone reorientation
 
@@ -378,7 +380,7 @@ Most errors or unexpected orientations are caused by one of the following proble
 - the BoneJ Log/eigenvector input was copied incorrectly;
 - the wrong DICOM Image Orientation (Patient) or Image Position (Patient) values were supplied, the IPP values were not taken from two consecutive slices in stack order, or the metadata came from a different stack than the one processed in BoneJ;
 - the wrong long-bone mode was selected;
-- `INPUT = "MESH"` was requested but the mesh is not closed or cannot be read by `Rvcg`;
+- `INPUT = "MESH"` was requested but the mesh cannot be read by `Rvcg`, is severely incomplete or degenerate, or produces a near-zero signed volume;
 - the wrong coordinate convention was used for Slicer landmarks;
 - the model name in Slicer does not match `model_name`;
 - the required Amira/Avizo objects do not exist or have different names;

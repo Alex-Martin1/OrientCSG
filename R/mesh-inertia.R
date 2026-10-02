@@ -1,9 +1,12 @@
 # Internal mesh inertia helper -----------------------------------------------
 #
-# Compute mass properties of a closed triangular surface mesh by decomposing the
-# enclosed solid into signed tetrahedra with the origin. The eigenvector
-# associated with the smallest rotational inertia is used as the longitudinal
-# axis for elongated bones.
+# Estimate solid mass properties from a triangular surface mesh by decomposing
+# its oriented faces into signed tetrahedra with the origin. Strict topological
+# watertightness is not required for the calculation, but the mesh should
+# represent the bone sufficiently completely: large or strongly asymmetric
+# geometric openings or missing regions can bias the estimated mass properties
+# and longitudinal axis. The eigenvector associated with the smallest
+# rotational inertia is used as the longitudinal axis for elongated bones.
 compute_mesh_inertia_axes <- function(mesh_file,
                                       clean = FALSE,
                                       stabilize_first_axis_negative_z = TRUE,
@@ -16,7 +19,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
   }
 
   if (missing(mesh_file) || length(mesh_file) != 1L || is.na(mesh_file) || !nzchar(mesh_file)) {
-    stop("`mesh_file` must be a path to a closed surface mesh.", call. = FALSE)
+    stop("`mesh_file` must be a path to a triangular surface mesh.", call. = FALSE)
   }
 
   if (!file.exists(mesh_file)) {
@@ -94,7 +97,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
 
   if (abs(mass) < .Machine$double.eps) {
     stop(
-      "Computed mesh volume is near zero. The mesh may be open, badly oriented, or not closed.",
+      "Computed mesh volume is near zero. The mesh may be severely incomplete, degenerate, badly oriented, or otherwise unsuitable for volumetric inertia estimation.",
       call. = FALSE
     )
   }

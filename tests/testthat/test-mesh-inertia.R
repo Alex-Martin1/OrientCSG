@@ -28,6 +28,13 @@ make_box_mesh_file <- function() {
   path
 }
 
+make_open_box_mesh_file <- function() {
+  path <- make_box_mesh_file()
+  x <- readLines(path, warn = FALSE)
+  writeLines(x[x != "f 5 7 8"], path)
+  path
+}
+
 test_that("mesh inertia recovers analytic properties of a rectangular solid", {
   skip_if_not_installed("Rvcg")
 
@@ -63,6 +70,22 @@ test_that("mesh inertia recovers analytic properties of a rectangular solid", {
   expect_equal(res_many$centroid, res_one$centroid, tolerance = 1e-10)
   expect_equal(res_many$inertia_tensor, res_one$inertia_tensor, tolerance = 1e-10)
   expect_equal(res_many$eigenvalues, res_one$eigenvalues, tolerance = 1e-10)
+})
+
+test_that("mesh inertia accepts an open surface mesh when signed volume remains usable", {
+  skip_if_not_installed("Rvcg")
+
+  mesh_file <- make_open_box_mesh_file()
+  on.exit(unlink(mesh_file), add = TRUE)
+
+  res <- OrientCSG:::compute_mesh_inertia_axes(mesh_file)
+
+  expect_true(is.finite(res$volume))
+  expect_gt(res$volume, 0)
+  expect_true(all(is.finite(res$centroid)))
+  expect_true(all(is.finite(res$inertia_tensor)))
+  expect_true(all(is.finite(res$eigenvalues)))
+  expect_true(all(is.finite(res$eigenvectors)))
 })
 
 test_that("mesh-input long-bone workflow uses the mesh-derived longitudinal axis", {

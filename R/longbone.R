@@ -4,14 +4,13 @@
 #' OrientCSG. It computes biomechanical length, cross-sectional locations, and
 #' anatomical orientation vectors for tibiae, humeri, femora, radii, and ulnae from a small set of
 #' anatomical landmarks plus either BoneJ Moments of Inertia eigenvectors
-#' or a closed surface mesh. The BoneJ input can be supplied as a direct
+#' or a triangular surface mesh. The BoneJ input can be supplied as a direct
 #' three-component longitudinal vector, current Log output copied verbatim
 #' (three `[INFO] ||...||` rows), the legacy compact 3 x 3 eigenvector matrix,
 #' or a full Results-table row containing the unit-vector columns. The function can
 #' generate Avizo/Amira TCL command
 #' blocks for the classic CT-derived workflow or 3D Slicer Python command
-#' blocks for volume-input workflows or workflows based on closed surface
-#' meshes.
+#' blocks for volume-input workflows or workflows based on surface meshes.
 #'
 #' @section Input representation:
 #' The `INPUT` argument describes the representation supplied to
@@ -24,19 +23,29 @@
 #'   sections retain scalar/grayscale information, leaving subsequent
 #'   thresholding, segmentation, and any conversion to a filled SOLID
 #'   representation under user control.
-#' - `INPUT = "MESH"` is used for a watertight `.ply`, `.stl`, or `.obj`
-#'   surface mesh. The longitudinal axis is estimated directly from mesh
-#'   volumetric inertia and the generated Slicer section is geometric rather
-#'   than grayscale. A mesh input does not imply a SOLID CSG section: a
-#'   surface-scan mesh may encode only the periosteal envelope, whereas a mesh
-#'   derived from 3D segmentation may also encode endosteal geometry and
-#'   therefore support a TRUE section. This workflow requires `SLICER = TRUE`
-#'   and the suggested package Rvcg.
+#' - `INPUT = "MESH"` is used for a `.ply`, `.stl`, or `.obj` surface mesh.
+#'   The longitudinal axis is estimated directly from mesh volumetric inertia
+#'   and the generated Slicer section is geometric rather than grayscale. A
+#'   mesh input does not imply a SOLID CSG section: a surface-scan mesh may
+#'   encode only the periosteal envelope, whereas a mesh derived from 3D
+#'   segmentation may also encode endosteal geometry and therefore support a
+#'   TRUE section. This workflow requires `SLICER = TRUE` and the suggested
+#'   package Rvcg.
 #'
 #' In short, `INPUT` controls longitudinal-axis estimation and the software
 #' representation of the generated section, not the CSG distinction between
 #' TRUE (periosteal + endosteal information retained) and SOLID (the periosteal
 #' envelope treated as filled).
+#'
+#' @section Mesh completeness:
+#' Strict topological watertightness is not required for `INPUT = "MESH"`.
+#' Coincident but unwelded seams do not alter the signed-tetrahedron integral
+#' when the face geometry is unchanged, and small scan holes may have negligible
+#' effects on the estimated longitudinal axis. However, large or strongly
+#' asymmetric geometric openings or missing regions can bias the signed volume,
+#' centroid, inertia tensor, and longitudinal axis. Substantially incomplete
+#' meshes should therefore be inspected, repaired, or independently validated
+#' before analysis.
 #'
 #' @section Output backends:
 #' The `SLICER` argument controls the type of capture script returned.
@@ -119,7 +128,7 @@
 #' while the ordered IPP pair determines the actual sign of the stack Z axis.
 #' This makes the transformation independent of
 #' whether slice indices progress with or against the IOP-derived normal. When `INPUT = "MESH"`, the
-#' longitudinal axis is estimated directly from the closed mesh by volumetric
+#' longitudinal axis is estimated directly from the surface mesh by volumetric
 #' inertia. In both cases, the sign of the longitudinal vector is adjusted when
 #' anatomical landmarks provide a distal-to-proximal reference. For tibiae, this
 #' reference is defined from the tibio-talar landmark to the midpoint of the two
@@ -217,7 +226,7 @@
 #'   Slicer (70 mm in volume Red views; `ParallelScale = 35` in 3D views).
 #' @param INPUT Character scalar specifying the long-bone input representation.
 #'   Use `"VOLUME"` for scalar volumetric data such as CT and `"MESH"` for a
-#'   watertight surface mesh. The choice determines how the longitudinal axis is
+#'   triangular surface mesh. The choice determines how the longitudinal axis is
 #'   obtained and whether generated sections are scalar/grayscale or geometric;
 #'   it does not define TRUE versus SOLID CSG treatment. Defaults to `"VOLUME"`.
 #' @param SLICER Logical. If `TRUE`, generate 3D Slicer Python command blocks.
@@ -231,8 +240,10 @@
 #'   giving the section point, the section plane is placed perpendicular to the
 #'   longitudinal axis at that point, and anatomical ML/AP axes are not
 #'   computed or exported.
-#' @param mesh_file Optional path to a watertight closed surface mesh (`.ply`,
-#'   `.stl`, or `.obj`) used when `INPUT = "MESH"`.
+#' @param mesh_file Optional path to a triangular surface mesh (`.ply`, `.stl`,
+#'   or `.obj`) used when `INPUT = "MESH"`. Strict topological watertightness
+#'   is not required, but substantially incomplete or strongly asymmetric meshes
+#'   should be repaired or independently validated before analysis.
 #' @param lm_coord_system Coordinate system of the numeric landmark values pasted
 #'   into R. The default is `"LPS"`, matching the Avizo/Amira-like internal
 #'   convention. Coordinates copied or exported from 3D Slicer Markups may paste
