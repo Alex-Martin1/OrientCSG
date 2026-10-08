@@ -401,6 +401,13 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_null(res$manual_orientation)
   expect_equal(names(res$slicer_py), c("CS1", "CS2", "CS3"))
 
+  # The setting also applies when restoring the mandibular 3D section view.
+  for (section_py in res$slicer_py) {
+    expect_contains_fixed(section_py, "sliceNode.SetSliceVisible(True)")
+    expect_contains_fixed(section_py, "sliceNode.SetWidgetVisible(False)")
+    expect_false(grepl("sliceNode.SetWidgetVisible(True)", section_py, fixed = TRUE))
+  }
+
   py_cs1 <- get_slicer_py(res, section = "CS1")
   py_cs2 <- get_slicer_py(res, section = "CS2")
   py_cs3 <- get_slicer_py(res, section = "CS3")

@@ -23,6 +23,13 @@ test_that("orient_longbone() generates volume-input Slicer Python for HUMERUS mo
   expect_null(res$avizo_tcl)
   expect_equal(nrow(res$summary), 9)
 
+  # Slicer CT: show each slice in 3D without showing its reformat widget.
+  for (section_py in res$slicer_py) {
+    expect_contains_fixed(section_py, "sliceNode.SetSliceVisible(True)")
+    expect_contains_fixed(section_py, "sliceNode.SetWidgetVisible(False)")
+    expect_false(grepl("sliceNode.SetWidgetVisible(True)", section_py, fixed = TRUE))
+  }
+
   py <- get_slicer_py(res, section = "SECTION_35")
   expect_contains_fixed(py, "VOLUME_NAME = \"H108_volume\"")
   expect_contains_fixed(py, "SECTION_LABEL = \"SECTION_35\"")

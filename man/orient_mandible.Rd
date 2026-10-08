@@ -65,7 +65,8 @@ interpretation of the numbers only; it does not depend on whether the text
 was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{SLICER}{Logical. If \code{FALSE} (default), generate Avizo/Amira TCL command
-blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.}
+blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.
+In Slicer, the slice is visible in 3D and the reformat widget is hidden.}
 
 \item{volume_name}{Optional scalar volume node name used by the generated
 Slicer Python block. If omitted, the block uses the active background volume

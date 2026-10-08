@@ -68,7 +68,8 @@ it does not define TRUE versus SOLID CSG treatment. Defaults to \code{"VOLUME"}.
 \item{SLICER}{Logical. If \code{TRUE}, generate 3D Slicer Python command blocks.
 If \code{FALSE}, generate Avizo/Amira TCL blocks. Slicer output is currently
 implemented for tibiae, humeri, femora, radii, and ulnae; \code{HUMERUS_TABLE} is
-intentionally not supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.}
+intentionally not supported for Slicer output when \code{USE_ANAT_ORIENT = TRUE}.
+For volume input, the slice is visible in 3D and the reformat widget is hidden.}
 
 \item{USE_ANAT_ORIENT}{Logical. If \code{TRUE} (default), use the full anatomical
 orientation workflow for the selected \code{mode}, including the anatomical

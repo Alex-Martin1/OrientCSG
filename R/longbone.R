@@ -233,6 +233,7 @@
 #'   If `FALSE`, generate Avizo/Amira TCL blocks. Slicer output is currently
 #'   implemented for tibiae, humeri, femora, radii, and ulnae; `HUMERUS_TABLE` is
 #'   intentionally not supported for Slicer output when `USE_ANAT_ORIENT = TRUE`.
+#'   For volume input, the slice is visible in 3D and the reformat widget is hidden.
 #' @param USE_ANAT_ORIENT Logical. If `TRUE` (default), use the full anatomical
 #'   orientation workflow for the selected `mode`, including the anatomical
 #'   landmark set and the ML/AP reference planes or axes. If `FALSE`, use a
