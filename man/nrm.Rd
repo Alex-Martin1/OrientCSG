@@ -13,12 +13,9 @@ nrm(v)
 A numeric vector with unit length.
 }
 \description{
-Low-level vector utility used internally by OrientCSG and exported for
-convenience. \code{nrm()} returns the unit vector pointing in the same direction
-as the input vector.
+Return the unit vector in the input direction.
 }
 \examples{
 nrm(c(2, 0, 0))
-nrm(c(1, 1, 0))
 
 }

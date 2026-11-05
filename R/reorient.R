@@ -1,23 +1,27 @@
-#' Generate anatomical reorientation code for a long bone
+#' Generate anatomical reorientation code for long bones and mandibles
 #'
-#' `Reorient()` generates a software-specific command block that places a
-#' long-bone result in a standardized Cartesian reference system and copies the
-#' block directly to the system clipboard. The longitudinal axis is aligned with
-#' Z from distal to proximal and the distal biomechanical origin with `(0, 0, 0)`.
+#' `Reorient()` generates software-specific code that places a long bone or
+#' mandible in a standardized Cartesian frame and attempts to copy it to the clipboard.
+#' For long bones, Z is distal-to-proximal and the distal biomechanical
+#' origin becomes `(0, 0, 0)`.
 #' For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is
 #' resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the
 #' AP-oriented axis stored by [orient_longbone()], whose sign depends on the
 #' acquisition/coordinate convention rather than an AP-defining landmark.
 #'
-#' The function uses the geometry already stored in an [orient_longbone()]
-#' result and does not recompute landmarks, biomechanical length, or anatomical
-#' axes. Full anatomical orientation (`USE_ANAT_ORIENT = TRUE`) is required.
+#' For long bones, the function uses the geometry already stored in an
+#' [orient_longbone()] result and does not recompute landmarks, biomechanical
+#' length, or anatomical axes. Full anatomical orientation
+#' (`USE_ANAT_ORIENT = TRUE`) is required. For mandibles, it uses the anatomical
+#' vectors and LM2 already stored in an [orient_mandible()] result.
 #'
 #' @section Surface meshes:
 #' For 3D Slicer mesh-input workflows, `Reorient()` creates a new model with the
 #' suffix `_Anatomical`. The transformed vertex coordinates are written into the
 #' new model itself, while the source model is left unchanged. The new model can
 #' therefore be saved or exported as a mesh in the standardized OrientCSG frame.
+#' This is OrientCSG's only mandibular mesh workflow, enabled with
+#' `Mandible_Mesh = TRUE`; `object_name` is optional.
 #'
 #' @section CT volumes:
 #' CT support is intentionally more limited. In 3D Slicer, `Reorient()` places
@@ -34,25 +38,39 @@
 #' Avizo/Amira, this can be done manually with `Resample Transformed Image` if
 #' required.
 #'
-#' @param res An `orientcsg_longbone` result returned by [orient_longbone()].
-#'   Full anatomical orientation must have been used.
-#' @param object_name Optional name of the target model or volume in the external
-#'   application. If omitted, `Reorient()` uses `res$model_name` for mesh-input Slicer
-#'   workflows, `res$volume_name` for volume-input workflows, and then
-#'   `res$individual_id` as a fallback.
+#' @section Mandibles:
+#' Mandibular X/Y/Z point anatomical left-to-right, posterior-to-anterior,
+#' and inferior-to-superior, with LM2 (infradentale) at the origin.
+#' `Reorient(res)` follows `res$SLICER`: Python for Slicer CT or TCL for
+#' Avizo/Amira CT. `Mandible_Mesh = TRUE` supports only Slicer and creates a
+#' new anatomical mesh. The model and landmarks must share physical coordinates.
 #'
-#' @return Invisibly returns the generated TCL or Python command block as a
-#'   character scalar after copying it to the system clipboard.
+#' @param res An `orientcsg_longbone` or `orientcsg_mandible` result.
+#'   For long bones, full anatomical orientation must have been used.
+#' @param object_name Optional exact model/volume name for all workflows.
+#'   When supplied, Slicer requires an exact match and does not fall back to
+#'   another node. When omitted, the name is recovered from `res` (or its
+#'   `individual_id`) and the existing Slicer selection fallback is retained.
+#' @param Mandible_Mesh Logical, default `FALSE`. For mandibular results only:
+#'   `TRUE` creates a reoriented Slicer mesh; `FALSE` generates the CT code
+#'   for Slicer or Avizo/Amira according to `res$SLICER`. Passing `TRUE` with
+#'   an Avizo/Amira or long-bone result raises an error.
+#'
+#' @return Invisibly returns the generated TCL or Python code as a character
+#'   scalar and attempts to copy it to the system clipboard.
 #'
 #' @examples
 #' \dontrun{
 #' Reorient(res)
 #' Reorient(res, object_name = "W30")
+#' Reorient(mandible_res, Mandible_Mesh = TRUE, object_name = "Mandible_STL")
 #' }
 #'
 #' @export
-Reorient <- function(res, object_name = NULL) {
-  txt <- .reorient_code(res, object_name = object_name)
+Reorient <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
+  txt <- .reorient_code(
+    res, object_name = object_name, Mandible_Mesh = Mandible_Mesh
+  )
   copy_to_clipboard(txt)
 
   if (isTRUE(res$SLICER)) {
@@ -64,7 +82,20 @@ Reorient <- function(res, object_name = NULL) {
   invisible(txt)
 }
 
-.reorient_code <- function(res, object_name = NULL) {
+.reorient_code <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
+  if (!is.logical(Mandible_Mesh) || length(Mandible_Mesh) != 1L ||
+      is.na(Mandible_Mesh)) {
+    stop("`Mandible_Mesh` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (inherits(res, "orientcsg_mandible")) {
+    return(.reorient_mandible_code(res, object_name, Mandible_Mesh))
+  }
+
+  if (isTRUE(Mandible_Mesh)) {
+    stop("`Mandible_Mesh = TRUE` is only valid for mandibular results.", call. = FALSE)
+  }
+
   if (!inherits(res, "orientcsg_longbone")) {
     stop("`res` must be an OrientCSG long-bone result.", call. = FALSE)
   }
@@ -93,15 +124,20 @@ Reorient <- function(res, object_name = NULL) {
     stop("`res` does not contain complete L/ML/AP anatomical vectors.", call. = FALSE)
   }
 
+  strict_name <- !is.null(object_name)
   object_name <- .reorient_object_name(res, object_name)
   origin <- .reorient_distal_origin(res)
   signs <- slicer_longbone_screen_signs(res$type, TRUE)
 
   if (isTRUE(res$SLICER)) {
     if (identical(res$INPUT, "MESH")) {
-      return(.reorient_slicer_model_python(res, origin, signs, object_name))
+      return(.reorient_slicer_model_python(
+        res, origin, signs, object_name, strict_name = strict_name
+      ))
     }
-    return(.reorient_slicer_volume_python(res, origin, signs, object_name))
+    return(.reorient_slicer_volume_python(
+      res, origin, signs, object_name, strict_name = strict_name
+    ))
   }
 
   if (identical(res$INPUT, "MESH")) {
@@ -118,9 +154,95 @@ Reorient <- function(res, object_name = NULL) {
   .reorient_avizo_tcl(res, origin, signs, object_name)
 }
 
+# Generate CT or mesh reorientation without changing orient_mandible().
+.reorient_mandible_code <- function(res, object_name, Mandible_Mesh) {
+  if (!identical(res$internal_coord_system, "LPS")) {
+    stop("Mandibular `Reorient()` requires internal LPS geometry.", call. = FALSE)
+  }
+  if (!is.logical(res$SLICER) || length(res$SLICER) != 1L ||
+      is.na(res$SLICER)) {
+    stop("`res$SLICER` must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (Mandible_Mesh && !res$SLICER) {
+    stop("`Mandible_Mesh = TRUE` is supported only for 3D Slicer.", call. = FALSE)
+  }
+
+  geometry <- .reorient_mandible_geometry(res)
+  signs <- list(ml_right_sign = 1, anterior_up_sign = 1)
+  strict_name <- !is.null(object_name)
+  object_name <- .reorient_object_name(res, object_name)
+
+  if (Mandible_Mesh) {
+    return(.reorient_slicer_model_python(
+      geometry$axes, geometry$origin, signs, object_name,
+      mandible = TRUE, strict_name = strict_name
+    ))
+  }
+
+  if (res$SLICER) {
+    return(.reorient_slicer_volume_python(
+      geometry$axes, geometry$origin, signs, object_name,
+      mandible = TRUE, strict_name = strict_name
+    ))
+  }
+
+  if (!nzchar(object_name)) {
+    stop("Avizo/Amira reorientation requires `object_name` or a source volume/individual name.", call. = FALSE)
+  }
+  .reorient_avizo_tcl(
+    geometry$axes, geometry$origin, signs, object_name, mandible = TRUE
+  )
+}
+
+.reorient_mandible_geometry <- function(res) {
+  LM <- res$landmarks
+  if (!is.matrix(LM) || !is.numeric(LM) ||
+      !"LM2" %in% rownames(LM) || ncol(LM) != 3L ||
+      any(!is.finite(LM["LM2", ]))) {
+    stop("Mandibular result must contain finite LM2 coordinates.", call. = FALSE)
+  }
+
+  v <- res$vectors
+  required <- c("Vec_LeftToRight", "Anterior_ref", "Vec_Penp")
+  if (!is.list(v) || any(!vapply(required, function(nm) {
+    x <- v[[nm]]
+    is.numeric(x) && length(x) == 3L && all(is.finite(x)) &&
+      sqrt(sum(x^2)) > 1e-12
+  }, logical(1)))) {
+    stop("Mandibular result has incomplete anatomical vectors.", call. = FALSE)
+  }
+
+  X <- nrm(as.numeric(v$Vec_LeftToRight))
+  Y <- as.numeric(v$Anterior_ref)
+  Y <- Y - dot3(X, Y) * X
+  if (sqrt(sum(Y^2)) < 1e-12) {
+    stop("Mandibular right-left and anterior axes are collinear.", call. = FALSE)
+  }
+  Y <- nrm(Y)
+  Z <- nrm(cross3(X, Y))
+  superior <- nrm(as.numeric(v$Vec_Penp))
+
+  # Never flip X to force handedness: that would invert anatomical laterality.
+  if (dot3(Z, superior) < 0.99) {
+    stop(
+      "Mandibular right-left/anterior axes disagree with the superior reference.",
+      call. = FALSE
+    )
+  }
+
+  list(
+    origin = as.numeric(LM["LM2", ]),
+    axes = list(
+      vectors = list(L = Z, ML = X, AP = Y),
+      biomechanical_length = 0
+    )
+  )
+}
+
 .reorient_object_name <- function(res, object_name = NULL) {
   if (!is.null(object_name)) {
-    if (length(object_name) != 1L || is.na(object_name) || !nzchar(trimws(object_name))) {
+    if (!is.character(object_name) || length(object_name) != 1L ||
+        is.na(object_name) || !nzchar(trimws(object_name))) {
       stop("`object_name` must be a single non-empty character value.", call. = FALSE)
     }
     return(trimws(object_name))
@@ -192,7 +314,8 @@ Reorient <- function(res, object_name = NULL) {
   paste0("np.array([", paste(.reorient_fmt(x), collapse = ", "), "], dtype=float)")
 }
 
-.reorient_slicer_volume_python <- function(res, origin, signs, object_name) {
+.reorient_slicer_volume_python <- function(res, origin, signs, object_name,
+                                            mandible = FALSE, strict_name = FALSE) {
   code <- c(
     "import slicer",
     "import vtk",
@@ -200,15 +323,17 @@ Reorient <- function(res, object_name = NULL) {
     "import numpy as np",
     "",
     "# ============================================================",
-    "# OrientCSG: anatomical reorientation of a CT volume",
+    if (mandible) "# OrientCSG: anatomical reorientation of a mandibular CT volume" else
+      "# OrientCSG: anatomical reorientation of a CT volume",
     "# No resampling: voxel values and HU are unchanged.",
     "# ============================================================",
     paste0("VOLUME_NAME = ", .reorient_py_quote(object_name)),
+    paste0("STRICT_NAME = ", if (strict_name) "True" else "False"),
     paste0("LONG_LPS = ", .reorient_py_vector(res$vectors$L)),
     paste0("ML_LPS = ", .reorient_py_vector(res$vectors$ML)),
     paste0("AP_LPS = ", .reorient_py_vector(res$vectors$AP)),
     paste0("ORIGIN_LPS = ", .reorient_py_vector(origin)),
-    paste0("BIO_LENGTH = ", .reorient_fmt(res$biomechanical_length)),
+    if (!mandible) paste0("BIO_LENGTH = ", .reorient_fmt(res$biomechanical_length)),
     paste0("ML_SIGN = ", .reorient_fmt(signs$ml_right_sign)),
     paste0("AP_SIGN = ", .reorient_fmt(signs$anterior_up_sign)),
     "",
@@ -232,6 +357,8 @@ Reorient <- function(res, object_name = NULL) {
     "    volumeNode = exactMatches[0]",
     "elif len(exactMatches) > 1:",
     "    raise RuntimeError(\"More than one volume is named '%s'.\" % VOLUME_NAME)",
+    "elif STRICT_NAME:",
+    "    raise RuntimeError(\"No volume named '%s' was found.\" % VOLUME_NAME)",
     "elif len(volumes) == 1:",
     "    volumeNode = volumes[0]",
     "    print(\"WARNING: '%s' not found. Using '%s'.\" % (VOLUME_NAME, volumeNode.GetName()))",
@@ -299,7 +426,8 @@ Reorient <- function(res, object_name = NULL) {
     "redWidget.sliceLogic().FitSliceToAll()",
     "yellowWidget.sliceLogic().FitSliceToAll()",
     "greenWidget.sliceLogic().FitSliceToAll()",
-    "redWidget.sliceLogic().SetSliceOffset(0.50 * BIO_LENGTH)",
+    if (mandible) "redWidget.sliceLogic().SetSliceOffset(0.0)" else
+      "redWidget.sliceLogic().SetSliceOffset(0.50 * BIO_LENGTH)",
     "yellowWidget.sliceLogic().SetSliceOffset(0.0)",
     "greenWidget.sliceLogic().SetSliceOffset(0.0)",
     "",
@@ -307,13 +435,20 @@ Reorient <- function(res, object_name = NULL) {
     "print('ANATOMICAL TRANSFORM APPLIED')",
     "print('============================================')",
     "print('Volume:', volumeNode.GetName())",
-    "print('X = mediolateral-oriented transverse axis')",
-    "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
-    "print('Z = longitudinal, distal -> proximal')",
-    "print('Distal biomechanical origin = (0, 0, 0)')",
-    "print('Red = transverse section at 50% biomechanical length')",
-    "print('Yellow = longitudinal AP plane')",
-    "print('Green = longitudinal ML plane')",
+    if (mandible) "print('X = anatomical left -> right')" else
+      "print('X = mediolateral-oriented transverse axis')",
+    if (mandible) "print('Y = anatomical posterior -> anterior')" else
+      "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
+    if (mandible) "print('Z = anatomical inferior -> superior')" else
+      "print('Z = longitudinal, distal -> proximal')",
+    if (mandible) "print('LM2 (infradentale) = (0, 0, 0)')" else
+      "print('Distal biomechanical origin = (0, 0, 0)')",
+    if (mandible) "print('Red = axial plane through LM2')" else
+      "print('Red = transverse section at 50% biomechanical length')",
+    if (mandible) "print('Yellow = sagittal plane through LM2')" else
+      "print('Yellow = longitudinal AP plane')",
+    if (mandible) "print('Green = coronal plane through LM2')" else
+      "print('Green = longitudinal ML plane')",
     "print('No voxel resampling was performed.')",
     "print('============================================\\n')"
   )
@@ -321,7 +456,8 @@ Reorient <- function(res, object_name = NULL) {
   paste(code, collapse = "\n")
 }
 
-.reorient_slicer_model_python <- function(res, origin, signs, object_name) {
+.reorient_slicer_model_python <- function(res, origin, signs, object_name,
+                                           mandible = FALSE, strict_name = FALSE) {
   code <- c(
     "import slicer",
     "import vtk",
@@ -329,10 +465,12 @@ Reorient <- function(res, object_name = NULL) {
     "import numpy as np",
     "",
     "# ============================================================",
-    "# OrientCSG: anatomical reorientation of a surface model",
+    if (mandible) "# OrientCSG: anatomical reorientation of a mandibular surface model" else
+      "# OrientCSG: anatomical reorientation of a surface model",
     "# The source model is left unchanged.",
     "# ============================================================",
     paste0("MODEL_NAME = ", .reorient_py_quote(object_name)),
+    paste0("STRICT_NAME = ", if (strict_name) "True" else "False"),
     paste0("LONG_LPS = ", .reorient_py_vector(res$vectors$L)),
     paste0("ML_LPS = ", .reorient_py_vector(res$vectors$ML)),
     paste0("AP_LPS = ", .reorient_py_vector(res$vectors$AP)),
@@ -360,6 +498,8 @@ Reorient <- function(res, object_name = NULL) {
     "    modelNode = exactMatches[0]",
     "elif len(exactMatches) > 1:",
     "    raise RuntimeError(\"More than one model is named '%s'.\" % MODEL_NAME)",
+    "elif STRICT_NAME:",
+    "    raise RuntimeError(\"No model named '%s' was found.\" % MODEL_NAME)",
     "elif len(models) == 1:",
     "    modelNode = models[0]",
     "    print(\"WARNING: '%s' not found. Using '%s'.\" % (MODEL_NAME, modelNode.GetName()))",
@@ -439,10 +579,14 @@ Reorient <- function(res, object_name = NULL) {
     "print('============================================')",
     "print('Source model:', modelNode.GetName())",
     "print('Output model:', outputNode.GetName())",
-    "print('X = mediolateral-oriented transverse axis')",
-    "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
-    "print('Z = longitudinal, distal -> proximal')",
-    "print('Distal biomechanical origin = (0, 0, 0)')",
+    if (mandible) "print('X = anatomical left -> right')" else
+      "print('X = mediolateral-oriented transverse axis')",
+    if (mandible) "print('Y = anatomical posterior -> anterior')" else
+      "print('Y = AP-oriented axis; anatomically anterior only when landmark-resolved')",
+    if (mandible) "print('Z = anatomical inferior -> superior')" else
+      "print('Z = longitudinal, distal -> proximal')",
+    if (mandible) "print('LM2 (infradentale) = (0, 0, 0)')" else
+      "print('Distal biomechanical origin = (0, 0, 0)')",
     "print('Source model was not modified.')",
     "print('============================================\\n')"
   )
@@ -450,7 +594,7 @@ Reorient <- function(res, object_name = NULL) {
   paste(code, collapse = "\n")
 }
 
-.reorient_avizo_tcl <- function(res, origin, signs, object_name) {
+.reorient_avizo_tcl <- function(res, origin, signs, object_name, mandible = FALSE) {
   basis <- .reorient_basis_lps(res, signs)
   R <- rbind(basis$X, basis$Y, basis$Z)
   t <- -as.numeric(R %*% origin)
@@ -466,7 +610,8 @@ Reorient <- function(res, object_name = NULL) {
 
   code <- c(
     "# ============================================================",
-    "# OrientCSG: anatomical transform for Avizo/Amira",
+    if (mandible) "# OrientCSG: mandibular anatomical transform for Avizo/Amira" else
+      "# OrientCSG: anatomical transform for Avizo/Amira",
     "# This applies only the spatial transform. It does not resample.",
     "# ============================================================",
     paste0("set OrientCSG_data ", .reorient_py_quote(object_name)),
@@ -478,10 +623,14 @@ Reorient <- function(res, object_name = NULL) {
     "",
     "echo \"============================================\"",
     "echo \"ANATOMICAL TRANSFORM APPLIED\"",
-    "echo \"X = mediolateral-oriented transverse axis\"",
-    "echo \"Y = AP-oriented axis; anatomically anterior only when landmark-resolved\"",
-    "echo \"Z = longitudinal, distal -> proximal\"",
-    "echo \"Distal biomechanical origin = (0, 0, 0)\"",
+    if (mandible) "echo \"X = anatomical left -> right\"" else
+      "echo \"X = mediolateral-oriented transverse axis\"",
+    if (mandible) "echo \"Y = anatomical posterior -> anterior\"" else
+      "echo \"Y = AP-oriented axis; anatomically anterior only when landmark-resolved\"",
+    if (mandible) "echo \"Z = anatomical inferior -> superior\"" else
+      "echo \"Z = longitudinal, distal -> proximal\"",
+    if (mandible) "echo \"LM2 (infradentale) = (0, 0, 0)\"" else
+      "echo \"Distal biomechanical origin = (0, 0, 0)\"",
     "echo \"Volume has NOT been resampled.\"",
     "echo \"For an axis-aligned voxel lattice, use Geometry Transforms > Resample Transformed Image manually.\"",
     "echo \"Recommended Mode: extended.\"",

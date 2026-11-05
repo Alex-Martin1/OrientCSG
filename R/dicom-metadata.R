@@ -1,9 +1,4 @@
-# Internal DICOM metadata reader ----------------------------------------------
-#
-# Fast volume-input helper used by orient_longbone(). It opens only enough files
-# to obtain two readable DICOM headers, never loads pixel data, orders the pair
-# by InstanceNumber, and validates the IOP/IPP geometry required by the existing
-# BoneJ-to-LPS transform. This helper is deliberately not part of the public API.
+# Read two DICOM headers without pixels for the BoneJ-to-LPS IOP/IPP mapping.
 
 .read_dicom_orientation <- function(dicom_dir, recursive = TRUE, verbose = FALSE) {
   if (!is.character(dicom_dir) || length(dicom_dir) != 1L ||

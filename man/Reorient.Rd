@@ -2,37 +2,44 @@
 % Please edit documentation in R/reorient.R
 \name{Reorient}
 \alias{Reorient}
-\title{Generate anatomical reorientation code for a long bone}
+\title{Generate anatomical reorientation code for long bones and mandibles}
 \usage{
-Reorient(res, object_name = NULL)
+Reorient(res, object_name = NULL, Mandible_Mesh = FALSE)
 }
 \arguments{
-\item{res}{An \code{orientcsg_longbone} result returned by \code{\link[=orient_longbone]{orient_longbone()}}.
-Full anatomical orientation must have been used.}
+\item{res}{An \code{orientcsg_longbone} or \code{orientcsg_mandible} result.
+For long bones, full anatomical orientation must have been used.}
 
-\item{object_name}{Optional name of the target model or volume in the external
-application. If omitted, \code{Reorient()} uses \code{res$model_name} for mesh-input Slicer
-workflows, \code{res$volume_name} for volume-input workflows, and then
-\code{res$individual_id} as a fallback.}
+\item{object_name}{Optional exact model/volume name for all workflows.
+When supplied, Slicer requires an exact match and does not fall back to
+another node. When omitted, the name is recovered from \code{res} (or its
+\code{individual_id}) and the existing Slicer selection fallback is retained.}
+
+\item{Mandible_Mesh}{Logical, default \code{FALSE}. For mandibular results only:
+\code{TRUE} creates a reoriented Slicer mesh; \code{FALSE} generates the CT code
+for Slicer or Avizo/Amira according to \code{res$SLICER}. Passing \code{TRUE} with
+an Avizo/Amira or long-bone result raises an error.}
 }
 \value{
-Invisibly returns the generated TCL or Python command block as a
-character scalar after copying it to the system clipboard.
+Invisibly returns the generated TCL or Python code as a character
+scalar and attempts to copy it to the system clipboard.
 }
 \description{
-\code{Reorient()} generates a software-specific command block that places a
-long-bone result in a standardized Cartesian reference system and copies the
-block directly to the system clipboard. The longitudinal axis is aligned with
-Z from distal to proximal and the distal biomechanical origin with \verb{(0, 0, 0)}.
+\code{Reorient()} generates software-specific code that places a long bone or
+mandible in a standardized Cartesian frame and attempts to copy it to the clipboard.
+For long bones, Z is distal-to-proximal and the distal biomechanical
+origin becomes \verb{(0, 0, 0)}.
 For \code{HUMERUS} and \code{ULNA}, Y is anatomically anterior because AP sign is
 resolved from landmarks. For \code{TIBIA}, \code{FEMUR}, and \code{RADIUS}, Y follows the
 AP-oriented axis stored by \code{\link[=orient_longbone]{orient_longbone()}}, whose sign depends on the
 acquisition/coordinate convention rather than an AP-defining landmark.
 }
 \details{
-The function uses the geometry already stored in an \code{\link[=orient_longbone]{orient_longbone()}}
-result and does not recompute landmarks, biomechanical length, or anatomical
-axes. Full anatomical orientation (\code{USE_ANAT_ORIENT = TRUE}) is required.
+For long bones, the function uses the geometry already stored in an
+\code{\link[=orient_longbone]{orient_longbone()}} result and does not recompute landmarks, biomechanical
+length, or anatomical axes. Full anatomical orientation
+(\code{USE_ANAT_ORIENT = TRUE}) is required. For mandibles, it uses the anatomical
+vectors and LM2 already stored in an \code{\link[=orient_mandible]{orient_mandible()}} result.
 }
 \section{Surface meshes}{
 
@@ -40,6 +47,8 @@ For 3D Slicer mesh-input workflows, \code{Reorient()} creates a new model with t
 suffix \verb{_Anatomical}. The transformed vertex coordinates are written into the
 new model itself, while the source model is left unchanged. The new model can
 therefore be saved or exported as a mesh in the standardized OrientCSG frame.
+This is OrientCSG's only mandibular mesh workflow, enabled with
+\code{Mandible_Mesh = TRUE}; \code{object_name} is optional.
 }
 
 \section{CT volumes}{
@@ -59,10 +68,20 @@ Avizo/Amira, this can be done manually with \verb{Resample Transformed Image} if
 required.
 }
 
+\section{Mandibles}{
+
+Mandibular X/Y/Z point anatomical left-to-right, posterior-to-anterior,
+and inferior-to-superior, with LM2 (infradentale) at the origin.
+\code{Reorient(res)} follows \code{res$SLICER}: Python for Slicer CT or TCL for
+Avizo/Amira CT. \code{Mandible_Mesh = TRUE} supports only Slicer and creates a
+new anatomical mesh. The model and landmarks must share physical coordinates.
+}
+
 \examples{
 \dontrun{
 Reorient(res)
 Reorient(res, object_name = "W30")
+Reorient(mandible_res, Mandible_Mesh = TRUE, object_name = "Mandible_STL")
 }
 
 }

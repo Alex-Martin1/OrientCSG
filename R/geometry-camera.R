@@ -1,11 +1,5 @@
-# Internal camera geometry helper -------------------------------------------
-#
-# Construct an orthonormal, right-handed camera basis from a viewing direction
-# and a preferred horizontal direction. `Z_axis` is interpreted as the viewing
-# direction, whereas `X_axis` defines the intended screen-horizontal direction
-# after projection onto the image plane. When available, `Y_preferred` is used to
-# resolve the remaining sign ambiguity so that the image appears in the desired
-# anatomical orientation.
+# Right-handed camera basis: Z viewing direction, X screen horizontal;
+# Y_preferred resolves the in-plane sign.
 make_camera_basis <- function(Z_axis, X_axis, Y_preferred = NULL) {
   Zcam <- nrm(Z_axis)
   Xcam <- X_axis - dot3(X_axis, Zcam) * Zcam
@@ -42,12 +36,7 @@ make_camera_basis <- function(Z_axis, X_axis, Y_preferred = NULL) {
   list(Xcam = Xcam, Ycam = Ycam, Zcam = Zcam)
 }
 
-# Internal camera geometry helper -------------------------------------------
-#
-# Convert a 3 x 3 rotation matrix into the axis-angle representation used by
-# Avizo/Amira camera commands. The function includes explicit handling of the
-# identity rotation and rotations close to 180 degrees, both of which are
-# numerically sensitive special cases.
+# Avizo/Amira camera axis-angle conversion; handle 0 and pi rotations.
 rotmat_to_axis_angle <- function(R) {
   if (!all(dim(R) == c(3, 3))) {
     stop("`R` must be a 3 x 3 matrix.", call. = FALSE)

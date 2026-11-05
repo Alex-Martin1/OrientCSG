@@ -32,11 +32,6 @@
 #'   TRUE section. This workflow requires `SLICER = TRUE` and the suggested
 #'   package Rvcg.
 #'
-#' In short, `INPUT` controls longitudinal-axis estimation and the software
-#' representation of the generated section, not the CSG distinction between
-#' TRUE (periosteal + endosteal information retained) and SOLID (the periosteal
-#' envelope treated as filled).
-#'
 #' @section Mesh completeness:
 #' Strict topological watertightness is not required for `INPUT = "MESH"`.
 #' Coincident but unwelded seams do not alter the signed-tetrahedron integral
@@ -57,10 +52,10 @@
 #' - `SLICER = TRUE` returns 3D Slicer Python blocks. When `INPUT = "VOLUME"`,
 #'   these blocks orient a Slicer slice view on a scalar volume node. When
 #'   `INPUT = "MESH"`, they cut and display the corresponding model node. This
-#'   backend is implemented for `mode = "TIBIA"`, `mode = "HUMERUS"`,
-#'   `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "ULNA"`. It is intentionally not
-#'   implemented for `mode = "HUMERUS_TABLE"`, because
-#'   surface scans do not preserve a reliable scanner/table orientation.
+#'   backend supports full anatomical orientation for `mode = "TIBIA"`,
+#'   `mode = "HUMERUS"`, `mode = "FEMUR"`, `mode = "RADIUS"`, and `mode = "ULNA"`.
+#'   For `mode = "HUMERUS_TABLE"`, only section-only Slicer output
+#'   (`USE_ANAT_ORIENT = FALSE`) is supported.
 #'
 #' @section Orientation modes:
 #' The `mode` argument determines how landmarks are interpreted and how the
@@ -68,10 +63,8 @@
 #'
 #' - `"TIBIA"` uses three landmarks: two plateau landmarks and one tibio-talar
 #'   landmark. The plateau pair defines an anatomically undirected transverse
-#'   axis. No supplied tibial landmark resolves anterior/posterior sign; in
-#'   volume-input workflows the final sign therefore follows the acquisition and
-#'   coordinate convention. Their midpoint defines the proximal endpoint of
-#'   biomechanical length.
+#'   axis. Their midpoint defines the proximal endpoint of biomechanical
+#'   length.
 #' - `"HUMERUS"` uses four landmarks. LM1 (`MedialTrocleaAnt`) and LM2
 #'   (`CapitulumAnt`) are expected to lie anterior to LM3
 #'   (`LateralTrocleaDist`). After constructing the orthogonal ML/AP pair,
@@ -80,17 +73,12 @@
 #'   LM3 and proximal LM4 define biomechanical length.
 #' - `"FEMUR"` uses three landmarks: two distal condylar articular-centre
 #'   landmarks and one proximal landmark on the superior femoral neck. The
-#'   condylar pair defines an anatomically undirected transverse axis. No supplied
-#'   femoral landmark resolves anterior/posterior sign; in volume-input workflows
-#'   the final sign therefore follows the acquisition and coordinate convention.
-#'   The midpoint between the condylar landmarks defines the distal endpoint of
-#'   biomechanical length.
+#'   condylar pair defines an anatomically undirected transverse axis. Their
+#'   midpoint defines the distal endpoint of biomechanical length.
 #' - `"RADIUS"` uses four landmarks: the radial styloid tip, the ulnar-notch
 #'   midpoint, the distal radiocarpal articular centre, and the proximal radial
 #'   head articular centre. The styloid/notch pair defines an anatomically
-#'   undirected transverse axis. No supplied radial landmark resolves
-#'   anterior/posterior sign; in volume-input workflows the final sign therefore
-#'   follows the acquisition and coordinate convention.
+#'   undirected transverse axis.
 #' - `"ULNA"` uses four landmarks. `TrochlearWaistLat` (LM1) is the lateral
 #'   point of the narrowest waist of the trochlear notch, placed on the trochlear
 #'   articular edge. `TrochlearWaistMed` (LM2) is the corresponding medial point;
@@ -107,8 +95,9 @@
 #'   axis from distal LM4 to proximal LM3.
 #' - `"HUMERUS_TABLE"` uses two landmarks defining humeral biomechanical length.
 #'   The mediolateral direction is derived from the scanner X axis. This mode is
-#'   intended for humeri scanned in a standardized table position and is only
-#'   available for Avizo/Amira TCL output.
+#'   intended for humeri scanned in a standardized table position. Full
+#'   anatomical orientation is available only in Avizo/Amira; Slicer supports
+#'   section-only output with `USE_ANAT_ORIENT = FALSE`.
 #'
 #' @section Longitudinal axis:
 #' When `INPUT = "VOLUME"`, the function expects the BoneJ longitudinal direction
@@ -523,14 +512,9 @@ orient_longbone <- function(mode,
     )
   }
 
-  # Define an orthogonal transverse ML/AP-oriented pair. The P1/P2 transverse
-  # reference is projected onto the plane perpendicular to L. HUMERUS and ULNA
-  # contain additional landmark geometry that resolves the anatomical AP sign.
-  # TIBIA, FEMUR, and RADIUS do not; their AP sign is therefore dependent on the
-  # acquisition/coordinate convention rather than being landmark-resolved.
-  # HUMERUS_TABLE derives the transverse direction from scanner X. In section-only
-  # mode no anatomical transverse axes are computed; generic screen-reference
-  # vectors are created only to orient the camera orthogonally to the section.
+  # Orthogonalize ML/AP against L. HUMERUS and ULNA resolve AP from landmarks;
+  # TIBIA, FEMUR, and RADIUS retain an acquisition-dependent sign.
+  # HUMERUS_TABLE uses scanner X; section-only mode uses generic screen axes.
   if (!isTRUE(USE_ANAT_ORIENT)) {
     fallback_axes <- longbone_section_only_screen_axes(Lh)
     MLh <- fallback_axes$X_screen
@@ -617,9 +601,7 @@ orient_longbone <- function(mode,
 
   projected <- list()
 
-  # Compute biomechanical length and the origin of each requested section. The
-  # distance is always measured parallel to the longitudinal axis, following the
-  # logic of the original long-bone protocol.
+  # Section positions are measured along the longitudinal axis.
   if (!isTRUE(USE_ANAT_ORIENT)) {
     Bio_length <- NA_real_
     point_at_pct <- function(pct) P1

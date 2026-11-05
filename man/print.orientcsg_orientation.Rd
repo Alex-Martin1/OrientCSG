@@ -16,8 +16,5 @@
 Invisibly returns \code{x}.
 }
 \description{
-The print method provides a compact summary of an orientation result without
-displaying the full tables or TCL command blocks. It reports the protocol
-type, the specimen identifier, and the names of the available Avizo TCL
-blocks.
+Print the protocol, specimen identifier, and available command blocks.
 }

@@ -18,14 +18,9 @@ in the format \code{"SECTION_50"}; for mandibular results use \code{"CS1"},
 A character scalar containing one or more 3D Slicer Python blocks.
 }
 \description{
-\code{get_slicer_py()} extracts one or more generated Python command blocks from a
-result created with \code{orient_longbone(..., SLICER = TRUE)} or
-\code{orient_mandible(..., SLICER = TRUE)}. The returned block is intended to be
-pasted into the 3D Slicer Python Interactor. Generated Slicer blocks define
-\code{restore_view()} as the main helper for restoring the OrientCSG view. volume-input
-long-bone blocks and mandibular blocks also define \code{refresh_orientcsg_scale()};
-volume-input long-bone blocks additionally define \code{restore_3d_camera()} for
-camera-only restoration.
+Return generated 3D Slicer Python code for one section or all sections when
+\code{section = NULL}. Paste the code into the Slicer Python Interactor;
+generated sections provide \code{restore_view()} to restore the prepared view.
 }
 \examples{
 \dontrun{

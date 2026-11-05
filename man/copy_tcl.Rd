@@ -19,10 +19,7 @@ successfully. If no supported clipboard mechanism is available, the function
 issues a warning and invisibly returns \code{FALSE}.
 }
 \description{
-\code{copy_tcl()} copies one or more Avizo TCL command blocks from an orientation
-result to the system clipboard. This is the most direct way to transfer the
-generated commands from R to the Avizo/Amira console during an interactive
-image-capture session.
+Copy generated Avizo/Amira TCL commands to the clipboard.
 }
 \examples{
 \dontrun{

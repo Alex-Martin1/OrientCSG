@@ -297,9 +297,9 @@ This mode is available for the Avizo/Amira workflow and is intentionally not sup
 
 ### Whole-bone reorientation with `Reorient()`
 
-`Reorient()` generates software code that places a completed long-bone result in a standardized Cartesian frame.
+`Reorient()` generates anatomical reorientation code for long bones and mandibles (CT in Slicer/Avizo/Amira; mandibular meshes in Slicer only).
 
-Z is always longitudinal from distal to proximal and the distal biomechanical endpoint becomes the origin. For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the acquisition- or coordinate-dependent AP-oriented axis and should not be interpreted as independently landmark-resolved anatomical anterior.
+For long bones, Z is always longitudinal from distal to proximal and the distal biomechanical endpoint becomes the origin. For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the acquisition- or coordinate-dependent AP-oriented axis and should not be interpreted as independently landmark-resolved anatomical anterior.
 
 In 3D Slicer mesh-input workflows, `Reorient()` creates a new `_Anatomical` model with transformed vertex coordinates while leaving the source model unchanged.
 

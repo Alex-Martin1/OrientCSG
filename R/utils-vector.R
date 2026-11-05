@@ -1,8 +1,6 @@
 #' Normalize a numeric vector
 #'
-#' Low-level vector utility used internally by OrientCSG and exported for
-#' convenience. `nrm()` returns the unit vector pointing in the same direction
-#' as the input vector.
+#' Return the unit vector in the input direction.
 #'
 #' @param v Numeric vector.
 #'
@@ -10,7 +8,6 @@
 #'
 #' @examples
 #' nrm(c(2, 0, 0))
-#' nrm(c(1, 1, 0))
 #'
 #' @export
 nrm <- function(v) {
@@ -22,9 +19,7 @@ nrm <- function(v) {
 
 #' Dot product for numeric vectors
 #'
-#' Low-level vector utility used internally by OrientCSG and exported for
-#' convenience. `dot3()` computes the dot product between two numeric vectors.
-#' In the orientation workflows, it is mainly used with 3D vectors.
+#' Compute the dot product of two numeric vectors.
 #'
 #' @param a,b Numeric vectors of the same length.
 #'
@@ -32,7 +27,6 @@ nrm <- function(v) {
 #'
 #' @examples
 #' dot3(c(1, 2, 3), c(4, 5, 6))
-#' dot3(c(1, 0, 0), c(0, 1, 0))
 #'
 #' @export
 dot3 <- function(a, b) sum(a * b)
@@ -40,8 +34,7 @@ dot3 <- function(a, b) sum(a * b)
 
 #' Cross product for 3D vectors
 #'
-#' Low-level 3D vector utility used internally by OrientCSG and exported for
-#' convenience. `cross3()` computes the cross product between two 3D vectors.
+#' Compute the cross product of two 3D vectors.
 #'
 #' @param a,b Numeric vectors of length 3.
 #'
@@ -49,7 +42,6 @@ dot3 <- function(a, b) sum(a * b)
 #'
 #' @examples
 #' cross3(c(1, 0, 0), c(0, 1, 0))
-#' cross3(c(0, 1, 0), c(1, 0, 0))
 #'
 #' @export
 cross3 <- function(a, b) {
@@ -63,16 +55,11 @@ cross3 <- function(a, b) {
 
 #' Compute the Euclidean distance between two 3D points
 #'
-#' Low-level 3D utility used internally by OrientCSG and exported for
-#' convenience. `dist3()` computes the Euclidean distance between two points in
-#' three-dimensional space. The returned value is expressed in the same linear
-#' unit as the input coordinates. For example, if the coordinates are given in
-#' millimetres, the returned distance is also in millimetres.
+#' Compute Euclidean distance in the units of the input coordinates.
 #'
-#' @param point_a Numeric vector of length 3 with the coordinates of the first point.
-#' @param point_b Numeric vector of length 3 with the coordinates of the second point.
+#' @param point_a,point_b Numeric vectors of length 3.
 #'
-#' @return A single numeric value giving the Euclidean distance between `point_a` and `point_b`.
+#' @return Euclidean distance between the two points.
 #'
 #' @examples
 #' dist3(c(1, 2, 3), c(5, 5, 3))

@@ -1,12 +1,5 @@
-# Internal 3D Slicer Python generator ----------------------------------------
-#
-# Shared long-bone screen convention for both Slicer backends.
-#
-# The volume-input and mesh-input generators use the same screen basis. L is
-# always distal-to-proximal and the generated view is from the proximal side.
-# HUMERUS and ULNA carry a landmark-resolved anatomical AP sign. In TIBIA,
-# FEMUR, and RADIUS, the AP-oriented sign is acquisition/coordinate-dependent;
-# these values control display only and do not independently infer anatomy.
+# Shared CT/mesh view: look proximal-to-distal along L.
+# HUMERUS/ULNA resolve AP anatomically; other modes follow acquisition axes.
 slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
   if (!isTRUE(use_anat_orient)) {
     return(list(anterior_up_sign = 1, ml_right_sign = 1))
@@ -26,10 +19,7 @@ slicer_longbone_screen_signs <- function(type, use_anat_orient = TRUE) {
   )
 }
 
-# Convert a long-bone orientation result into one Python block per requested
-# section. The generated block is intended to be pasted into the 3D Slicer
-# Python Interactor with the corresponding scalar volume or mesh model already
-# loaded.
+# Generate Slicer section code for an existing model.
 emit_slicer_section_python <- function(res, section = NULL) {
   if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
     stop("3D Slicer output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, `mode = \"RADIUS\"`, or `mode = \"ULNA\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
@@ -459,11 +449,7 @@ emit_slicer_section_python <- function(res, section = NULL) {
 }
 
 
-# Internal 3D Slicer Python generator for CT-derived long-bone volumes --------
-#
-# Convert a long-bone orientation result into one Python block per requested
-# section. This route is used when `SLICER = TRUE` and `INPUT = "VOLUME"`. It orients
-# a Slicer slice view on a scalar volume node, rather than cutting a model node.
+# Generate Slicer section code for a CT scalar volume.
 emit_slicer_longbone_volume_python <- function(res, section = NULL) {
   if (isTRUE(res$USE_ANAT_ORIENT) && !res$type %in% c("TIBIA", "HUMERUS", "FEMUR", "RADIUS", "ULNA")) {
     stop("3D Slicer volume output is currently implemented only for `mode = \"TIBIA\"`, `mode = \"HUMERUS\"`, `mode = \"FEMUR\"`, `mode = \"RADIUS\"`, or `mode = \"ULNA\"` when `USE_ANAT_ORIENT = TRUE`.", call. = FALSE)
@@ -1052,12 +1038,7 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
   paste(code, collapse = "\n")
 }
 
-# Internal 3D Slicer Python generator for mandibles --------------------------
-#
-# Convert a mandibular orientation result into one Python block per planned
-# section. The generated code orients a Slicer slice view to the same section
-# plane used by the Avizo/Amira backend. Internally OrientCSG stores all points
-# and vectors in LPS/external coordinates; the Python block receives RAS values.
+# Mandibular sections: same geometry as Avizo; convert internal LPS to RAS.
 emit_slicer_mandible_python <- function(res, section = NULL) {
   available_sections <- c("CS1", "CS2", "CS3")
 

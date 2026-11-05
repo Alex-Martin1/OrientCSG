@@ -1,12 +1,5 @@
-# Internal mesh inertia helper -----------------------------------------------
-#
-# Estimate solid mass properties from a triangular surface mesh by decomposing
-# its oriented faces into signed tetrahedra with the origin. Strict topological
-# watertightness is not required for the calculation, but the mesh should
-# represent the bone sufficiently completely: large or strongly asymmetric
-# geometric openings or missing regions can bias the estimated mass properties
-# and longitudinal axis. The eigenvector associated with the smallest
-# rotational inertia is used as the longitudinal axis for elongated bones.
+# Signed-tetrahedron mass properties; the minimum-inertia eigenvector is the
+# longitudinal axis. Large/asymmetric mesh gaps can bias this estimate.
 compute_mesh_inertia_axes <- function(mesh_file,
                                       clean = FALSE,
                                       stabilize_first_axis_negative_z = TRUE,
@@ -31,8 +24,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
     stop("`chunk_size` must be a positive integer.", call. = FALSE)
   }
 
-  # Vertex normals are not used for the solid mass-property calculation, so
-  # avoid the potentially expensive normal recomputation during import.
+  # Normals are unnecessary for mass properties.
   mesh <- Rvcg::vcgImport(
     mesh_file,
     updateNormals = FALSE,
@@ -54,10 +46,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
   first_moment <- c(0, 0, 0)
   second_moment <- matrix(0, nrow = 3, ncol = 3)
 
-  # The original implementation accumulated the same signed-tetrahedron
-  # expressions one face at a time in R. Process faces in vectorized chunks
-  # instead. This preserves the same solid integral while avoiding millions of
-  # interpreted R-loop iterations and large full-mesh transpose copies.
+  # Vectorize over face chunks to limit memory use.
   starts <- seq.int(1L, n_faces, by = chunk_size)
 
   for (start in starts) {
@@ -84,9 +73,7 @@ compute_mesh_inertia_axes <- function(mesh_file,
     mass <- mass + sum(V)
     first_moment <- first_moment + colSums(S * V) / 4
 
-    # Sum V * [aa' + bb' + cc' + SS'] / 20 without constructing
-    # one 3 x 3 matrix per triangle. crossprod() performs the heavy work in
-    # compiled code.
+    # Second moments: sum V * [aa' + bb' + cc' + SS'] / 20.
     second_moment <- second_moment + (
       crossprod(a, a * V) +
         crossprod(b, b * V) +

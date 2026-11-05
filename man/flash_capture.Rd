@@ -79,8 +79,7 @@ single-channel luminance image before TIFF writing and uses lossless Deflate
 compression. Avizo/Amira scripted snapshots do not expose a reliable
 grayscale switch, so requesting grayscale there produces a warning and falls
 back to the native RGB snapshot. Avizo/Amira Flash Capture always uses viewer
-0. Slicer reference-section detection uses a fixed 2 mm tolerance; these
-implementation constants are intentionally not public arguments.
+0.
 }
 \examples{
 \dontrun{

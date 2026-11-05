@@ -152,7 +152,6 @@
 #'     and `refresh_orientcsg_scale()`.
 #'
 #' @examples
-#' \dontrun{
 #' landmarks_str <- "
 #' -30.80 -7.69 -143.70
 #'  -1.58  7.37 -105.56
@@ -170,14 +169,16 @@
 #' res <- orient_mandible(
 #'   landmarks_str = landmarks_str,
 #'   individual_id = "MANDIBLE_001",
-#'   camera_distance = 1,
 #'   lm1_side = "RIGHT"
 #' )
-#'
-#' res$summary
+#' head(res$summary)
 #' res$measurements
-#' cat(get_tcl(res, section = "CS1"))
 #'
+#' # Generate command text without running Avizo/Amira:
+#' tcl_cs1 <- get_tcl(res, section = "CS1")
+#' nchar(tcl_cs1)
+#'
+#' # The same landmarks can generate 3D Slicer Python code:
 #' res_slicer <- orient_mandible(
 #'   landmarks_str = landmarks_str,
 #'   individual_id = "MANDIBLE_001",
@@ -185,9 +186,8 @@
 #'   SLICER = TRUE,
 #'   volume_name = "MANDIBLE_VOLUME"
 #' )
-#'
-#' cat(get_slicer_py(res_slicer, section = "CS1"))
-#' }
+#' py_cs1 <- get_slicer_py(res_slicer, section = "CS1")
+#' nchar(py_cs1)
 #'
 #' @export
 #'
@@ -247,12 +247,8 @@ orient_mandible <- function(landmarks_str = NULL,
     stop("LM1 and LM1_Line coincide; Vec_1_1Line cannot be defined.", call. = FALSE)
   }
 
-  # Build anatomical side vectors that do not depend on whether LM1 was placed
-  # on the right or left mandibular side. Vec_RightToLeft always points from the
-  # anatomical right side toward the anatomical left side. Vec_LandmarkedSide
-  # points toward the side where LM1 was actually placed and is retained for the
-  # CS3 viewing-side convention. CS1 and CS2 instead use the LM0 -> LM2 anterior
-  # reference to select the viewing side.
+  # Right/left axes are side-independent; CS3 uses the landmarked-side view.
+  # CS1/CS2 use the LM0 -> LM2 anterior reference instead.
   Vec_RightToLeft <- if (identical(lm1_side, "RIGHT")) {
     nrm(Vec_1_1Line)
   } else {
@@ -261,8 +257,7 @@ orient_mandible <- function(landmarks_str = NULL,
   Vec_LeftToRight <- -Vec_RightToLeft
   Vec_LandmarkedSide <- if (identical(lm1_side, "RIGHT")) Vec_LeftToRight else Vec_RightToLeft
 
-  # LM0 is the orthogonal projection of LM2 onto the LM1--LM1_Line axis. It is
-  # used to define Vec_0_2, an anterior reference direction within the ARP.
+  # LM0 projects LM2 onto the transverse axis; LM0 -> LM2 defines anterior.
   LM0 <- project_point_to_line(LM2, LM1, LM1_Line)
   Vec_0_2 <- LM2 - LM0
   if (sqrt(sum(Vec_0_2^2)) < 1e-12) {
@@ -272,11 +267,7 @@ orient_mandible <- function(landmarks_str = NULL,
     )
   }
 
-  # Vec_Penp is the normal to the ARP. The name follows the original protocol,
-  # where the vector was used to enforce perpendicularity of CS1 and CS2. Its
-  # sign is oriented anatomically from inferior toward superior so that the
-  # screen-vertical direction is consistent in both Avizo/Amira and Slicer
-  # outputs.
+  # ARP normal Vec_Penp is signed anatomically, inferior to superior.
   Vec_Penp <- nrm(cross3(Vec_0_2, Vec_1_1Line))
   si_reference <- select_mandible_si_reference(
     Vec_Penp = Vec_Penp,
@@ -291,8 +282,7 @@ orient_mandible <- function(landmarks_str = NULL,
     Vec_Penp <- -Vec_Penp
   }
 
-  # The ARP is emitted to Amira/Avizo as origin + normal. The origin is the
-  # centroid of the three points that conceptually define the ARP.
+  # Avizo ARP origin is the centroid of its three defining points.
   ARP_Origin <- (LM1 + LM2 + LM1_Line) / 3
 
   if (complete_arch) {
@@ -399,8 +389,6 @@ orient_mandible <- function(landmarks_str = NULL,
   )
 
   if (!isTRUE(SLICER)) {
-    # This table mirrors the logic of the protocol and is meant for checking or
-    # reproducing the orientation manually in Avizo if needed.
     manual_orientation <- rbind(
       data.frame(section = "ARP", role = "Origin", object = "ARP", value = "ARP_Origin", x = ARP_Origin[1], y = ARP_Origin[2], z = ARP_Origin[3]),
       data.frame(section = "ARP", role = "Normal", object = "ARP", value = "Vec_Penp", x = Vec_Penp[1], y = Vec_Penp[2], z = Vec_Penp[3]),

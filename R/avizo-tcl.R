@@ -1,9 +1,4 @@
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Write a three-component vector into an Avizo port that expects one component
-# per `setValue` call. This format is retained for compatibility with older
-# point-and-two-vector commands, but generated orientation blocks now prefer
-# normal-and-point plane definitions for better Amira/Avizo compatibility.
+# Legacy per-component vector setter for Avizo ports.
 emit_setValue_vec3 <- function(obj, port, v, digits = 6) {
   c(
     sprintf('"%s" %s setValue 0 %s', obj, port, fmt_num(v[1], digits)),
@@ -12,12 +7,7 @@ emit_setValue_vec3 <- function(obj, port, v, digits = 6) {
   )
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Hide auxiliary control points that may be displayed by Slice or Clipping Plane
-# objects after they are redefined through the command line. These commands are
-# wrapped in `catch` when emitted because not every Avizo/Amira version exposes
-# exactly the same point ports for every object.
+# Hide optional plane handles; port availability differs across Avizo versions.
 emit_hide_plane_points <- function(obj) {
   c(
     sprintf('catch {"%s" origin showPoints 0}', obj),
@@ -28,21 +18,12 @@ emit_hide_plane_points <- function(obj) {
   )
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Compute a plane from three protocol points, but emit it to Avizo as
-# origin + normal. This is more reliable for clipping-plane objects than
-# sending planePoint1/2/3 directly.
-#
-# In the mandibular workflow this is used for the ARP object:
-# LM1, LM2, and LM1_Line. LM1_Line may be estimated or directly landmarked
-# depending on the preservation mode.
+# Emit the ARP from three points as origin + normal (Avizo compatibility).
 emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE, digits = 6) {
   V1 <- P2 - P1
   V2 <- P3 - P1
   N <- nrm(cross3(V1, V2))
   
-  # Centroid used only to place the visible plane handle near the landmarks.
   P0 <- (P1 + P2 + P3) / 3
   
   out <- c(
@@ -66,12 +47,7 @@ emit_plane_3points <- function(obj, P1, P2, P3, color = NULL, hide_points = TRUE
   c(out, sprintf('"%s" fire', obj))
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Emit commands for a plane defined by one point and two vectors. This helper is
-# retained for compatibility and debugging, but current mandibular and long-bone
-# TCL blocks use normal-and-point plane definitions for better Amira/Avizo
-# compatibility.
+# Retained for legacy point-and-two-vector plane definitions.
 emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points = TRUE, digits = 6) {
   P2 <- P + V1
   P3 <- P + V2
@@ -100,10 +76,6 @@ emit_point_2vectors_plane <- function(obj, P, V1, V2, color = NULL, hide_points 
   c(out, sprintf('"%s" fire', obj))
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Emit commands for a plane defined by a point and a normal vector. This is used
-# for Slice and Clipping Plane objects in the generated TCL blocks.
 emit_normal_point_plane <- function(obj, P, N, color = NULL, hide_points = TRUE, digits = 6) {
   out <- c(
     sprintf('"%s" planeDefinition setValue 0', obj),
@@ -126,18 +98,11 @@ emit_normal_point_plane <- function(obj, P, N, color = NULL, hide_points = TRUE,
   c(out, sprintf('"%s" fire', obj))
 }
 
-# Backward-compatible internal alias.
 emit_slice_normal_point <- function(obj, P, N, digits = 6) {
   emit_normal_point_plane(obj, P, N, digits = digits)
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Emit commands that place the Avizo/Amira camera according to a geometric basis
-# computed in R. The section is shown parallel to the screen, while `X_axis` and
-# `Y_preferred` control the screen-horizontal and screen-vertical anatomical
-# orientation. The camera is set to orthographic view by default because that is
-# the appropriate projection for systematic image capture.
+# Camera basis: section parallel to screen; default orthographic projection.
 emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
                                    camera_distance = 1, viewer_id = 0,
                                    orthographic = TRUE, orientation_only = FALSE,
@@ -244,13 +209,7 @@ emit_camera_from_basis <- function(P, Z_axis, X_axis, Y_preferred = NULL,
   )
 }
 
-# Internal Avizo TCL helper --------------------------------------------------
-#
-# Emit optional commands for an object named OrthogonalView. When this object is
-# present in the Avizo project, it is used as a visual check plane perpendicular
-# to the screen. The caller supplies the plane normal, usually the section
-# direction shown horizontally on screen. The commands are wrapped in `catch`,
-# so the generated TCL block still works when OrthogonalView has not been created.
+# Set optional OrthogonalView axes if present.
 emit_optional_orthogonal_view <- function(P, N, label, digits = 6) {
   c(
     sprintf('# Optional visual check plane for %s; ignored if object "OrthogonalView" does not exist.', label),

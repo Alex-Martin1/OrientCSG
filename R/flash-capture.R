@@ -1,10 +1,4 @@
-# Batch long-bone section capture --------------------------------------------
-#
-# Internal generators live in this file because Flash Capture is deliberately
-# separated from the orientation backends. orient_longbone() establishes the
-# geometry; flash_capture() either initializes the Avizo/Amira view from that
-# geometry or reuses a prepared 3D Slicer reference view to export multiple
-# requested sections.
+# Batch section capture: Avizo initializes from res; Slicer reuses the view.
 
 #' Batch-capture long-bone cross-sections
 #'
@@ -37,8 +31,7 @@
 #' compression. Avizo/Amira scripted snapshots do not expose a reliable
 #' grayscale switch, so requesting grayscale there produces a warning and falls
 #' back to the native RGB snapshot. Avizo/Amira Flash Capture always uses viewer
-#' 0. Slicer reference-section detection uses a fixed 2 mm tolerance; these
-#' implementation constants are intentionally not public arguments.
+#' 0.
 #'
 #' @param res An `orientcsg_longbone` result returned by [orient_longbone()].
 #' @param output_dir Directory in which the external application should save the
@@ -233,7 +226,6 @@ flash_capture <- function(
     )
   }
 
-  # Fixed implementation detail: Flash Capture uses the main viewer.
   viewer_id <- 0L
 
   extension <- sub("^\\.", "", extension)
@@ -502,7 +494,6 @@ flash_capture <- function(
     )
   }
 
-  # Use forward slashes for the Python/Slicer path
   output_dir <- chartr("\\", "/", output_dir)
 
 

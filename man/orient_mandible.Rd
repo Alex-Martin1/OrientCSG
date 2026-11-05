@@ -183,13 +183,12 @@ With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These
 blocks orient the Red slice view to the requested mandibular section, emit RAS
 coordinates in the Python interactor, activate volume rendering with the
 \code{CT-AAA2} preset when available, create the ARP and \code{LM1_Line} verification
-objects, add a 10 mm scale bar, and configure a 3D verification view. The
+objects, add a 10 mm scale bar with visibility disabled by default, and configure a 3D verification view. The
 generated block also defines \code{restore_view()} and
 \code{refresh_orientcsg_scale()} helper commands.
 }
 
 \examples{
-\dontrun{
 landmarks_str <- "
 -30.80 -7.69 -143.70
  -1.58  7.37 -105.56
@@ -207,14 +206,16 @@ landmarks_str <- "
 res <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
-  camera_distance = 1,
   lm1_side = "RIGHT"
 )
-
-res$summary
+head(res$summary)
 res$measurements
-cat(get_tcl(res, section = "CS1"))
 
+# Generate command text without running Avizo/Amira:
+tcl_cs1 <- get_tcl(res, section = "CS1")
+nchar(tcl_cs1)
+
+# The same landmarks can generate 3D Slicer Python code:
 res_slicer <- orient_mandible(
   landmarks_str = landmarks_str,
   individual_id = "MANDIBLE_001",
@@ -222,8 +223,7 @@ res_slicer <- orient_mandible(
   SLICER = TRUE,
   volume_name = "MANDIBLE_VOLUME"
 )
-
-cat(get_slicer_py(res_slicer, section = "CS1"))
-}
+py_cs1 <- get_slicer_py(res_slicer, section = "CS1")
+nchar(py_cs1)
 
 }

@@ -1,20 +1,9 @@
-# Internal parsing helper ----------------------------------------------------
-#
-# Extract numeric values from a free-form text block. This allows the package to
-# accept coordinates copied directly from Avizo/Amira, BoneJ logs, or plain text
-# files, even when values are separated by spaces, tabs, commas, semicolons, or
-# vertical bars.
 extract_nums <- function(txt) {
   clean <- gsub("[|,;]", " ", txt)
   scan(text = clean, quiet = TRUE)
 }
 
-# Internal parsing helper ----------------------------------------------------
-#
-# Extract numeric tokens from text that may also contain labels such as F-1.
-# This is used for coordinate tables copied from 3D Slicer Markups, where labels
-# and IDs are mixed with coordinate values. The parser reads the numeric text only;
-# the spatial coordinate system is declared separately with lm_coord_system.
+# Parse numeric tokens from Slicer Markups rows; coordinate system is separate.
 extract_numeric_tokens <- function(txt) {
   pattern <- "[-+]?(?:\\d*\\.\\d+|\\d+\\.?\\d*)(?:[eE][-+]?\\d+)?"
   matches <- gregexpr(pattern, txt, perl = TRUE)
@@ -22,9 +11,6 @@ extract_numeric_tokens <- function(txt) {
   as.numeric(out)
 }
 
-# Internal parsing helper ----------------------------------------------------
-#
-# Keep only non-empty, non-comment lines from a landmark text block.
 clean_landmark_lines <- function(txt) {
   lines <- unlist(strsplit(txt, "\n", fixed = TRUE))
   lines <- trimws(lines)
@@ -33,18 +19,12 @@ clean_landmark_lines <- function(txt) {
   lines
 }
 
-# Internal coordinate helper -------------------------------------------------
-#
-# Convert between RAS and LPS/external conventions by inverting X and Y. The
-# operation is its own inverse, so the same helper is used in both directions.
+# LPS <-> RAS: negate X and Y.
 flip_xy <- function(x) {
   x <- as.numeric(x)
   c(-x[1], -x[2], x[3])
 }
 
-# Internal coordinate helper -------------------------------------------------
-#
-# Apply flip_xy() row-wise to a coordinate matrix while preserving names.
 flip_xy_matrix <- function(mat) {
   out <- as.matrix(mat)
   out[, 1] <- -out[, 1]
@@ -54,9 +34,6 @@ flip_xy_matrix <- function(mat) {
   out
 }
 
-# Internal argument helper ---------------------------------------------------
-#
-# Validate the coordinate-system argument used to interpret landmark values.
 resolve_lm_coord_system <- function(lm_coord_system = "LPS") {
   lm_coord_system <- toupper(trimws(lm_coord_system))
   if (length(lm_coord_system) != 1L || is.na(lm_coord_system) || !lm_coord_system %in% c("LPS", "RAS")) {
@@ -66,9 +43,6 @@ resolve_lm_coord_system <- function(lm_coord_system = "LPS") {
   lm_coord_system
 }
 
-# Internal argument helper ---------------------------------------------------
-#
-# Validate the landmark text argument.
 resolve_landmarks_str <- function(landmarks_str = NULL) {
   if (is.null(landmarks_str) || length(landmarks_str) != 1L || !nzchar(trimws(landmarks_str))) {
     stop("`landmarks_str` is required.", call. = FALSE)
@@ -77,13 +51,8 @@ resolve_landmarks_str <- function(landmarks_str = NULL) {
   landmarks_str
 }
 
-# Internal coordinate helper -------------------------------------------------
-#
-# Convert input landmark coordinates to the package's internal LPS/external
-# convention. The textual input format is deliberately handled elsewhere: this
-# function only interprets the coordinate system of the numeric values that were
-# actually pasted into R. Coordinates copied/exported from 3D Slicer Markups may
-# paste as LPS even when the Slicer table displays R/A/S columns.
+# Normalize landmarks to LPS. Slicer Markups exports may be LPS even when
+# the interface displays RAS; honor lm_coord_system rather than guessing.
 normalize_lm_coordinates <- function(coords, lm_coord_system = "LPS", arg = "lm_coord_system") {
   lm_coord_system <- toupper(trimws(lm_coord_system))
 
@@ -105,15 +74,8 @@ normalize_lm_coordinates <- function(coords, lm_coord_system = "LPS", arg = "lm_
   out
 }
 
-# Internal parsing helper ----------------------------------------------------
-#
-# Convert a landmark coordinate string into an n x 3 numeric matrix. The parser
-# accepts two common textual formats without using that format to infer the
-# coordinate system:
-#   1. Plain XYZ coordinates, one landmark per line or as a numeric stream.
-#   2. Slicer-style rows, where columns 2:4 contain X, Y and Z coordinates.
-#
-# Input format affects parsing only; it must not alter landmark order or geometry.
+# Accept plain XYZ or Slicer Markups rows (XYZ in columns 2:4).
+# Neither format determines the coordinate system or landmark order.
 parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
   expected_n <- n_landmarks * 3
 
@@ -176,20 +138,8 @@ parse_landmarks <- function(landmarks_str, n_landmarks, context = "landmarks") {
   mat
 }
 
-# Internal parsing helper ----------------------------------------------------
-#
-# Read BoneJ Moments of Inertia eigenvectors. Four text forms are accepted:
-#   1. A direct three-component longitudinal vector (x, y, z).
-#   2. Current BoneJ Log output copied verbatim, e.g. three `[INFO] ||...||` rows.
-#   3. The legacy compact 3 x 3 eigenvector matrix.
-#   4. A full BoneJ Results-table row containing the unit-vector columns.
-#
-# For the Results-table row format, the final nine numeric fields are interpreted
-# as vector0{x, y, z}, vector1{x, y, z}, and vector2{x, y, z}. The orientation
-# workflow uses the direct vector or the first matrix/table vector as the
-# longitudinal direction, following the established long-bone protocol. Numeric
-# fields are parsed token by token rather than with a broad regex so that specimen
-# IDs such as AAM_T-181_tibia are not misread as measurements.
+# BoneJ input: 3-vector, Log/3x3 matrix, or Results row (final nine values).
+# Parse numeric fields rather than specimen IDs; axis 1 is longitudinal.
 parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   if (is.null(longitudinal_matrix_str) ||
       length(longitudinal_matrix_str) != 1L ||
@@ -230,12 +180,7 @@ parse_bonej_eigenvectors <- function(longitudinal_matrix_str) {
   )
 }
 
-# Internal DICOM helpers -----------------------------------------------------
-#
-# Parse DICOM Image Orientation (Patient) (0020,0037). The input may be a
-# numeric vector with six values or the complete line copied from the exact
-# DICOM stack used in BoneJ. When a complete line is supplied, the final six
-# numeric values are interpreted as the two in-plane direction-cosine triplets.
+# DICOM IOP (0020,0037): take the last six numeric fields when pasted.
 parse_dicom_iop <- function(dicom_iop) {
   if (is.numeric(dicom_iop)) {
     if (length(dicom_iop) != 6L || any(!is.finite(dicom_iop))) {
@@ -261,10 +206,7 @@ parse_dicom_iop <- function(dicom_iop) {
   as.numeric(nums)
 }
 
-# Parse DICOM Image Position (Patient) (0020,0032). The input may be a numeric
-# XYZ triplet or the complete DICOM line. For volume-input workflows, the two
-# IPP entries contained in `dicom_orientation` must describe consecutive slices
-# in the same order in which those slices occur in the ImageJ/BoneJ stack.
+# DICOM IPP (0020,0032); consecutive entries must follow BoneJ stack order.
 parse_dicom_ipp <- function(dicom_ipp, arg_name = "dicom_ipp") {
   if (is.numeric(dicom_ipp)) {
     if (length(dicom_ipp) != 3L || any(!is.finite(dicom_ipp))) {

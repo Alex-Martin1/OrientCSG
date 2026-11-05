@@ -7,19 +7,13 @@
 dist3(point_a, point_b)
 }
 \arguments{
-\item{point_a}{Numeric vector of length 3 with the coordinates of the first point.}
-
-\item{point_b}{Numeric vector of length 3 with the coordinates of the second point.}
+\item{point_a, point_b}{Numeric vectors of length 3.}
 }
 \value{
-A single numeric value giving the Euclidean distance between \code{point_a} and \code{point_b}.
+Euclidean distance between the two points.
 }
 \description{
-Low-level 3D utility used internally by OrientCSG and exported for
-convenience. \code{dist3()} computes the Euclidean distance between two points in
-three-dimensional space. The returned value is expressed in the same linear
-unit as the input coordinates. For example, if the coordinates are given in
-millimetres, the returned distance is also in millimetres.
+Compute Euclidean distance in the units of the input coordinates.
 }
 \examples{
 dist3(c(1, 2, 3), c(5, 5, 3))

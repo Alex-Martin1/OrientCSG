@@ -13,12 +13,9 @@ dot3(a, b)
 A single numeric value giving the dot product of \code{a} and \code{b}.
 }
 \description{
-Low-level vector utility used internally by OrientCSG and exported for
-convenience. \code{dot3()} computes the dot product between two numeric vectors.
-In the orientation workflows, it is mainly used with 3D vectors.
+Compute the dot product of two numeric vectors.
 }
 \examples{
 dot3(c(1, 2, 3), c(4, 5, 6))
-dot3(c(1, 0, 0), c(0, 1, 0))
 
 }

@@ -19,9 +19,7 @@ are written.}
 Invisibly returns \code{file}.
 }
 \description{
-\code{write_tcl()} writes one or more generated Avizo TCL command blocks to disk.
-This is useful when command blocks need to be archived with the specimen
-record, shared with collaborators, or executed later in Avizo/Amira.
+Save generated Avizo/Amira TCL commands to a text file.
 }
 \examples{
 \dontrun{

@@ -181,11 +181,6 @@ segmentation may also encode endosteal geometry and therefore support a
 TRUE section. This workflow requires \code{SLICER = TRUE} and the suggested
 package Rvcg.
 }
-
-In short, \code{INPUT} controls longitudinal-axis estimation and the software
-representation of the generated section, not the CSG distinction between
-TRUE (periosteal + endosteal information retained) and SOLID (the periosteal
-envelope treated as filled).
 }
 
 \section{Mesh completeness}{
@@ -211,10 +206,10 @@ the default backend and is compatible with \code{mode = "TIBIA"},
 \item \code{SLICER = TRUE} returns 3D Slicer Python blocks. When \code{INPUT = "VOLUME"},
 these blocks orient a Slicer slice view on a scalar volume node. When
 \code{INPUT = "MESH"}, they cut and display the corresponding model node. This
-backend is implemented for \code{mode = "TIBIA"}, \code{mode = "HUMERUS"},
-\code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "ULNA"}. It is intentionally not
-implemented for \code{mode = "HUMERUS_TABLE"}, because
-surface scans do not preserve a reliable scanner/table orientation.
+backend supports full anatomical orientation for \code{mode = "TIBIA"},
+\code{mode = "HUMERUS"}, \code{mode = "FEMUR"}, \code{mode = "RADIUS"}, and \code{mode = "ULNA"}.
+For \code{mode = "HUMERUS_TABLE"}, only section-only Slicer output
+(\code{USE_ANAT_ORIENT = FALSE}) is supported.
 }
 }
 
@@ -225,10 +220,8 @@ mediolateral axis is constructed.
 \itemize{
 \item \code{"TIBIA"} uses three landmarks: two plateau landmarks and one tibio-talar
 landmark. The plateau pair defines an anatomically undirected transverse
-axis. No supplied tibial landmark resolves anterior/posterior sign; in
-volume-input workflows the final sign therefore follows the acquisition and
-coordinate convention. Their midpoint defines the proximal endpoint of
-biomechanical length.
+axis. Their midpoint defines the proximal endpoint of biomechanical
+length.
 \item \code{"HUMERUS"} uses four landmarks. LM1 (\code{MedialTrocleaAnt}) and LM2
 (\code{CapitulumAnt}) are expected to lie anterior to LM3
 (\code{LateralTrocleaDist}). After constructing the orthogonal ML/AP pair,
@@ -237,17 +230,12 @@ posterior-to-anterior anatomical reference to resolve the sign of AP.
 LM3 and proximal LM4 define biomechanical length.
 \item \code{"FEMUR"} uses three landmarks: two distal condylar articular-centre
 landmarks and one proximal landmark on the superior femoral neck. The
-condylar pair defines an anatomically undirected transverse axis. No supplied
-femoral landmark resolves anterior/posterior sign; in volume-input workflows
-the final sign therefore follows the acquisition and coordinate convention.
-The midpoint between the condylar landmarks defines the distal endpoint of
-biomechanical length.
+condylar pair defines an anatomically undirected transverse axis. Their
+midpoint defines the distal endpoint of biomechanical length.
 \item \code{"RADIUS"} uses four landmarks: the radial styloid tip, the ulnar-notch
 midpoint, the distal radiocarpal articular centre, and the proximal radial
 head articular centre. The styloid/notch pair defines an anatomically
-undirected transverse axis. No supplied radial landmark resolves
-anterior/posterior sign; in volume-input workflows the final sign therefore
-follows the acquisition and coordinate convention.
+undirected transverse axis.
 \item \code{"ULNA"} uses four landmarks. \code{TrochlearWaistLat} (LM1) is the lateral
 point of the narrowest waist of the trochlear notch, placed on the trochlear
 articular edge. \code{TrochlearWaistMed} (LM2) is the corresponding medial point;
@@ -264,8 +252,9 @@ LM1. Biomechanical length is the projected distance along the longitudinal
 axis from distal LM4 to proximal LM3.
 \item \code{"HUMERUS_TABLE"} uses two landmarks defining humeral biomechanical length.
 The mediolateral direction is derived from the scanner X axis. This mode is
-intended for humeri scanned in a standardized table position and is only
-available for Avizo/Amira TCL output.
+intended for humeri scanned in a standardized table position. Full
+anatomical orientation is available only in Avizo/Amira; Slicer supports
+section-only output with \code{USE_ANAT_ORIENT = FALSE}.
 }
 }
 
