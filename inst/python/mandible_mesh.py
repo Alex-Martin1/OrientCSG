@@ -17,6 +17,7 @@ Y_PREFERRED = __Y_PREFERRED__
 ARP_ORIGIN = __ARP_ORIGIN__
 ARP_NORMAL = __ARP_NORMAL__
 LM1_LINE = __LM1_LINE__
+ANTERIOR_REFERENCE = __ANTERIOR_REFERENCE__
 
 CREATE_FILLED_SECTION = True
 CREATE_SECTION_OUTLINE = False
@@ -276,7 +277,12 @@ def restore_view():
 def show_verification_view():
     # The ARP and the section plane are edge-on, as in CT verification.
     view_dir = nrm(np.cross(ARP_NORMAL, Z_AXIS))
-    set_camera(PSEC - CAMERA_POSITION_DISTANCE_MM * view_dir, PSEC, ARP_NORMAL)
+    camera_offset = -view_dir
+    # For CS3, the verification view must always be from anatomical anterior.
+    # Switching the LM1 side must not switch this auxiliary camera to posterior.
+    if SECTION_LABEL.upper() == 'CS3' and dot3(camera_offset, ANTERIOR_REFERENCE) < 0:
+        camera_offset = -camera_offset
+    set_camera(PSEC + CAMERA_POSITION_DISTANCE_MM * camera_offset, PSEC, ARP_NORMAL)
     if ARP_NODE is not None:
         ARP_NODE.GetDisplayNode().SetVisibility(True)
     if LM1_NODE is not None:

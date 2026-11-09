@@ -31,7 +31,7 @@ Depending on the workflow, OrientCSG can:
 
 OrientCSG does not directly control Amira/Avizo or 3D Slicer from R. It generates command blocks that the user can paste into the relevant software.
 
-OrientCSG does not segment CT data, choose CT thresholds, extract contours, or calculate cross-sectional geometry properties such as cortical area, total area, second moments of area, polar moment of area, or section modulus.
+OrientCSG does not segment CT data, choose CT thresholds, export section contours for quantitative analysis, or calculate cross-sectional geometry properties such as cortical area, total area, second moments of area, polar moment of area, or section modulus.
 
 For `INPUT = "VOLUME"`, the BoneJ-derived longitudinal axis necessarily reflects the external segmentation or binarization used to calculate it, while the section generated from the original volume can remain scalar/grayscale for later thresholding or segmentation. These decisions remain explicit and user-controlled.
 

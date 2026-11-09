@@ -415,6 +415,11 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs1, "SECTION_LABEL = \"CS1\"")
   expect_contains_fixed(py_cs1, "VOLUME_NAME = \"MANDIBLE_VOLUME\"")
   expect_contains_fixed(py_cs1, "VOLUME_RENDERING_PRESET = \"CT-AAA2\"")
+  for (py in list(py_cs1, py_cs2, py_cs3)) {
+    expect_contains_fixed(py, "SCALE_BAR_VISIBLE_BY_DEFAULT = False")
+    expect_contains_fixed(py, "d.SetVisibility(SCALE_BAR_VISIBLE_BY_DEFAULT)")
+    expect_contains_fixed(py, "ld.SetVisibility(SCALE_BAR_VISIBLE_BY_DEFAULT)")
+  }
   expect_contains_fixed(py_cs1, "sliceNode.GetSliceToRAS().DeepCopy(sliceToRAS)")
   expect_contains_fixed(py_cs1, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs1, "restore_view()")
@@ -424,6 +429,9 @@ test_that("orient_mandible() generates Slicer Python blocks", {
   expect_contains_fixed(py_cs2, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
   expect_contains_fixed(py_cs3, "SECTION_LABEL = \"CS3\"")
   expect_contains_fixed(py_cs3, "THREED_VERIFICATION_VIEW_SIDE = \"PLUS\"")
+  expect_contains_fixed(py_cs3, "ANTERIOR_REFERENCE = np.array(")
+  expect_contains_fixed(py_cs3, "if SECTION_LABEL.upper() == 'CS3' and dot3(camera_offset, ANTERIOR_REFERENCE) < 0:")
+  expect_contains_fixed(py_cs3, "camera_position = focal_point + CAMERA_POSITION_DISTANCE_MM * camera_offset")
   expect_false(grepl("translate_orientcsg_section", py_cs3, fixed = TRUE))
 })
 
@@ -458,6 +466,65 @@ test_that("mandibular INPUT defaults to volume and preserves CT output", {
   expect_contains_fixed(get_slicer_py(implicit, "CS1"), 'VOLUME_NAME = "MANDIBLE_VOLUME"')
 })
 
+
+test_that("CS3 Slicer CT/MESH retain the actual LM1-side viewing normal", {
+  # Specimen 39: LM1 originally on RIGHT; contralateral LM1_Line observed.
+  m <- rbind(
+    c(-30.971, -7.821, -143.634),
+    c(-1.545, 6.876, -105.136),
+    c(-1.340, -22.748, -93.509),
+    c(-1.463, -16.715, -108.678),
+    c(-29.240, -5.551, -133.500),
+    c(-21.910, -5.099, -134.800),
+    c(-25.570, -1.035, -122.100),
+    c(-19.800, -0.6242, -124.300),
+    c(-46.160, -34.960, -165.200),
+    c(-17.900, 2.789, -110.600),
+    c(-46.940, 12.350, -201.300)
+  )
+  lm1_right <- m[1L, ]
+  lm1_left <- c(29.99872017, -5.69044490, -145.22731020)
+
+  get_vector <- function(code, name) {
+    lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
+    line <- grep(paste0("^", name, " = np\\.array\\(\\["), lines, value = TRUE)
+    expect_length(line, 1L)
+    values <- sub("^.*\\[([^]]+)\\].*$", "\\1", line)
+    as.numeric(trimws(strsplit(values, ",", fixed = TRUE)[[1L]]))
+  }
+  flip <- function(x) unname(x * c(-1, -1, 1))
+
+  for (side in c("RIGHT", "LEFT")) {
+    landmarks <- m
+    if (side == "RIGHT") {
+      landmarks[4L, ] <- lm1_left
+    } else {
+      landmarks[1L, ] <- lm1_left
+      landmarks[4L, ] <- lm1_right
+    }
+    string <- paste(apply(landmarks, 1L, paste, collapse = " "), collapse = "\n")
+    common <- list(landmarks_str = string, complete_arch = TRUE,
+                   lm1_side = side, SLICER = TRUE)
+    ct <- do.call(orient_mandible, c(common, list(volume_name = "39")))
+    mesh <- do.call(orient_mandible, c(common, list(
+      INPUT = "MESH", model_name = "39"
+    )))
+    for (res in list(ct, mesh)) {
+      py <- get_slicer_py(res, section = "CS3")
+      z <- flip(get_vector(py, "NORMAL"))
+      x <- flip(get_vector(py, "X_SCREEN_REFERENCE"))
+      y <- flip(get_vector(py, "Y_PREFERRED"))
+      expect_gt(dot3(nrm(z), res$vectors$Vec_LandmarkedSide), 0.99999)
+      expect_gt(dot3(nrm(x), nrm(cross3(y, z))), 0.99999)
+      # Both the CT verification camera and the MESH verification helper
+      # must choose the anterior half-space for CS3, independently of LM1.
+      anterior <- flip(get_vector(py, "ANTERIOR_REFERENCE"))
+      expect_gt(dot3(nrm(anterior), res$vectors$Anterior_ref), 0.99999)
+      expect_contains_fixed(py, "if SECTION_LABEL.upper() == 'CS3' and dot3(camera_offset, ANTERIOR_REFERENCE) < 0:")
+    }
+  }
+})
+
 test_that("mandibular MESH sections have exactly the CT anatomical frame", {
   get_line <- function(code, name) {
     lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
@@ -488,7 +555,7 @@ test_that("mandibular MESH sections have exactly the CT anatomical frame", {
       py_ct <- get_slicer_py(ct, section)
       py_mesh <- get_slicer_py(mesh, section)
       for (name in c("PSEC", "NORMAL", "X_SCREEN_REFERENCE", "Y_PREFERRED",
-                     "ARP_ORIGIN", "ARP_NORMAL", "LM1_LINE")) {
+                     "ARP_ORIGIN", "ARP_NORMAL", "LM1_LINE", "ANTERIOR_REFERENCE")) {
         expect_identical(get_line(py_mesh, name), get_line(py_ct, name))
       }
       expect_contains_fixed(py_mesh, 'MODEL_NAME = "MANDIBLE_MESH"')

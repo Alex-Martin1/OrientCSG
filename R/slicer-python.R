@@ -567,7 +567,6 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
     "ENABLE_VOLUME_RENDERING = False",
     "CREATE_SCALE_BAR = True",
     "SCALE_BAR_VISIBLE_BY_DEFAULT = False",
-    "SCALE_BAR_VISIBLE_BY_DEFAULT = False",
     "SCALE_BAR_LENGTH_MM = 10.0",
     "SCALE_BAR_MARGIN_MM = 3.0",
     "LOCK_RED_SLICE_BROWSING = True",
@@ -1094,11 +1093,13 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
   } else {
     Psec <- LM2
     normal <- res$vectors$Vec_RightToLeft
-    x_ref <- res$vectors$Vec_0_2
 
     if (dot3(normal, Vec_LandmarkedSide) < 0) {
       normal <- -normal
     }
+    # Preserve the LM1-side viewing normal. X follows the selected normal and
+    # anatomical Y-up; otherwise Python could reverse Z to force anterior-right.
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
     three_d_side <- "PLUS"
   }
 
@@ -1144,6 +1145,7 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
     "VOLUME_RENDERING_PRESET = \"CT-AAA2\"",
     "",
     "CREATE_SCALE_BAR = True",
+    "SCALE_BAR_VISIBLE_BY_DEFAULT = False",
     "SCALE_BAR_LENGTH_MM = 10.0",
     "SCALE_BAR_MARGIN_MM = 3.0",
     "",
@@ -1166,6 +1168,7 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
     sprintf("ARP_ORIGIN = %s", fmt_py_vec(arp_origin_ras)),
     sprintf("ARP_NORMAL = %s", fmt_py_vec(arp_normal_ras)),
     sprintf("LM1_LINE = %s", fmt_py_vec(lm1_line_ras)),
+    sprintf("ANTERIOR_REFERENCE = %s", fmt_py_vec(flip_xy(Anterior_ref))),
     "",
     "def nrm(v):",
     "    v = np.asarray(v, dtype=float)",
@@ -1486,8 +1489,14 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
     "    elif THREED_VERIFICATION_VIEW_SIDE.upper() != \"PLUS\":",
     "        raise ValueError('THREED_VERIFICATION_VIEW_SIDE must be \"PLUS\" or \"MINUS\".')",
     "",
+    "    # The verification camera must view CS3 from the anatomical anterior,",
+    "    # regardless of which side of the mandible contains LM1.",
+    "    camera_offset = -view_dir",
+    "    if SECTION_LABEL.upper() == 'CS3' and dot3(camera_offset, ANTERIOR_REFERENCE) < 0:",
+    "        camera_offset = -camera_offset",
+    "",
     "    view_up = arp_normal",
-    "    camera_position = focal_point - CAMERA_POSITION_DISTANCE_MM * view_dir",
+    "    camera_position = focal_point + CAMERA_POSITION_DISTANCE_MM * camera_offset",
     "",
     "    camera.SetFocalPoint(float(focal_point[0]), float(focal_point[1]), float(focal_point[2]))",
     "    camera.SetPosition(float(camera_position[0]), float(camera_position[1]), float(camera_position[2]))",
@@ -1831,8 +1840,9 @@ emit_slicer_mandible_mesh_python <- function(res, section = NULL) {
   } else {
     psec <- lm2
     normal <- res$vectors$Vec_RightToLeft
-    x_ref <- res$vectors$Vec_0_2
     if (dot3(normal, res$vectors$Vec_LandmarkedSide) < 0) normal <- -normal
+    # Match the CT viewing basis and never flip the LM1-side normal in Python.
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
   }
 
   path <- system.file("python", "mandible_mesh.py", package = "OrientCSG")
@@ -1850,7 +1860,8 @@ emit_slicer_mandible_mesh_python <- function(res, section = NULL) {
     `__Y_PREFERRED__` = fmt_py_vec(flip_xy(res$vectors$Vec_Penp)),
     `__ARP_ORIGIN__` = fmt_py_vec(flip_xy(res$points$ARP_Origin)),
     `__ARP_NORMAL__` = fmt_py_vec(flip_xy(res$vectors$Vec_Penp)),
-    `__LM1_LINE__` = fmt_py_vec(flip_xy(res$points$LM1_Line))
+    `__LM1_LINE__` = fmt_py_vec(flip_xy(res$points$LM1_Line)),
+    `__ANTERIOR_REFERENCE__` = fmt_py_vec(flip_xy(anterior))
   )
   for (key in names(values)) {
     locations <- gregexpr(key, code, fixed = TRUE)[[1L]]

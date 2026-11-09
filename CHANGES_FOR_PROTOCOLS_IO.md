@@ -4,7 +4,7 @@ This file records changes to **OrientCSG** that may affect the instructions or i
 
 It focuses on changes relevant to following the published protocols, such as updated function arguments, required inputs, generated command blocks, outputs, or supported workflows. For the complete package change history, see [NEWS.md](NEWS.md).
 
-## Current status — October 2026
+## Current status — November 2026
 
 **No protocol-relevant changes to report.**
 
