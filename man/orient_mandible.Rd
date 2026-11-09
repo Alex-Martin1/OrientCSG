@@ -202,6 +202,7 @@ With \code{INPUT = "MESH"} and \code{SLICER = TRUE}, the generated code cuts a n
 surface model with VTK, displays the section in 3D (filled where contours
 permit triangulation), and uses the same section normals, anatomical
 superior direction, and viewing-side convention as the CT workflow.
+A separate outline model is shown only if the section cannot be filled.
 Surface-only meshes do not provide internal CT attenuation or segmentation.
 The original model geometry is preserved. Hidden 3D reference planes reproduce
 the Avizo/Amira \code{OrthogonalView} orientation and the current cross-sectional

@@ -494,6 +494,8 @@ test_that("mandibular MESH sections have exactly the CT anatomical frame", {
       expect_contains_fixed(py_mesh, 'MODEL_NAME = "MANDIBLE_MESH"')
       expect_contains_fixed(py_mesh, "vtkCutter")
       expect_contains_fixed(py_mesh, "vtkContourTriangulator")
+      expect_contains_fixed(py_mesh, "CREATE_SECTION_OUTLINE = False")
+      expect_contains_fixed(py_mesh, "if CREATE_SECTION_OUTLINE or sectionNode is None:")
       expect_contains_fixed(py_mesh, "GetTransformBetweenNodes")
       expect_contains_fixed(py_mesh, "make_camera_axes")
       expect_contains_fixed(py_mesh, "restore_view()")
