@@ -59,13 +59,25 @@
 #' visual check plane, but the TCL code is written so that it will still run if
 #' this object does not exist.
 #'
-#' With `SLICER = TRUE`, the function returns 3D Slicer Python blocks. These
-#' blocks orient the Red slice view to the requested mandibular section, emit RAS
+#' With `SLICER = TRUE` and the default `INPUT = "VOLUME"`, the function
+#' returns 3D Slicer Python blocks. These blocks orient the Red slice view
+#' to the requested mandibular section, emit RAS
 #' coordinates in the Python interactor, activate volume rendering with the
 #' `CT-AAA2` preset when available, create the ARP and `LM1_Line` verification
 #' objects, add a 10 mm scale bar with visibility disabled by default, and configure a 3D verification view. The
 #' generated block also defines `restore_view()` and
 #' `refresh_orientcsg_scale()` helper commands.
+#'
+#' With `INPUT = "MESH"` and `SLICER = TRUE`, the generated code cuts a named
+#' surface model with VTK, displays the section in 3D (filled where contours
+#' permit triangulation), and uses the same section normals, anatomical
+#' superior direction, and viewing-side convention as the CT workflow.
+#' Surface-only meshes do not provide internal CT attenuation or segmentation.
+#' The original model geometry is preserved. Hidden 3D reference planes reproduce
+#' the Avizo/Amira `OrthogonalView` orientation and the current cross-sectional
+#' plane; both can be enabled in Slicer's Data module. Mesh output does not
+#' create a metric scale or 3D ruler. Mandibular mesh workflows do not support
+#' [flash_capture()].
 #'
 #' @param landmarks_str Character string containing the coordinates of 9, 11, or
 #'   12 mandibular landmarks in the fixed protocol order. Plain XYZ coordinates
@@ -107,18 +119,24 @@
 #'   was pasted as plain XYZ coordinates or as a Slicer Markups-style table.
 #' @param SLICER Logical. If `FALSE` (default), generate Avizo/Amira TCL command
 #'   blocks. If `TRUE`, generate 3D Slicer Python command blocks.
-#'   In Slicer, the slice is visible in 3D and the reformat widget is hidden.
-#' @param volume_name Optional scalar volume node name used by the generated
-#'   Slicer Python block. If omitted, the block uses the active background volume
-#'   in the chosen slice view when possible, falling back to the only scalar
-#'   volume in the scene. If multiple scalar volumes are loaded, provide
-#'   `volume_name` explicitly.
+#'   In the CT route, the slice is visible in 3D with its reformat widget hidden.
+#' @param volume_name Optional scalar volume node name for the Slicer CT route.
+#'   When omitted, the generated code selects the active background volume or
+#'   the only scalar volume in the scene.
+#' @param INPUT Input representation: `"VOLUME"` (default) preserves the CT
+#'   workflow; `"MESH"` generates 3D Slicer surface-mesh sections. The mesh
+#'   route requires `SLICER = TRUE` and an explicit `model_name`. This argument
+#'   does not change landmark geometry or measurements.
+#' @param model_name Exact 3D Slicer model node name, required only when
+#'   `INPUT = "MESH"`. The model and landmarks must share world coordinates.
 #'
 #' @return An object of class `orientcsg_mandible` and
 #'   `orientcsg_orientation`. The object is a list with the following
 #'   components:
 #'
 #'   - `type`: Protocol type, here `"MANDIBLE"`.
+#'   - `INPUT`: `"VOLUME"` or `"MESH"` (default: `"VOLUME"`).
+#'   - `model_name`: Source Slicer model name for mesh input, otherwise `NULL`.
 #'   - `individual_id`: Specimen identifier.
 #'   - `landmarks`: Landmark coordinate matrix.
 #'   - `landmark_count`: Number of landmarks supplied.
@@ -146,10 +164,10 @@
 #'   - `avizo_tcl`: Named list with TCL blocks for `CS1`, `CS2`, and `CS3`,
 #'     when `SLICER = FALSE`.
 #'   - `slicer_py`: Named list with 3D Slicer Python blocks for `CS1`, `CS2`,
-#'     and `CS3`, when `SLICER = TRUE`. These blocks orient the Red slice view,
-#'     create the ARP, `LM1_Line`, and scale-bar verification objects, configure
-#'     volume rendering and a 3D verification view, and define `restore_view()`
-#'     and `refresh_orientcsg_scale()`.
+#'     and `CS3`, when `SLICER = TRUE`. CT blocks orient the Red slice view and
+#'     configure volume rendering; mesh blocks cut the source model and display
+#'     a filled 3D section with the same anatomical viewing axes. Both retain
+#'     ARP and `LM1_Line` verification objects and view-restoration helpers.
 #'
 #' @examples
 #' landmarks_str <- "
@@ -200,12 +218,33 @@ orient_mandible <- function(landmarks_str = NULL,
                             lm9_valid = TRUE,
                             lm_coord_system = "LPS",
                             SLICER = FALSE,
-                            volume_name = NULL) {
+                            volume_name = NULL,
+                            INPUT = "VOLUME",
+                            model_name = NULL) {
   lm1_side <- match.arg(toupper(lm1_side), c("RIGHT", "LEFT"))
   complete_arch <- assert_logical_scalar(complete_arch, "complete_arch")
   estimate_lm10 <- assert_logical_scalar(estimate_lm10, "estimate_lm10")
   lm9_valid <- assert_logical_scalar(lm9_valid, "lm9_valid")
   SLICER <- assert_logical_scalar(SLICER, "SLICER")
+  if (!is.character(INPUT) || length(INPUT) != 1L || is.na(INPUT)) {
+    stop('`INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+  INPUT <- toupper(trimws(INPUT))
+  if (!INPUT %in% c("VOLUME", "MESH")) {
+    stop('`INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+  if (identical(INPUT, "MESH")) {
+    if (!SLICER) {
+      stop('`INPUT = "MESH"` requires `SLICER = TRUE`.', call. = FALSE)
+    }
+    if (!is.character(model_name) || length(model_name) != 1L ||
+        is.na(model_name) || !nzchar(trimws(model_name))) {
+      stop('`model_name` is required when `INPUT = "MESH"`.', call. = FALSE)
+    }
+    model_name <- trimws(model_name)
+  } else {
+    model_name <- NULL
+  }
   if (!is.numeric(camera_distance) || length(camera_distance) != 1L ||
       is.na(camera_distance) || !is.finite(camera_distance) || camera_distance <= 0) {
     stop("`camera_distance` must be a single positive finite number.", call. = FALSE)
@@ -452,7 +491,9 @@ orient_mandible <- function(landmarks_str = NULL,
     internal_coord_system = "LPS",
     output_coord_system = summary_coord_system,
     SLICER = SLICER,
-    volume_name = volume_name
+    INPUT = INPUT,
+    model_name = model_name,
+    volume_name = if (identical(INPUT, "MESH")) NULL else volume_name
   )
   if (!isTRUE(SLICER)) {
     res$manual_orientation <- manual_orientation

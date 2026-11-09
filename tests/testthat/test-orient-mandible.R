@@ -440,3 +440,103 @@ test_that("orient_mandible() validates and applies camera_distance", {
     "camera_distance"
   )
 })
+
+
+test_that("mandibular INPUT defaults to volume and preserves CT output", {
+  implicit <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    SLICER = TRUE, volume_name = "MANDIBLE_VOLUME"
+  )
+  explicit <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    SLICER = TRUE, INPUT = "VOLUME", volume_name = "MANDIBLE_VOLUME"
+  )
+  expect_identical(implicit$INPUT, "VOLUME")
+  expect_null(implicit$model_name)
+  expect_identical(implicit$slicer_py, explicit$slicer_py)
+  expect_identical(implicit$measurements, explicit$measurements)
+  expect_contains_fixed(get_slicer_py(implicit, "CS1"), 'VOLUME_NAME = "MANDIBLE_VOLUME"')
+})
+
+test_that("mandibular MESH sections have exactly the CT anatomical frame", {
+  get_line <- function(code, name) {
+    lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
+    hits <- grep(paste0("^", name, " = "), lines, value = TRUE)
+    expect_length(hits, 1L)
+    hits
+  }
+  for (side in c("RIGHT", "LEFT")) {
+    landmarks <- mandible_landmarks_str
+    if (side == "LEFT") {
+      mirrored <- OrientCSG:::parse_mandible_landmarks(landmarks)
+      mirrored[, 1L] <- -mirrored[, 1L]
+      landmarks <- paste(apply(mirrored, 1, paste, collapse = " "), collapse = "\n")
+    }
+    args <- list(landmarks_str = landmarks, lm1_side = side, SLICER = TRUE)
+    ct <- do.call(orient_mandible, c(args, list(volume_name = "MANDIBLE_CT")))
+    mesh <- do.call(orient_mandible, c(args, list(
+      INPUT = "MESH", model_name = "MANDIBLE_MESH"
+    )))
+    expect_identical(mesh$INPUT, "MESH")
+    expect_identical(mesh$model_name, "MANDIBLE_MESH")
+    expect_null(mesh$volume_name)
+    expect_identical(mesh$measurements, ct$measurements)
+    expect_identical(mesh$landmarks, ct$landmarks)
+    expect_identical(names(mesh$slicer_py), c("CS1", "CS2", "CS3"))
+
+    for (section in c("CS1", "CS2", "CS3")) {
+      py_ct <- get_slicer_py(ct, section)
+      py_mesh <- get_slicer_py(mesh, section)
+      for (name in c("PSEC", "NORMAL", "X_SCREEN_REFERENCE", "Y_PREFERRED",
+                     "ARP_ORIGIN", "ARP_NORMAL", "LM1_LINE")) {
+        expect_identical(get_line(py_mesh, name), get_line(py_ct, name))
+      }
+      expect_contains_fixed(py_mesh, 'MODEL_NAME = "MANDIBLE_MESH"')
+      expect_contains_fixed(py_mesh, "vtkCutter")
+      expect_contains_fixed(py_mesh, "vtkContourTriangulator")
+      expect_contains_fixed(py_mesh, "GetTransformBetweenNodes")
+      expect_contains_fixed(py_mesh, "make_camera_axes")
+      expect_contains_fixed(py_mesh, "restore_view()")
+      expect_contains_fixed(py_mesh, "show_verification_view()")
+      expect_contains_fixed(py_mesh, "BASE_PARALLEL_SCALE_MM = 42.5")
+      expect_contains_fixed(py_mesh, "CREATE_ORTHOGONAL_VIEW = True")
+      expect_contains_fixed(py_mesh, "CREATE_SECTION_PLANE = True")
+      expect_contains_fixed(py_mesh, "REFERENCE_PLANE_VISIBLE_BY_DEFAULT = False")
+      expect_contains_fixed(py_mesh, "f'OrientCSG_OrthogonalView_{SECTION_LABEL}'")
+      expect_contains_fixed(py_mesh, "f'OrientCSG_SectionPlane_{SECTION_LABEL}'")
+      expect_contains_fixed(py_mesh, "PSEC, X_AXIS")
+      expect_contains_fixed(py_mesh, "PSEC, Z_AXIS")
+      expect_contains_fixed(py_mesh, "view_node.SetRulerType(0)")
+      expect_false(grepl("def add_scale_bar", py_mesh, fixed = TRUE))
+      expect_false(grepl("def refresh_orientcsg_scale", py_mesh, fixed = TRUE))
+      expect_false(grepl("CREATE_SCALE_BAR", py_mesh, fixed = TRUE))
+      expect_false(grepl("find_volume_node", py_mesh, fixed = TRUE))
+    }
+  }
+})
+
+test_that("mandibular MESH requires a named model and 3D Slicer", {
+  args <- list(landmarks_str = mandible_landmarks_str)
+  expect_error(do.call(orient_mandible, c(args, list(INPUT = "MESH"))),
+               'requires `SLICER = TRUE`', fixed = TRUE)
+  expect_error(do.call(orient_mandible, c(args, list(
+    INPUT = "MESH", SLICER = TRUE
+  ))), '`model_name` is required', fixed = TRUE)
+  for (bad in list(NULL, "", "   ", NA_character_, c("A", "B"), 10)) {
+    expect_error(do.call(orient_mandible, c(args, list(
+      INPUT = "MESH", SLICER = TRUE, model_name = bad
+    ))), '`model_name` is required', fixed = TRUE)
+  }
+  for (bad in list(NA, 5, "BAD", c("MESH", "VOLUME"))) {
+    expect_error(do.call(orient_mandible, c(args, list(INPUT = bad))),
+                 '`INPUT` must be', fixed = TRUE)
+  }
+  mesh <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    INPUT = "mesh", SLICER = TRUE, model_name = " Mandible "
+  )
+  expect_identical(mesh$INPUT, "MESH")
+  expect_identical(mesh$model_name, "Mandible")
+  expect_error(flash_capture(mesh, output_dir = tempdir()),
+               "long-bone result", fixed = TRUE)
+})

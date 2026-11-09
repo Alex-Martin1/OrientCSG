@@ -8,7 +8,7 @@ The package was designed to generate consistent anatomical reference systems for
 
 1. volume-input long-bone workflows using BoneJ-derived principal axes, with Amira/Avizo TCL or 3D Slicer Python output;
 2. mesh-input long-bone workflows using `.ply`, `.stl`, or `.obj` files, with 3D Slicer Python output; and
-3. mandibular volume workflows with either Amira/Avizo TCL or 3D Slicer Python output.
+3. mandibular CT workflows in Amira/Avizo or 3D Slicer, and mandibular surface-mesh sections in 3D Slicer.
 
 The anatomical logic for long bones follows criteria grounded in Ruff's (2002) proposals for long-bone orientation. The mandibular workflow is broadly comparable to the mandibular orientation approach of Toro-Ibacache et al. (2019).
 
@@ -133,7 +133,7 @@ Mandibular workflows can accommodate different preservation states through 9-, 1
 
 ## Mandibular workflow
 
-The mandibular workflow is implemented in `orient_mandible()`. It receives mandibular landmark coordinates, reconstructs the geometric reference system, computes three cross-sections, and returns tabular results plus software-specific command blocks.
+The mandibular workflow is implemented in `orient_mandible()`. It receives mandibular landmark coordinates, reconstructs the geometric reference system, computes three cross-sections, and returns tabular results plus software-specific command blocks. `INPUT = "VOLUME"` is the implicit default, preserving existing CT usage. Use `INPUT = "MESH", SLICER = TRUE, model_name = "ExactModelName"` to generate Slicer mesh sections; `model_name` is required only for MESH.
 
 ### Landmarks and preservation modes
 
@@ -173,9 +173,9 @@ The function also computes auxiliary points and vectors used for manual verifica
 - mandibular size-related measurements with `status` and `method` metadata;
 - manual-orientation output for Avizo/Amira;
 - one TCL block per section when `SLICER = FALSE`; or
-- one 3D Slicer Python block per section when `SLICER = TRUE`.
+- one 3D Slicer Python block per section when `SLICER = TRUE` (CT slice views for VOLUME or VTK mesh intersections and section-facing 3D cameras for MESH).
 
-The Slicer workflow orients the selected slice view to CS1, CS2, or CS3, activates a CT volume-rendering preset when available, creates ARP and `LM1_Line` verification objects, adds a 10 mm scale bar hidden by default, and configures a 3D verification view.
+Mesh sections use the same CS1–CS3 anatomical planes and viewing-side conventions as CT. The original surface geometry is not modified, but a surface-only mesh cannot recover internal CT structure. `flash_capture()` remains limited to long bones.
 
 ## Long-bone workflow
 
@@ -297,9 +297,9 @@ This mode is available for the Avizo/Amira workflow and is intentionally not sup
 
 ### Whole-bone reorientation with `Reorient()`
 
-`Reorient()` generates anatomical reorientation code for long bones and mandibles (CT in Slicer/Avizo/Amira; mandibular meshes in Slicer only).
+`Reorient(res)` generates anatomical reorientation code for long bones and mandibles. It automatically selects the CT or Slicer mesh workflow using `res$INPUT`; no separate mandibular mesh flag is needed.
 
-For long bones, Z is always longitudinal from distal to proximal and the distal biomechanical endpoint becomes the origin. For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the acquisition- or coordinate-dependent AP-oriented axis and should not be interpreted as independently landmark-resolved anatomical anterior.
+For long bones, Z is longitudinal from distal to proximal and the distal biomechanical endpoint becomes the origin. For `HUMERUS` and `ULNA`, Y is anatomically anterior because AP sign is resolved from landmarks. For `TIBIA`, `FEMUR`, and `RADIUS`, Y follows the acquisition- or coordinate-dependent AP-oriented axis and should not be interpreted as independently landmark-resolved anatomical anterior.
 
 In 3D Slicer mesh-input workflows, `Reorient()` creates a new `_Anatomical` model with transformed vertex coordinates while leaving the source model unchanged.
 
@@ -375,7 +375,7 @@ For long-bone workflows, section names follow the requested percentages, such as
 
 Long-bone Slicer blocks define `restore_view()`. Volume-input blocks additionally define `refresh_orientcsg_scale()` and `restore_3d_camera()`. The 10 mm OrientCSG scale markup is created automatically but starts hidden by default.
 
-Mandibular Slicer blocks orient the Red slice view to the selected section, create ARP and `LM1_Line` verification objects, add the hidden 10 mm scale, configure the 3D verification view, and define `restore_view()` and `refresh_orientcsg_scale()`.
+Mandibular Slicer CT blocks orient the Red slice view, create ARP and `LM1_Line` verification objects, and include a hidden 10 mm scale. Mandibular MESH blocks show the cut section in 3D and create hidden `OrthogonalView` and cross-sectional reference planes, but no metric scale or ruler.
 
 ### Avizo/Amira
 

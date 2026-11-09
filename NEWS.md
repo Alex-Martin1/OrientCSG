@@ -5,6 +5,9 @@
 * Refined anteroposterior sign handling: `HUMERUS` now resolves anatomical anterior directly from its distal landmarks (LM1/LM2 anterior to LM3), matching the existing landmark-resolved `ULNA` logic. `TIBIA`, `FEMUR`, and `RADIUS` are explicitly treated as lacking AP-defining landmarks; their AP-oriented sign remains acquisition/coordinate-dependent, with volume-input `RADIUS` now using the same undirected-transverse acquisition convention as tibia and femur.
 * Slicer 10 mm scale markups are still created automatically but now start hidden by default.
 * Relaxed the documented mesh-input requirement: strict topological watertightness is not required for volumetric-inertia longitudinal-axis estimation. Large or strongly asymmetric openings or missing regions remain a potential source of bias and should be repaired or independently validated.
+* Added `INPUT = "MESH"` to `orient_mandible()` for 3D Slicer surface-mesh sections, requiring an explicit `model_name`. The default CT workflow and mandibular landmark calculations remain unchanged.
+* `Reorient(res)` now selects the mandibular CT or mesh backend from `res$INPUT`, removing the separate `Mandible_Mesh` argument. Older results without `INPUT` are interpreted as CT volumes.
+* Updated mandibular documentation, examples, and tests.
 
 # OrientCSG 1.1.0
 * Added `ULNA` long-bone orientation mode with four landmarks, anatomically resolved anterior/posterior direction, projected ulnar biomechanical length, and Avizo/Amira, TRUE-volume Slicer, and SOLID-mesh Slicer support.

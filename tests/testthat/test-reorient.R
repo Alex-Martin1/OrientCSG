@@ -170,12 +170,12 @@ test_that("Reorient creates an anatomical mandibular mesh without changing input
     res <- orient_mandible(
       landmarks_str = landmarks,
       lm1_side = side,
-      SLICER = TRUE
+      SLICER = TRUE,
+      INPUT = "MESH",
+      model_name = "Mandible_STL"
     )
     original_vectors <- res$vectors
-    code <- OrientCSG:::.reorient_code(
-      res, Mandible_Mesh = TRUE, object_name = "Mandible_STL"
-    )
+    code <- OrientCSG:::.reorient_code(res)
     expect_contains_fixed(code, 'MODEL_NAME = "Mandible_STL"')
     expect_contains_fixed(code, "vtkTransformPolyDataFilter")
     expect_contains_fixed(code, "modelNode.GetName() + '_Anatomical'")
@@ -185,32 +185,33 @@ test_that("Reorient creates an anatomical mandibular mesh without changing input
   }
 })
 
-test_that("Mandible_Mesh validates incompatible inputs", {
-  res <- orient_mandible(
-    landmarks_str = mandible_landmarks_str, SLICER = TRUE
+test_that("Reorient auto-selects mandibular input and validates incompatible objects", {
+  res_mesh <- orient_mandible(
+    landmarks_str = mandible_landmarks_str, SLICER = TRUE,
+    INPUT = "MESH", model_name = "Mandible_STL"
   )
-  # Omission keeps the existing name-resolution fallback.
-  code <- OrientCSG:::.reorient_code(res, Mandible_Mesh = TRUE)
-  expect_contains_fixed(code, 'MODEL_NAME = "MANDIBLE_001"')
-  expect_contains_fixed(code, "STRICT_NAME = False")
+  code <- OrientCSG:::.reorient_code(res_mesh)
+  expect_contains_fixed(code, 'MODEL_NAME = "Mandible_STL"')
+  expect_contains_fixed(code, "STRICT_NAME = True")
+
+  invalid <- res_mesh
+  invalid$SLICER <- FALSE
   expect_error(
-    OrientCSG:::.reorient_code(res, Mandible_Mesh = NA),
-    "must be TRUE or FALSE", fixed = TRUE
-  )
-  expect_error(
-    OrientCSG:::.reorient_code(res, Mandible_Mesh = "TRUE"),
-    "must be TRUE or FALSE", fixed = TRUE
-  )
-  res$SLICER <- FALSE
-  expect_error(
-    OrientCSG:::.reorient_code(res, Mandible_Mesh = TRUE, object_name = "STL"),
-    "supported only for 3D Slicer", fixed = TRUE
+    OrientCSG:::.reorient_code(invalid),
+    'requires 3D Slicer', fixed = TRUE
   )
 
-  longbone <- structure(list(), class = "orientcsg_longbone")
-  expect_error(
-    OrientCSG:::.reorient_code(longbone, Mandible_Mesh = TRUE),
-    "only valid for mandibular results", fixed = TRUE
+  invalid <- res_mesh
+  invalid$INPUT <- "BAD"
+  expect_error(OrientCSG:::.reorient_code(invalid), 'res$INPUT', fixed = TRUE)
+
+  legacy <- orient_mandible(
+    landmarks_str = mandible_landmarks_str, SLICER = TRUE,
+    volume_name = "Mandible_CT"
+  )
+  legacy$INPUT <- NULL
+  expect_contains_fixed(
+    OrientCSG:::.reorient_code(legacy), 'VOLUME_NAME = "Mandible_CT"'
   )
 })
 
@@ -303,16 +304,19 @@ test_that("Reorient object_name overrides stored names in every supported workfl
   expect_contains_fixed(mct, "STRICT_NAME = True")
   expect_contains_fixed(OrientCSG:::.reorient_code(mandible), "STRICT_NAME = False")
 
-  mmesh <- OrientCSG:::.reorient_code(
-    mandible, Mandible_Mesh = TRUE, object_name = "Chosen_STL"
+  mesh <- orient_mandible(
+    landmarks_str = mandible_landmarks_str,
+    individual_id = "Mandible_01", lm1_side = "RIGHT",
+    SLICER = TRUE, INPUT = "MESH", model_name = "Mandible_STL"
   )
+  mmesh <- OrientCSG:::.reorient_code(mesh, object_name = "Chosen_STL")
   expect_contains_fixed(mmesh, 'MODEL_NAME = "Chosen_STL"')
   expect_contains_fixed(mmesh, "STRICT_NAME = True")
   expect_contains_fixed(mmesh, "No model named")
 
-  mmesh_default <- OrientCSG:::.reorient_code(mandible, Mandible_Mesh = TRUE)
-  expect_contains_fixed(mmesh_default, 'MODEL_NAME = "Mandible_CT"')
-  expect_contains_fixed(mmesh_default, "STRICT_NAME = False")
+  mmesh_default <- OrientCSG:::.reorient_code(mesh)
+  expect_contains_fixed(mmesh_default, 'MODEL_NAME = "Mandible_STL"')
+  expect_contains_fixed(mmesh_default, "STRICT_NAME = True")
 
   mandible$SLICER <- FALSE
   expect_contains_fixed(

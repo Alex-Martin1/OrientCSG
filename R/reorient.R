@@ -20,8 +20,8 @@
 #' suffix `_Anatomical`. The transformed vertex coordinates are written into the
 #' new model itself, while the source model is left unchanged. The new model can
 #' therefore be saved or exported as a mesh in the standardized OrientCSG frame.
-#' This is OrientCSG's only mandibular mesh workflow, enabled with
-#' `Mandible_Mesh = TRUE`; `object_name` is optional.
+#' For mandibular results, the input representation is taken from `res$INPUT`.
+#' `INPUT = "MESH"` selects the Slicer mesh route automatically.
 #'
 #' @section CT volumes:
 #' CT support is intentionally more limited. In 3D Slicer, `Reorient()` places
@@ -41,21 +41,18 @@
 #' @section Mandibles:
 #' Mandibular X/Y/Z point anatomical left-to-right, posterior-to-anterior,
 #' and inferior-to-superior, with LM2 (infradentale) at the origin.
-#' `Reorient(res)` follows `res$SLICER`: Python for Slicer CT or TCL for
-#' Avizo/Amira CT. `Mandible_Mesh = TRUE` supports only Slicer and creates a
-#' new anatomical mesh. The model and landmarks must share physical coordinates.
+#' `Reorient(res)` uses the `INPUT` and `SLICER` settings saved by
+#' [orient_mandible()]. CT is available in Slicer and Avizo/Amira; meshes are
+#' supported only in Slicer. The model and landmarks must share physical coordinates.
+#' Older mandibular results without `INPUT` are treated as CT volumes.
 #'
 #' @param res An `orientcsg_longbone` or `orientcsg_mandible` result.
 #'   For long bones, full anatomical orientation must have been used.
 #' @param object_name Optional exact model/volume name for all workflows.
 #'   When supplied, Slicer requires an exact match and does not fall back to
-#'   another node. When omitted, the name is recovered from `res` (or its
-#'   `individual_id`) and the existing Slicer selection fallback is retained.
-#' @param Mandible_Mesh Logical, default `FALSE`. For mandibular results only:
-#'   `TRUE` creates a reoriented Slicer mesh; `FALSE` generates the CT code
-#'   for Slicer or Avizo/Amira according to `res$SLICER`. Passing `TRUE` with
-#'   an Avizo/Amira or long-bone result raises an error.
-#'
+#'   another node. When omitted, the name is recovered from `res`; mandibular
+#'   MESH results require an exact `res$model_name`, while CT retains the
+#'   existing Slicer selection fallback.
 #' @return Invisibly returns the generated TCL or Python code as a character
 #'   scalar and attempts to copy it to the system clipboard.
 #'
@@ -63,14 +60,12 @@
 #' \dontrun{
 #' Reorient(res)
 #' Reorient(res, object_name = "W30")
-#' Reorient(mandible_res, Mandible_Mesh = TRUE, object_name = "Mandible_STL")
+#' Reorient(mandible_res) # Uses the input representation stored in res
 #' }
 #'
 #' @export
-Reorient <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
-  txt <- .reorient_code(
-    res, object_name = object_name, Mandible_Mesh = Mandible_Mesh
-  )
+Reorient <- function(res, object_name = NULL) {
+  txt <- .reorient_code(res, object_name = object_name)
   copy_to_clipboard(txt)
 
   if (isTRUE(res$SLICER)) {
@@ -82,18 +77,9 @@ Reorient <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
   invisible(txt)
 }
 
-.reorient_code <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
-  if (!is.logical(Mandible_Mesh) || length(Mandible_Mesh) != 1L ||
-      is.na(Mandible_Mesh)) {
-    stop("`Mandible_Mesh` must be TRUE or FALSE.", call. = FALSE)
-  }
-
+.reorient_code <- function(res, object_name = NULL) {
   if (inherits(res, "orientcsg_mandible")) {
-    return(.reorient_mandible_code(res, object_name, Mandible_Mesh))
-  }
-
-  if (isTRUE(Mandible_Mesh)) {
-    stop("`Mandible_Mesh = TRUE` is only valid for mandibular results.", call. = FALSE)
+    return(.reorient_mandible_code(res, object_name))
   }
 
   if (!inherits(res, "orientcsg_longbone")) {
@@ -154,8 +140,8 @@ Reorient <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
   .reorient_avizo_tcl(res, origin, signs, object_name)
 }
 
-# Generate CT or mesh reorientation without changing orient_mandible().
-.reorient_mandible_code <- function(res, object_name, Mandible_Mesh) {
+# Select mandibular CT or mesh reorientation using the source result.
+.reorient_mandible_code <- function(res, object_name) {
   if (!identical(res$internal_coord_system, "LPS")) {
     stop("Mandibular `Reorient()` requires internal LPS geometry.", call. = FALSE)
   }
@@ -163,16 +149,21 @@ Reorient <- function(res, object_name = NULL, Mandible_Mesh = FALSE) {
       is.na(res$SLICER)) {
     stop("`res$SLICER` must be TRUE or FALSE.", call. = FALSE)
   }
-  if (Mandible_Mesh && !res$SLICER) {
-    stop("`Mandible_Mesh = TRUE` is supported only for 3D Slicer.", call. = FALSE)
+  input <- if (is.null(res$INPUT)) "VOLUME" else res$INPUT
+  if (!is.character(input) || length(input) != 1L || is.na(input) ||
+      !input %in% c("VOLUME", "MESH")) {
+    stop('`res$INPUT` must be either "VOLUME" or "MESH".', call. = FALSE)
+  }
+  if (identical(input, "MESH") && !res$SLICER) {
+    stop('Mandibular `INPUT = "MESH"` requires 3D Slicer.', call. = FALSE)
   }
 
   geometry <- .reorient_mandible_geometry(res)
   signs <- list(ml_right_sign = 1, anterior_up_sign = 1)
-  strict_name <- !is.null(object_name)
+  strict_name <- !is.null(object_name) || identical(input, "MESH")
   object_name <- .reorient_object_name(res, object_name)
 
-  if (Mandible_Mesh) {
+  if (identical(input, "MESH")) {
     return(.reorient_slicer_model_python(
       geometry$axes, geometry$origin, signs, object_name,
       mandible = TRUE, strict_name = strict_name

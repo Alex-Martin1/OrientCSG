@@ -14,7 +14,9 @@ orient_mandible(
   lm9_valid = TRUE,
   lm_coord_system = "LPS",
   SLICER = FALSE,
-  volume_name = NULL
+  volume_name = NULL,
+  INPUT = "VOLUME",
+  model_name = NULL
 )
 }
 \arguments{
@@ -66,13 +68,19 @@ was pasted as plain XYZ coordinates or as a Slicer Markups-style table.}
 
 \item{SLICER}{Logical. If \code{FALSE} (default), generate Avizo/Amira TCL command
 blocks. If \code{TRUE}, generate 3D Slicer Python command blocks.
-In Slicer, the slice is visible in 3D and the reformat widget is hidden.}
+In the CT route, the slice is visible in 3D with its reformat widget hidden.}
 
-\item{volume_name}{Optional scalar volume node name used by the generated
-Slicer Python block. If omitted, the block uses the active background volume
-in the chosen slice view when possible, falling back to the only scalar
-volume in the scene. If multiple scalar volumes are loaded, provide
-\code{volume_name} explicitly.}
+\item{volume_name}{Optional scalar volume node name for the Slicer CT route.
+When omitted, the generated code selects the active background volume or
+the only scalar volume in the scene.}
+
+\item{INPUT}{Input representation: \code{"VOLUME"} (default) preserves the CT
+workflow; \code{"MESH"} generates 3D Slicer surface-mesh sections. The mesh
+route requires \code{SLICER = TRUE} and an explicit \code{model_name}. This argument
+does not change landmark geometry or measurements.}
+
+\item{model_name}{Exact 3D Slicer model node name, required only when
+\code{INPUT = "MESH"}. The model and landmarks must share world coordinates.}
 }
 \value{
 An object of class \code{orientcsg_mandible} and
@@ -80,6 +88,8 @@ An object of class \code{orientcsg_mandible} and
 components:
 \itemize{
 \item \code{type}: Protocol type, here \code{"MANDIBLE"}.
+\item \code{INPUT}: \code{"VOLUME"} or \code{"MESH"} (default: \code{"VOLUME"}).
+\item \code{model_name}: Source Slicer model name for mesh input, otherwise \code{NULL}.
 \item \code{individual_id}: Specimen identifier.
 \item \code{landmarks}: Landmark coordinate matrix.
 \item \code{landmark_count}: Number of landmarks supplied.
@@ -107,10 +117,10 @@ section orientation in Avizo/Amira, when \code{SLICER = FALSE}.
 \item \code{avizo_tcl}: Named list with TCL blocks for \code{CS1}, \code{CS2}, and \code{CS3},
 when \code{SLICER = FALSE}.
 \item \code{slicer_py}: Named list with 3D Slicer Python blocks for \code{CS1}, \code{CS2},
-and \code{CS3}, when \code{SLICER = TRUE}. These blocks orient the Red slice view,
-create the ARP, \code{LM1_Line}, and scale-bar verification objects, configure
-volume rendering and a 3D verification view, and define \code{restore_view()}
-and \code{refresh_orientcsg_scale()}.
+and \code{CS3}, when \code{SLICER = TRUE}. CT blocks orient the Red slice view and
+configure volume rendering; mesh blocks cut the source model and display
+a filled 3D section with the same anatomical viewing axes. Both retain
+ARP and \code{LM1_Line} verification objects and view-restoration helpers.
 }
 }
 \description{
@@ -179,13 +189,25 @@ The generated TCL code assumes that the Avizo project contains objects named
 visual check plane, but the TCL code is written so that it will still run if
 this object does not exist.
 
-With \code{SLICER = TRUE}, the function returns 3D Slicer Python blocks. These
-blocks orient the Red slice view to the requested mandibular section, emit RAS
+With \code{SLICER = TRUE} and the default \code{INPUT = "VOLUME"}, the function
+returns 3D Slicer Python blocks. These blocks orient the Red slice view
+to the requested mandibular section, emit RAS
 coordinates in the Python interactor, activate volume rendering with the
 \code{CT-AAA2} preset when available, create the ARP and \code{LM1_Line} verification
 objects, add a 10 mm scale bar with visibility disabled by default, and configure a 3D verification view. The
 generated block also defines \code{restore_view()} and
 \code{refresh_orientcsg_scale()} helper commands.
+
+With \code{INPUT = "MESH"} and \code{SLICER = TRUE}, the generated code cuts a named
+surface model with VTK, displays the section in 3D (filled where contours
+permit triangulation), and uses the same section normals, anatomical
+superior direction, and viewing-side convention as the CT workflow.
+Surface-only meshes do not provide internal CT attenuation or segmentation.
+The original model geometry is preserved. Hidden 3D reference planes reproduce
+the Avizo/Amira \code{OrthogonalView} orientation and the current cross-sectional
+plane; both can be enabled in Slicer's Data module. Mesh output does not
+create a metric scale or 3D ruler. Mandibular mesh workflows do not support
+\code{\link[=flash_capture]{flash_capture()}}.
 }
 
 \examples{

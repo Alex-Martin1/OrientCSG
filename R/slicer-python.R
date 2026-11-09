@@ -1040,6 +1040,9 @@ emit_slicer_longbone_volume_python <- function(res, section = NULL) {
 
 # Mandibular sections: same geometry as Avizo; convert internal LPS to RAS.
 emit_slicer_mandible_python <- function(res, section = NULL) {
+  if (identical(res$INPUT, "MESH")) {
+    return(emit_slicer_mandible_mesh_python(res, section = section))
+  }
   available_sections <- c("CS1", "CS2", "CS3")
 
   if (is.null(section)) {
@@ -1794,4 +1797,71 @@ emit_slicer_mandible_python <- function(res, section = NULL) {
   )
 
   paste(code, collapse = "\n")
+}
+
+# Surface-mesh mandibular sections use the same CT section frame (LPS -> RAS)
+# but cut a Slicer model and show its section face in the 3D view.
+emit_slicer_mandible_mesh_python <- function(res, section = NULL) {
+  sections <- c("CS1", "CS2", "CS3")
+  if (is.null(section)) section <- sections[1L]
+  section <- toupper(trimws(section))
+  if (length(section) != 1L || is.na(section) || !section %in% sections) {
+    stop("`section` must be CS1, CS2, or CS3.", call. = FALSE)
+  }
+  if (!identical(res$INPUT, "MESH") || !isTRUE(res$SLICER)) {
+    stop('Mandibular mesh sections require `INPUT = "MESH"` and `SLICER = TRUE`.', call. = FALSE)
+  }
+  if (!is.character(res$model_name) || length(res$model_name) != 1L ||
+      is.na(res$model_name) || !nzchar(res$model_name)) {
+    stop('`res$model_name` must identify a Slicer model.', call. = FALSE)
+  }
+
+  lm2 <- res$landmarks["LM2", ]
+  anterior <- res$vectors$Anterior_ref
+  if (section == "CS1") {
+    psec <- res$points$CS1B
+    normal <- res$vectors$Vec_CS1_Normal
+    if (dot3(normal, anterior) < 0) normal <- -normal
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
+  } else if (section == "CS2") {
+    psec <- res$points$CS2B
+    normal <- res$vectors$Vec_CS2_Normal
+    if (dot3(normal, anterior) < 0) normal <- -normal
+    x_ref <- nrm(cross3(res$vectors$Vec_Penp, normal))
+  } else {
+    psec <- lm2
+    normal <- res$vectors$Vec_RightToLeft
+    x_ref <- res$vectors$Vec_0_2
+    if (dot3(normal, res$vectors$Vec_LandmarkedSide) < 0) normal <- -normal
+  }
+
+  path <- system.file("python", "mandible_mesh.py", package = "OrientCSG")
+  if (!nzchar(path) || !file.exists(path)) {
+    stop("Installed mandibular mesh Python template is unavailable.", call. = FALSE)
+  }
+  code <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  values <- list(
+    `__MODEL_NAME__` = py_quote(res$model_name),
+    `__SECTION_LABEL__` = py_quote(section),
+    `__CAMERA_DISTANCE__` = fmt_num_py(res$camera_distance),
+    `__PSEC__` = fmt_py_vec(flip_xy(psec)),
+    `__NORMAL__` = fmt_py_vec(flip_xy(normal)),
+    `__X_SCREEN_REFERENCE__` = fmt_py_vec(flip_xy(x_ref)),
+    `__Y_PREFERRED__` = fmt_py_vec(flip_xy(res$vectors$Vec_Penp)),
+    `__ARP_ORIGIN__` = fmt_py_vec(flip_xy(res$points$ARP_Origin)),
+    `__ARP_NORMAL__` = fmt_py_vec(flip_xy(res$vectors$Vec_Penp)),
+    `__LM1_LINE__` = fmt_py_vec(flip_xy(res$points$LM1_Line))
+  )
+  for (key in names(values)) {
+    locations <- gregexpr(key, code, fixed = TRUE)[[1L]]
+    if (length(locations) != 1L || locations[[1L]] < 0L) {
+      stop("Invalid mandibular mesh Python template: ", key, call. = FALSE)
+    }
+    p <- locations[[1L]]
+    code <- paste0(
+      substr(code, 1L, p - 1L), values[[key]],
+      substr(code, p + nchar(key), nchar(code))
+    )
+  }
+  code
 }

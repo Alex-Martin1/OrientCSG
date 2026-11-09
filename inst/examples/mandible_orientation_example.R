@@ -67,12 +67,11 @@ copy_tcl(res, section = "CS3")
 
 # MANDIBLE: 3D Slicer volume workflow =====
 
-# If the same coordinates come from the Avizo/Amira-like workflow, leave
-# lm_coord_system = "LPS". Coordinates copied/exported from a 3D Slicer Markups
-# table may also paste as LPS, even if the table displays R/A/S column labels.
-# Use lm_coord_system = "RAS" only for values explicitly extracted as RAS.
+# Use LPS for Avizo/Amira coordinates. Slicer Markups tables may also
+# export LPS coordinates despite displaying R/A/S column labels. Use RAS
+# only when the numeric coordinates have been verified as RAS.
 #
-# Example of the same landmark set written as Slicer Markups-style rows:
+# Separate landmark example in Slicer Markups row format (LPS):
 landmarks_str_slicer_mandible <- "
 1 -30.802746 -7.687321 -143.703278 0 0 0 1 1 1 0 F-1 2 0
 2 -1.575801 7.369631 -105.562813 0 0 0 1 1 1 0 F-2 2 0
@@ -86,11 +85,6 @@ landmarks_str_slicer_mandible <- "
 10 -18.105160 2.743076 -110.288727 0 0 0 1 1 1 0 F-10 2 0
 11 -47.784660 12.426559 -201.179794 0 0 0 1 1 1 0 F-11 2 0
 "
-
-# The block below uses the LPS coordinates already defined in landmarks_str.
-# To use the Slicer Markups-style table above as copied/exported text, set:
-# landmarks_str = landmarks_str_slicer_mandible
-# lm_coord_system = "LPS"
 
 # As in the Avizo/Amira route, CS1 and CS2 are viewed from anterior using
 # LM0 -> LM2; lm1_side remains the anatomical side convention for CS3.
@@ -123,3 +117,27 @@ copy_slicer_py(res_slicer, section = "CS3")
 #
 # restore_view()
 # refresh_orientcsg_scale()
+
+
+# MANDIBLE: optional 3D Slicer surface-mesh workflow =====
+# This branch requires a loaded model with the exact name given below.
+res_mesh <- orient_mandible(
+  landmarks_str = landmarks_str_slicer_mandible,
+  individual_id = "MANDIBLE_EXAMPLE",
+  lm1_side = "RIGHT",
+  lm_coord_system = "LPS",
+  SLICER = TRUE,
+  INPUT = "MESH",
+  model_name = "Mandible_Mesh"
+)
+
+# Paste the generated code into Slicer's Python Interactor.
+# OrthogonalView and section-plane guides are created hidden (toggle in Data).
+# No metric scale or 3D ruler is added in MESH mode.
+cat(get_slicer_py(res_mesh, section = "CS1"))
+copy_slicer_py(res_mesh, section = "CS2")
+
+# Reorient() automatically reads INPUT and model_name from res_mesh.
+Reorient(res_mesh)
+
+# flash_capture() does not support mandibular results.
