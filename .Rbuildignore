@@ -3,3 +3,4 @@
 \.bak$
 ^dev$
 ^OrientCSG_.*\.tar\.gz$
+^CHANGES_FOR_PROTOCOLS_IO\.md$
