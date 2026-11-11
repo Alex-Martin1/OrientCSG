@@ -49,19 +49,13 @@ For mandibular results, the input representation is taken from \code{res$INPUT}.
 
 \section{CT volumes}{
 
-CT support is intentionally more limited. In 3D Slicer, \code{Reorient()} places
-the volume under a linear anatomical transform and aligns the standard slice
-viewers with the transformed axes, but it does not resample the underlying
-voxel lattice. In Avizo/Amira, it generates only the spatial \code{setTransform}
-step. These CT operations should therefore be treated as non-resampled,
-provisional spatial/display reorientations rather than as newly reoriented
-DICOM volumes.
+\code{Reorient()} does not resample CT voxels. In 3D Slicer, it applies a
+linear anatomical transform and aligns the slice viewers; in
+Avizo/Amira, it generates the corresponding \code{setTransform} command.
 
-Creating a CT volume whose voxel grid and DICOM slices are intrinsically
-aligned with the reoriented Cartesian axes requires resampling in the external imaging
-software. Neither \code{Reorient()} nor OrientCSG performs that resampling. In
-Avizo/Amira, this can be done manually with \verb{Resample Transformed Image} if
-required.
+An intrinsically reoriented CT voxel grid or DICOM volume requires
+resampling in the imaging software (e.g., \verb{Resample Transformed Image}
+in Avizo/Amira).
 }
 
 \section{Mandibles}{

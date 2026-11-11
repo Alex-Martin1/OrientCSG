@@ -1,13 +1,27 @@
 # OrientCSG 1.1.1
 
-* Replaced the ambiguous logical `SOLID` argument in `orient_longbone()` with `INPUT = "VOLUME"` or `INPUT = "MESH"`. This is a breaking API change. `INPUT` identifies the representation supplied to the package and controls longitudinal-axis estimation and software output; it does not define whether downstream CSG is treated as TRUE or SOLID. Mesh inputs may encode periosteal-only geometry or both periosteal and endosteal geometry, while volume inputs retain scalar/grayscale information for later thresholding, segmentation, or filling.
-* Added `Reorient()` to copy whole-bone anatomical reorientation code from an existing `orient_longbone()` result. In 3D Slicer mesh-input workflows it creates a new saveable `_Anatomical` mesh with transformed vertex coordinates. CT support is intentionally non-resampling: Slicer applies a linear transform and aligns the slice viewers, while Avizo/Amira applies only `setTransform`; creation of an intrinsically reoriented CT/DICOM voxel grid remains a manual external resampling step.
-* Refined anteroposterior sign handling: `HUMERUS` now resolves anatomical anterior directly from its distal landmarks (LM1/LM2 anterior to LM3), matching the existing landmark-resolved `ULNA` logic. `TIBIA`, `FEMUR`, and `RADIUS` are explicitly treated as lacking AP-defining landmarks; their AP-oriented sign remains acquisition/coordinate-dependent, with volume-input `RADIUS` now using the same undirected-transverse acquisition convention as tibia and femur.
-* Slicer 10 mm scale markups are still created automatically but now start hidden by default.
-* Relaxed the documented mesh-input requirement: strict topological watertightness is not required for volumetric-inertia longitudinal-axis estimation. Large or strongly asymmetric openings or missing regions remain a potential source of bias and should be repaired or independently validated.
-* Added `INPUT = "MESH"` to `orient_mandible()` for 3D Slicer surface-mesh sections, requiring an explicit `model_name`. The default CT workflow and mandibular landmark calculations remain unchanged.
-* `Reorient(res)` now selects the mandibular CT or mesh backend from `res$INPUT`, removing the separate `Mandible_Mesh` argument. Older results without `INPUT` are interpreted as CT volumes.
-* Updated mandibular documentation, examples, and tests.
+* Replaced `SOLID` with `INPUT = "VOLUME"` or `"MESH"` in
+  `orient_longbone()` (breaking API change). `INPUT` selects the input
+  representation and backend, not TRUE/SOLID treatment.
+* Added `Reorient()` for whole-bone anatomical reorientation from
+  `orient_longbone()` results. Slicer meshes produce a saveable
+  `_Anatomical` model; CT workflows apply spatial transforms without
+  resampling voxels (Slicer linear transform; Avizo/Amira `setTransform`).
+* Updated AP sign handling: `HUMERUS` now resolves anatomical anterior
+  from distal landmarks, as `ULNA` does. `TIBIA`, `FEMUR`, and `RADIUS`
+  retain acquisition- or coordinate-dependent signs; volume-input
+  `RADIUS` now uses the undirected transverse-axis convention.
+* Slicer 10 mm scale markups now start hidden by default.
+* Removed the strict watertightness requirement for mesh-based
+  volumetric-inertia axis estimation. Large or asymmetric openings
+  can still bias the estimate.
+* Added mandibular `INPUT = "MESH"` support in 3D Slicer, requiring
+  `model_name`. The default CT workflow and landmark calculations
+  are unchanged.
+* `Reorient(res)` now selects the mandibular CT or mesh backend from
+  `res$INPUT`, replacing `Mandible_Mesh`. Older results without `INPUT`
+  are treated as CT.
+* Updated documentation, examples, and regression tests.
 
 # OrientCSG 1.1.0
 * Added `ULNA` long-bone orientation mode with four landmarks, anatomically resolved anterior/posterior direction, projected ulnar biomechanical length, and Avizo/Amira, TRUE-volume Slicer, and SOLID-mesh Slicer support.

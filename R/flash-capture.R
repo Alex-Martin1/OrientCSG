@@ -8,22 +8,15 @@
 #' `INPUT = "VOLUME"` and `SLICER = FALSE`, 3D Slicer with
 #' `INPUT = "VOLUME"`, and 3D Slicer with `INPUT = "MESH"`.
 #'
-#' In 3D Slicer, Flash Capture deliberately does not recompute anatomical
-#' orientation: first run one reference section with [copy_slicer_py()] and
-#' configure the desired view; Flash Capture preserves that prepared view across
-#' the batch. In Avizo/Amira, no prior [copy_tcl()] step is required: Flash
-#' Capture initializes the first requested section with the same Slice and AP/ML
-#' orientation used by [copy_tcl()] and rotates the existing camera so it is
-#' perpendicular to the section. The current camera position, projection type,
-#' and zoom/framing are preserved, and that oriented camera is then reused while
-#' the Slice moves through the remaining requested sections. Brightness/contrast,
-#' colormap, and scale settings are also left unchanged. In the
-#' 3D Slicer CT workflow, the current slice matrix and field of
-#' view are used as the visual reference while the section plane and OrientCSG
-#' scale are translated between requested section points. In the 3D Slicer mesh-input
-#' workflow, the source mesh is re-cut at each requested section while the current
-#' 3D camera orientation, proximal viewing side, parallel scale, and relative pan
-#' are preserved. The starting Slicer view is restored after batch capture.
+#' In 3D Slicer, first prepare a reference section with [copy_slicer_py()].
+#' Flash Capture preserves that view without recomputing anatomical orientation:
+#' CT moves the slice and scale, while MESH re-cuts the model at each section.
+#' The original Slicer view is restored after capture.
+#' In Avizo/Amira, no prior [copy_tcl()] call is needed. Flash Capture uses
+#' the stored Slice and AP/ML orientation for the first section, positions
+#' the camera perpendicular to it while retaining the current framing and
+#' projection, and moves the Slice through the remaining sections.
+#' Brightness/contrast, colormap, and scale settings remain unchanged.
 #'
 #' Flash Capture writes TIFF files in RGB mode by default. In 3D Slicer,
 #' `color_mode = "grayscale"` converts the rendered RGB buffer to a true
@@ -431,9 +424,7 @@ flash_capture <- function(
   reference_tolerance_mm <- 2
   color_mode <- match.arg(color_mode)
 
-  # ----------------------------------------------------------
-  # CHECK RESULT TYPE / WORKFLOW
-  # ----------------------------------------------------------
+  # Validate CT workflow
 
   if (!inherits(res, "orientcsg_longbone")) {
     stop(
@@ -472,9 +463,7 @@ flash_capture <- function(
   }
 
 
-  # ----------------------------------------------------------
-  # CHECK FILE NAME / OUTPUT DIRECTORY
-  # ----------------------------------------------------------
+  # Validate output name and directory
 
   if (length(file_name) != 1L ||
       is.na(file_name) ||
@@ -497,9 +486,7 @@ flash_capture <- function(
   output_dir <- chartr("\\", "/", output_dir)
 
 
-  # ----------------------------------------------------------
-  # SELECT SECTIONS
-  # ----------------------------------------------------------
+  # Select sections
 
   available <- names(res$section_points)
 
@@ -545,9 +532,7 @@ flash_capture <- function(
   selected <- unique(selected)
 
 
-  # ----------------------------------------------------------
-  # CONVERT INTERNAL LPS POINTS TO SLICER RAS
-  # ----------------------------------------------------------
+  # Convert LPS section points to RAS
 
   flip_xy <- function(v) {
 
@@ -566,9 +551,7 @@ flash_capture <- function(
   )
 
 
-  # ----------------------------------------------------------
-  # FORMATTERS
-  # ----------------------------------------------------------
+  # Format values for Python
 
   fmt_num <- function(x) {
 
@@ -598,9 +581,7 @@ flash_capture <- function(
   }
 
 
-  # ----------------------------------------------------------
-  # PYTHON DICTIONARY WITH ALL SECTION POINTS
-  # ----------------------------------------------------------
+  # Serialize section points for Python
 
   section_lines <- vapply(
     names(points_ras),
@@ -625,9 +606,7 @@ flash_capture <- function(
   )
 
 
-  # ----------------------------------------------------------
-  # BUILD SLICER PYTHON BLOCK
-  # ----------------------------------------------------------
+  # Build Slicer Python block
 
   code <- c(
 
@@ -1070,9 +1049,7 @@ flash_capture <- function(
   )
 
 
-  # ----------------------------------------------------------
-  # COPY PYTHON BLOCK TO WINDOWS CLIPBOARD
-  # ----------------------------------------------------------
+  # Copy Python block to clipboard
 
   if (isTRUE(copy)) {
     copied <- copy_to_clipboard(txt)

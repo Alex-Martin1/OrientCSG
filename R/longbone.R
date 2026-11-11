@@ -578,18 +578,12 @@ orient_longbone <- function(mode,
       }
     }
 
-    # In volume-input TIBIA, FEMUR, and RADIUS workflows, the P1/P2 pair
-    # defines an anatomically undirected transverse axis. Swapping the two points
-    # reverses the provisional ML/AP signs but should not change the result within
-    # the established acquisition workflow. Resolve that computational ambiguity
-    # with the existing scanner/table reference (0, -1, 0) after DICOM conversion.
-    # This is a dataset/acquisition convention, not landmark evidence for
-    # anatomical anterior, and should not be generalized across acquisition
-    # pipelines without validation.
-    #
-    # This is deliberately limited to INPUT = "VOLUME": mesh workflows may come
-    # from acquisitions with different coordinate assumptions and retain their
-    # input-coordinate-dependent transverse sign.
+    # For TIBIA, FEMUR and RADIUS in VOLUME mode, P1/P2 define an
+    # undirected transverse axis. Resolve its sign against the scanner/table
+    # reference (0, -1, 0) after DICOM conversion, so swapping P1/P2
+    # does not change the result under this acquisition convention.
+    # This is not landmark evidence of anatomical anterior; other acquisition
+    # protocols need validation. MESH retains the input-dependent sign.
     if (identical(INPUT, "VOLUME") && mode %in% c("TIBIA", "FEMUR", "RADIUS")) {
       ct_ap_reference <- nrm(c(0, -1, 0))
       if (dot3(APh, ct_ap_reference) < 0) {
